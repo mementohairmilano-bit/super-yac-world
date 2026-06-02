@@ -3,7 +3,16 @@
 <head>
   <meta charset="utf-8">
   <title>SUPER YAC WORLD</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <!-- PWA: installabile su home, schermo intero, icona YAC -->
+  <link rel="manifest" href="/manifest.webmanifest">
+  <meta name="theme-color" content="#1b1020">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Yac World">
+  <link rel="apple-touch-icon" href="/apple-touch-icon-180.png">
+  <link rel="icon" type="image/png" href="/icon-192.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
   <style>
@@ -162,6 +171,7 @@
       <button class="btn hidden" id="btn-continua" style="margin-top:6px">▸ Continua</button>
       <div id="record" class="hidden" style="margin-top:6px;font-family:'Syne',sans-serif;font-weight:700;font-size:13px;color:#F2C53D"></div>
       <button class="btn ghost" id="btn-board-menu" style="margin-top:6px">🏆 Classifica globale</button>
+      <button class="btn ghost hidden" id="btn-install" style="margin-top:6px">📲 Installa l'app</button>
       <div class="pick">▸ Scegli il tuo eroe ◂</div>
       <div class="cards" id="cards"></div>
       <div class="legend">
@@ -225,6 +235,14 @@
       <ol id="board-list" style="list-style:none;margin:6px 0;padding:0;width:min(360px,86vw);max-height:46vh;overflow-y:auto;text-align:left;font-family:'DM Sans',sans-serif"></ol>
       <p class="tag" id="board-empty" class="hidden" style="opacity:.7"></p>
       <button class="btn ghost" id="btn-board-close">Chiudi</button>
+    </div>
+
+    <div id="install-help" class="overlay hidden" style="background:radial-gradient(120% 120% at 50% 0%,#2a1626,#0c0810)">
+      <div class="big">📲 Installa Super Yac World</div>
+      <p class="tag">Aggiungi il gioco alla schermata Home: si apre a schermo intero, come un'app.</p>
+      <div id="install-steps" style="text-align:left;max-width:min(380px,86vw);font-family:'DM Sans',sans-serif;color:#F7F1E8;line-height:1.5"></div>
+      <button class="btn" id="btn-install-go" style="margin-top:10px">Installa ora</button>
+      <button class="btn ghost" id="btn-install-close">Chiudi</button>
     </div>
 
     <button id="pausebtn" class="hidden" aria-label="Pausa">⏸</button>

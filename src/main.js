@@ -78,6 +78,7 @@ function toMenu() {
   ['win', 'over', 'pause'].forEach(id => document.getElementById(id).classList.add('hidden'));
   document.getElementById('menu').classList.remove('hidden');
   if (typeof refreshMenu === 'function') refreshMenu();   // aggiorna "Continua" / record
+  if (typeof refreshInstallBtn === 'function') refreshInstallBtn();   // aggiorna pulsante Installa
   AUDIO.playMusic('title_theme');   // musica del menu/selezione
 }
 
@@ -211,6 +212,54 @@ document.getElementById('btn-board-win').addEventListener('click', () => openBoa
 document.getElementById('btn-board-close').addEventListener('click', closeBoard);
 // esposto alla GameScene per mostrare il pulsante "Classifica" sulla card del finale
 window._gameShowBoardBtn = (show) => document.getElementById('btn-board-win').classList.toggle('hidden', !show);
+
+// ===== PWA: service worker + installazione =====
+// SW solo fuori da localhost (in dev darebbe fastidio con la cache)
+if ('serviceWorker' in navigator && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+  window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}));
+}
+
+let deferredPrompt = null;
+const installBtn = document.getElementById('btn-install');
+const installHelp = document.getElementById('install-help');
+const installSteps = document.getElementById('install-steps');
+const installGo = document.getElementById('btn-install-go');
+const isStandalone = () => window.matchMedia('(display-mode: standalone)').matches
+  || window.matchMedia('(display-mode: fullscreen)').matches || navigator.standalone === true;
+const isIOS = () => /iphone|ipad|ipod/i.test(navigator.userAgent);
+
+function refreshInstallBtn() {
+  if (!installBtn) return;
+  const canPrompt = !!deferredPrompt;
+  const iosInstallable = isIOS() && !isStandalone();
+  installBtn.classList.toggle('hidden', isStandalone() || !(canPrompt || iosInstallable));
+}
+window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); deferredPrompt = e; refreshInstallBtn(); });
+window.addEventListener('appinstalled', () => { deferredPrompt = null; if (installBtn) installBtn.classList.add('hidden'); });
+
+function openInstallHelp() {
+  let html, showGo = false;
+  if (deferredPrompt) {
+    showGo = true;
+    html = '<p>Premi <b>Installa ora</b> qui sotto e conferma. In alternativa, dal menu del browser (⋮) scegli <b>"Installa app"</b>.</p>';
+  } else if (isIOS()) {
+    html = '<ol style="padding-left:20px;margin:0"><li>Tocca il pulsante <b>Condividi</b> (l\'icona ⬆️ in basso su iPhone).</li><li>Scorri e tocca <b>"Aggiungi alla schermata Home"</b>.</li><li>Conferma con <b>Aggiungi</b>.</li></ol><p style="opacity:.7;margin-top:8px">Su iPhone funziona con <b>Safari</b>.</p>';
+  } else {
+    html = '<p>Nel browser (Chrome/Edge) cerca l\'icona <b>Installa</b> (⊕) nella barra degli indirizzi, oppure menu (⋮) → <b>"Installa app"</b>.</p>';
+  }
+  installSteps.innerHTML = html;
+  installGo.classList.toggle('hidden', !showGo);
+  installHelp.classList.remove('hidden');
+}
+if (installBtn) installBtn.onclick = openInstallHelp;
+if (installGo) installGo.onclick = async () => {
+  if (!deferredPrompt) return;
+  deferredPrompt.prompt();
+  try { await deferredPrompt.userChoice; } catch (e) {}
+  deferredPrompt = null; installHelp.classList.add('hidden'); refreshInstallBtn();
+};
+document.getElementById('btn-install-close').onclick = () => installHelp.classList.add('hidden');
+refreshInstallBtn();
 
 // Pulsante mute (sopra agli overlay, raggiungibile anche nel menu)
 const muteBtn = document.getElementById('mutebtn');
