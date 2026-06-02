@@ -53,13 +53,13 @@
       position: absolute; left: 0; right: 0; bottom: 0; height: 70px;
       background: repeating-linear-gradient(90deg, #243039 0 38px, #2c3a45 38px 76px);
       border-top: 3px solid #44606f; box-shadow: 0 -10px 30px #000a; opacity: .85;
-      animation: slide 6s linear infinite;
+      animation: slide 6s linear infinite; pointer-events: none;
     }
     @keyframes slide { to { background-position: 152px 0; } }
     .glow {
       position: absolute; width: 560px; height: 560px; border-radius: 50%;
       background: radial-gradient(circle, #F2994A55, transparent 64%);
-      filter: blur(10px); top: -150px; animation: pulse 5s ease-in-out infinite;
+      filter: blur(10px); top: -150px; animation: pulse 5s ease-in-out infinite; pointer-events: none;
     }
     @keyframes pulse { 50% { opacity: .55; transform: scale(1.08); } }
     .logo { position: relative; z-index: 2; display: flex; flex-direction: column; align-items: center; }
