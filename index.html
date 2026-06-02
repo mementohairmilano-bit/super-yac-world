@@ -75,20 +75,8 @@
     .sub { position: relative; z-index: 2; margin-top: 10px; font-size: clamp(12px, 2.4vw, 14px); color: #ece1ee; max-width: 580px; letter-spacing: .2px; line-height: 1.45; }
     .pick { position: relative; z-index: 2; margin: 20px 0 11px; font-family: 'Syne', sans-serif; font-weight: 800; font-size: 13px; letter-spacing: 3px; color: var(--yellow); text-transform: uppercase; }
     .cards { position: relative; z-index: 2; display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; width: 100%; max-width: 720px; }
-    @media (max-width: 560px) {
-      .cards { grid-template-columns: repeat(2, 1fr); max-width: 400px; gap: 8px; }
-      /* card compatte su mobile, a favore del titolo */
-      .av { aspect-ratio: auto; height: 92px; margin-bottom: 5px; }
-      .card { padding: 6px 7px 8px; }
-      .nm { font-size: 15px; }
-      .rl { font-size: 9px; margin-top: 1px; }
-      .pw { margin-top: 5px; font-size: 9px; padding: 2px 7px; }
-      .abx { font-size: 10px; margin-top: 3px; min-height: 0; line-height: 1.2; }
-      .sub { margin-top: 6px; }
-      .pick { margin: 12px 0 8px; }
-    }
-    /* su touch la legenda è tastiera/gamepad/TV: inutile e occupa spazio → nascosta */
-    @media (hover: none) { .legend { display: none; } }
+    /* NB: gli override mobile delle card sono spostati in FONDO allo <style> (dopo le regole
+       base .av/.nm/...) perché a parità di specificità vince l'ultima regola nel sorgente. */
     .card { background: linear-gradient(180deg, #352741, #271b32); border: 2px solid var(--c-border, #4a3850); border-radius: 16px; padding: 10px 9px 13px; cursor: pointer; transition: transform .16s, box-shadow .16s, border-color .16s; position: relative; overflow: hidden; }
     .card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px; background: var(--c, var(--yellow)); }
     .card:hover, .card:focus, .card.gpfocus { transform: translateY(-5px); border-color: var(--c, var(--yellow)); box-shadow: 0 12px 30px #000b, 0 0 0 2px var(--c-glow, #f2c53d44); outline: none; }
@@ -186,6 +174,22 @@
     #rotate .s { font-family: 'DM Sans', sans-serif; color: #F2C53D; font-size: 14px; }
     @keyframes rotatehint { 0%,100% { transform: rotate(-12deg); } 50% { transform: rotate(78deg); } }
     @media (hover: none) and (orientation: portrait) { body.in-game #rotate { display: flex; } }
+
+    /* ===== Override MOBILE (in fondo apposta: vincono sulle regole base) ===== */
+    @media (max-width: 560px) {
+      .cards { grid-template-columns: repeat(2, 1fr); max-width: 400px; gap: 8px; }
+      /* card molto più compatte su mobile, a favore del titolo */
+      .av { aspect-ratio: auto !important; height: 78px; margin-bottom: 5px; }
+      .card { padding: 6px 7px 8px; }
+      .nm { font-size: 15px; }
+      .rl { font-size: 9px; margin-top: 1px; }
+      .pw { margin-top: 5px; font-size: 9px; padding: 2px 7px; }
+      .abx { font-size: 10px; margin-top: 3px; min-height: 0; line-height: 1.2; }
+      .sub { margin-top: 6px; }
+      .pick { margin: 12px 0 8px; }
+    }
+    /* su touch la legenda è tastiera/gamepad/TV: inutile e occupa spazio → nascosta */
+    @media (hover: none) { .legend { display: none; } }
   </style>
 </head>
 <body>
