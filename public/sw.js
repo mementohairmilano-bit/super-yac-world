@@ -2,7 +2,7 @@
 // Strategia: runtime caching same-origin (offline DOPO la prima visita), navigazioni
 // network-first con fallback a index. Le chiamate cross-origin (Supabase/classifica) NON
 // vengono toccate → la classifica resta sempre "live" e non funziona offline (corretto).
-const CACHE = 'syw-v1';
+const CACHE = 'syw-v2';
 
 self.addEventListener('install', (e) => {
   e.waitUntil((async () => {

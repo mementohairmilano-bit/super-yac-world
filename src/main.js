@@ -216,9 +216,20 @@ document.getElementById('btn-board-close').addEventListener('click', closeBoard)
 window._gameShowBoardBtn = (show) => document.getElementById('btn-board-win').classList.toggle('hidden', !show);
 
 // ===== PWA: service worker + installazione =====
-// SW solo fuori da localhost (in dev darebbe fastidio con la cache)
+// SW solo fuori da localhost (in dev darebbe fastidio con la cache).
+// Auto-aggiornamento: quando una nuova versione prende il controllo, ricarico una volta
+// → gli utenti non restano mai bloccati su una versione vecchia in cache.
 if ('serviceWorker' in navigator && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
-  window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}));
+  let _swReloaded = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (_swReloaded) return; _swReloaded = true; location.reload();
+  });
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').then(reg => {
+      reg.update();
+      setInterval(() => reg.update(), 60000);   // controlla aggiornamenti ogni minuto
+    }).catch(() => {});
+  });
 }
 
 let deferredPrompt = null;
