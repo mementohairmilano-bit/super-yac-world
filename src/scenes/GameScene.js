@@ -2068,6 +2068,7 @@ export class GameScene extends Phaser.Scene {
   update() {
     window.__dbgU = (window.__dbgU || 0) + 1; window.__dbgState = this.state + (this.paused ? '/pausa' : '');   // debug ?debug
     window.__dbgT = (this.t.left ? 'L' : '') + (this.t.right ? 'R' : '') + (this.t.jump ? 'J' : '') + (this.t.special ? 'S' : '') + (this.t.down ? 'D' : '') || '-';
+    try {   // protezione: un errore in un frame NON deve uccidere il loop (su iOS lo faceva)
     const k = this.k;
     const pad = this.readPad();
     // Pausa (ESC/P/Options) e Ricomincia (R): valutati prima degli early-return
@@ -2247,5 +2248,8 @@ export class GameScene extends Phaser.Scene {
 
     this.onPipe = null;
     if (p.y > this.H + 90) this.loseLife();
+    } catch (e) {
+      window.__dbgErr = ((e && e.message) || String(e)) + ' | ' + (((e && e.stack) || '').split('\n')[1] || '').trim().slice(0, 90);
+    }
   }
 }

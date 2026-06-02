@@ -287,12 +287,22 @@ if (window.visualViewport) window.visualViewport.addEventListener('resize', refr
 
 // Debug opzionale (apri il sito con ?debug): mostra se il loop gira.
 // P = frame del rAF di pagina · U = frame dell'update di Phaser · S = stato scena.
+// cattura errori da QUALSIASI punto (update, callback, tween) per il debug
+window.addEventListener('error', (e) => {
+  if (!window.__dbgErr) window.__dbgErr = (e.message || 'err') + (e.lineno ? ' @' + e.lineno + ':' + e.colno : '');
+});
 if (/[?&]debug/.test(location.search)) {
   const dbg = document.getElementById('dbg');
   if (dbg) {
     dbg.style.display = 'block';
     window.__dbgP = 0;
-    const tick = () => { window.__dbgP++; dbg.textContent = 'P:' + window.__dbgP + ' U:' + (window.__dbgU || 0) + ' S:' + (window.__dbgState || '-') + '\nTap:' + (window.__dbgPress || 0) + ' (' + (window.__dbgLast || '-') + ') T:' + (window.__dbgT || '-'); requestAnimationFrame(tick); };
+    const tick = () => {
+      window.__dbgP++;
+      dbg.textContent = 'P:' + window.__dbgP + ' U:' + (window.__dbgU || 0) + ' S:' + (window.__dbgState || '-')
+        + '\nTap:' + (window.__dbgPress || 0) + ' (' + (window.__dbgLast || '-') + ') T:' + (window.__dbgT || '-')
+        + (window.__dbgErr ? '\nERR: ' + window.__dbgErr : '');
+      requestAnimationFrame(tick);
+    };
     requestAnimationFrame(tick);
   }
 }
