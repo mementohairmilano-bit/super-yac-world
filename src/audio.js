@@ -55,6 +55,7 @@ class AudioManager {
       a.preload = 'auto';
       this.music[k] = a;
     });
+    this.sfxPool = {};   // pool di elementi audio riusabili per ogni effetto (no alloc per suono)
     SFX.forEach(k => {
       this.sfxUrl[k] = './assets/audio/sfx/' + k + '.' + (SFX_EXT[k] || 'ogg');
       const warm = new Audio(this.sfxUrl[k]); warm.preload = 'auto';  // pre-carica in cache
@@ -90,10 +91,17 @@ class AudioManager {
     this.currentEl = null; this.current = null;
   }
 
-  // effetto one-shot (nuovo elemento ogni volta così possono sovrapporsi)
+  // effetto one-shot: riusa un POOL di 4 elementi per chiave (niente allocazioni a ogni
+  // suono → meno garbage collection → meno scatti su mobile). Si sovrappongono comunque.
   sfx(key) {
     if (this.muted || !this.sfxUrl[key]) return;
-    const a = new Audio(this.sfxUrl[key]);
+    let pool = this.sfxPool[key];
+    if (!pool) {
+      pool = this.sfxPool[key] = { els: [], i: 0 };
+      for (let j = 0; j < 4; j++) { const a = new Audio(this.sfxUrl[key]); a.preload = 'auto'; pool.els.push(a); }
+    }
+    const a = pool.els[pool.i]; pool.i = (pool.i + 1) % pool.els.length;
+    try { a.currentTime = 0; } catch (e) {}
     a.volume = this.sfxVol;
     a.play().catch(() => {});
   }
