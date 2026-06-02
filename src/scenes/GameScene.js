@@ -666,6 +666,9 @@ export class GameScene extends Phaser.Scene {
     this.physics.add.collider(this.enemies, this.blocks);
     this.physics.add.overlap(this.player, this.coins, this.grab, null, this);
     this.physics.add.overlap(this.player, this.enemies, this.touchEnemy, null, this);
+    // lettera nascosta FREEDOM: overlap registrato QUI (il player ora esiste; la zona è stata
+    // creata in buildHiddenLetter durante buildLevel). Evita l'overlap con player undefined.
+    if (this.letterZone) this.physics.add.overlap(this.player, this.letterZone, () => this.grabLetter(this.level.letter), null, this);
     this.physics.add.overlap(this.player, this.goal, () => this.winLevel(), null, this);
     this.physics.add.overlap(this.player, this.checkpoint, this.hitCheckpoint, null, this);
     this.pipeEntries.forEach(z => this.physics.add.overlap(this.player, z, () => { this.onPipe = z; }, null, this));
@@ -1023,10 +1026,10 @@ export class GameScene extends Phaser.Scene {
     this.tweens.add({ targets: cont, y: lt.y - 7, yoyo: true, repeat: -1, duration: 1000, ease: 'Sine.easeInOut' });
     this.tweens.add({ targets: ring, angle: 360, repeat: -1, duration: 5200 });
     this.tweens.add({ targets: glow, alpha: 0.4, scale: 1.18, yoyo: true, repeat: -1, duration: 700, ease: 'Sine.easeInOut' });
-    // zona di raccolta (overlap col player)
+    // zona di raccolta: creo la zona qui, ma l'OVERLAP col player va registrato DOPO che il
+    // player esiste (buildHiddenLetter gira in buildLevel, prima di buildPlayer) — vedi buildPlayer.
     this.letterZone = this.add.zone(lt.x, lt.y, 42, 42);
     this.physics.add.existing(this.letterZone, true);
-    this.physics.add.overlap(this.player, this.letterZone, () => this.grabLetter(lt), null, this);
   }
 
   grabLetter(lt) {
