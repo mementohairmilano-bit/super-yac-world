@@ -215,6 +215,13 @@ document.getElementById('btn-board-close').addEventListener('click', closeBoard)
 // esposto alla GameScene per mostrare il pulsante "Classifica" sulla card del finale
 window._gameShowBoardBtn = (show) => document.getElementById('btn-board-win').classList.toggle('hidden', !show);
 
+// ===== Blocco zoom/pan accidentale con due dita (iOS Safari ignora user-scalable=no) =====
+// Niente più "lo schermo si ingrandisce/sposta" toccando con due dita. La PWA installata
+// non ne ha bisogno, ma così è a posto anche nel browser. Lo scroll a un dito resta ok.
+['gesturestart', 'gesturechange', 'gestureend'].forEach(ev =>
+  document.addEventListener(ev, e => e.preventDefault(), { passive: false }));
+document.addEventListener('touchmove', e => { if (e.touches.length > 1) e.preventDefault(); }, { passive: false });
+
 // ===== PWA: service worker + installazione =====
 // SW solo fuori da localhost (in dev darebbe fastidio con la cache).
 // Auto-aggiornamento: quando una nuova versione prende il controllo, ricarico una volta
