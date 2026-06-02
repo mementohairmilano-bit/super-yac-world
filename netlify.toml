@@ -10,3 +10,15 @@
 # NB: nessun redirect SPA. Il gioco è una singola pagina senza rotte client, e un
 # redirect /* → /index.html maschererebbe i 404 degli asset (servirebbe l'HTML al posto
 # di un'immagine mancante). Meglio che un asset assente dia 404 onesto.
+
+# MIME corretto del manifest PWA (Netlify altrimenti lo serve come octet-stream)
+[[headers]]
+  for = "/manifest.webmanifest"
+  [headers.values]
+    Content-Type = "application/manifest+json"
+
+# il service worker non va cachato a lungo, altrimenti gli aggiornamenti non arrivano
+[[headers]]
+  for = "/sw.js"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
