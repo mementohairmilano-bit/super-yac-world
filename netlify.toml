@@ -7,8 +7,6 @@
 [build.environment]
   NODE_VERSION = "20"
 
-# App a pagina singola: ogni rotta serve index.html
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
+# NB: nessun redirect SPA. Il gioco è una singola pagina senza rotte client, e un
+# redirect /* → /index.html maschererebbe i 404 degli asset (servirebbe l'HTML al posto
+# di un'immagine mancante). Meglio che un asset assente dia 404 onesto.
