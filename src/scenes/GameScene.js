@@ -2059,6 +2059,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   update() {
+    window.__dbgU = (window.__dbgU || 0) + 1; window.__dbgState = this.state + (this.paused ? '/pausa' : '');   // debug ?debug
     const k = this.k;
     const pad = this.readPad();
     // Pausa (ESC/P/Options) e Ricomincia (R): valutati prima degli early-return

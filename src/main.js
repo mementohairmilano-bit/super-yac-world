@@ -263,23 +263,28 @@ if (installGo) installGo.onclick = async () => {
 document.getElementById('btn-install-close').onclick = () => installHelp.classList.add('hidden');
 refreshInstallBtn();
 
-// Mobile: ricalcola la scala del canvas E risveglia il loop quando cambia la viewport reale.
-// Su iOS la rotazione/cambio barre può "addormentare" il loop di Phaser (gioco fermo, TEMPO
-// bloccato, comandi inattivi) senza che la wake automatica scatti → lo forziamo qui.
+// Mobile: ricalcola la scala del canvas quando cambia la viewport (rotazione, barre di Safari).
+// Debounce: su iOS visualViewport.resize spamma → evitiamo di chiamare refresh in continuazione.
+let _scaleT = 0;
 function refreshScale() {
-  try {
-    const g = window._GAME;
-    if (!g) return;
-    if (g.scale) g.scale.refresh();
-    if (g.loop && typeof g.loop.wake === 'function') g.loop.wake();   // risveglia il loop se sospeso
-  } catch (e) {}
+  clearTimeout(_scaleT);
+  _scaleT = setTimeout(() => { try { if (window._GAME && window._GAME.scale) window._GAME.scale.refresh(); } catch (e) {} }, 120);
 }
 window.addEventListener('resize', refreshScale);
-window.addEventListener('orientationchange', () => { setTimeout(refreshScale, 200); setTimeout(refreshScale, 600); });
-window.addEventListener('focus', refreshScale);
-window.addEventListener('pageshow', refreshScale);
-document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshScale(); });
+window.addEventListener('orientationchange', refreshScale);
 if (window.visualViewport) window.visualViewport.addEventListener('resize', refreshScale);
+
+// Debug opzionale (apri il sito con ?debug): mostra se il loop gira.
+// P = frame del rAF di pagina · U = frame dell'update di Phaser · S = stato scena.
+if (/[?&]debug/.test(location.search)) {
+  const dbg = document.getElementById('dbg');
+  if (dbg) {
+    dbg.style.display = 'block';
+    window.__dbgP = 0;
+    const tick = () => { window.__dbgP++; dbg.textContent = 'P:' + window.__dbgP + '  U:' + (window.__dbgU || 0) + '  S:' + (window.__dbgState || '-'); requestAnimationFrame(tick); };
+    requestAnimationFrame(tick);
+  }
+}
 
 // Pulsante mute (sopra agli overlay, raggiungibile anche nel menu)
 const muteBtn = document.getElementById('mutebtn');
