@@ -34,10 +34,12 @@
     /* overlay potenzialmente più alti dello schermo (menu, classifica): scrollabili dall'alto,
        niente taglio di titolo/istruzioni (Safari non gestisce bene "safe center" → uso flex-start),
        con margini di sicurezza per le barre del telefono */
-    #menu, #board, #install-help {
+    #menu, #board {
       justify-content: flex-start; overflow-y: auto; -webkit-overflow-scrolling: touch;
       padding-top: max(16px, env(safe-area-inset-top)); padding-bottom: max(24px, env(safe-area-inset-bottom));
     }
+    /* install-help: contenuto corto → resta centrato, con margini di sicurezza */
+    #install-help { padding-top: max(16px, env(safe-area-inset-top)); padding-bottom: max(24px, env(safe-area-inset-bottom)); }
     .hidden { display: none !important; }
 
     /* MENU — più chiaro e pulito */

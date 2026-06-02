@@ -250,9 +250,8 @@ const isIOS = () => /iphone|ipad|ipod/i.test(navigator.userAgent);
 
 function refreshInstallBtn() {
   if (!installBtn) return;
-  const canPrompt = !!deferredPrompt;
-  const iosInstallable = isIOS() && !isStandalone();
-  installBtn.classList.toggle('hidden', isStandalone() || !(canPrompt || iosInstallable));
+  // pulsante sempre disponibile per riaprire le istruzioni, finché l'app non è già installata
+  installBtn.classList.toggle('hidden', isStandalone());
 }
 window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); deferredPrompt = e; refreshInstallBtn(); });
 window.addEventListener('appinstalled', () => { deferredPrompt = null; if (installBtn) installBtn.classList.add('hidden'); });
@@ -280,6 +279,10 @@ if (installGo) installGo.onclick = async () => {
 };
 document.getElementById('btn-install-close').onclick = () => installHelp.classList.add('hidden');
 refreshInstallBtn();
+
+// All'AVVIO: mostra subito l'avviso di installazione (se l'app non è già installata).
+// L'utente lo chiude con "Chiudi" e gioca; può riaprirlo dal pulsante "📲 Installa l'app".
+if (!isStandalone()) setTimeout(() => { try { openInstallHelp(); } catch (e) {} }, 700);
 
 // Mobile: ricalcola la scala del canvas quando cambia la viewport (rotazione, barre di Safari).
 // Debounce: su iOS visualViewport.resize spamma → evitiamo di chiamare refresh in continuazione.
