@@ -263,6 +263,13 @@ if (installGo) installGo.onclick = async () => {
 document.getElementById('btn-install-close').onclick = () => installHelp.classList.add('hidden');
 refreshInstallBtn();
 
+// Mobile: ricalcola la scala del canvas quando cambia la viewport reale
+// (rotazione del telefono, comparsa/sparizione delle barre di Safari → 100dvh cambia)
+function refreshScale() { try { if (window._GAME && window._GAME.scale) window._GAME.scale.refresh(); } catch (e) {} }
+window.addEventListener('resize', refreshScale);
+window.addEventListener('orientationchange', () => { setTimeout(refreshScale, 250); setTimeout(refreshScale, 600); });
+if (window.visualViewport) window.visualViewport.addEventListener('resize', refreshScale);
+
 // Pulsante mute (sopra agli overlay, raggiungibile anche nel menu)
 const muteBtn = document.getElementById('mutebtn');
 if (muteBtn) muteBtn.onclick = () => AUDIO.toggleMute();
