@@ -227,15 +227,14 @@ document.addEventListener('touchmove', e => { if (e.touches.length > 1) e.preven
 // Auto-aggiornamento: quando una nuova versione prende il controllo, ricarico una volta
 // → gli utenti non restano mai bloccati su una versione vecchia in cache.
 if ('serviceWorker' in navigator && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
-  let _swReloaded = false;
+  // reload UNA sola volta per sessione quando arriva una nuova versione (sessionStorage evita
+  // loop di ricariche tra un reload e l'altro → niente consumo banda anomalo)
   navigator.serviceWorker.addEventListener('controllerchange', () => {
-    if (_swReloaded) return; _swReloaded = true; location.reload();
+    try { if (sessionStorage.getItem('sw-reloaded')) return; sessionStorage.setItem('sw-reloaded', '1'); } catch (e) {}
+    location.reload();
   });
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').then(reg => {
-      reg.update();
-      setInterval(() => reg.update(), 60000);   // controlla aggiornamenti ogni minuto
-    }).catch(() => {});
+    navigator.serviceWorker.register('/sw.js').then(reg => reg.update()).catch(() => {});
   });
 }
 
