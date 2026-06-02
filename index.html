@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <title>SUPER YAC WORLD</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --yellow: #F2C53D; --gold: #C9A227; --peach: #F2994A;
+      --rose: #C97B84; --magenta: #D96BA0;
+      --aubergine: #3B1E33; --ink: #120E16; --paper: #F7F1E8;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    html, body { height: 100%; background: #000; font-family: 'DM Sans', sans-serif; color: var(--paper); overflow: hidden; }
+    #wrap { position: relative; width: 100vw; height: 100vh; display: flex; align-items: center; justify-content: center; background: #000; }
+    #game { width: 100%; height: 100%; position: relative; }
+    canvas { display: block; margin: 0 auto; }
+
+    /* OVERLAYS */
+    .overlay { position: absolute; inset: 0; z-index: 30; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; text-align: center; }
+    .hidden { display: none !important; }
+
+    /* MENU — più chiaro e pulito */
+    #menu {
+      background: radial-gradient(130% 80% at 50% -8%, #7a4368 0%, rgba(0,0,0,0) 52%),
+                  radial-gradient(120% 70% at 50% 118%, #3f2540 0%, rgba(0,0,0,0) 50%),
+                  linear-gradient(180deg, #2a1f33, #150e1c);
+      overflow: hidden; gap: 0;
+    }
+    .floor {
+      position: absolute; left: 0; right: 0; bottom: 0; height: 70px;
+      background: repeating-linear-gradient(90deg, #243039 0 38px, #2c3a45 38px 76px);
+      border-top: 3px solid #44606f; box-shadow: 0 -10px 30px #000a; opacity: .85;
+      animation: slide 6s linear infinite;
+    }
+    @keyframes slide { to { background-position: 152px 0; } }
+    .glow {
+      position: absolute; width: 560px; height: 560px; border-radius: 50%;
+      background: radial-gradient(circle, #F2994A55, transparent 64%);
+      filter: blur(10px); top: -150px; animation: pulse 5s ease-in-out infinite;
+    }
+    @keyframes pulse { 50% { opacity: .55; transform: scale(1.08); } }
+    .logo { position: relative; z-index: 2; display: flex; flex-direction: column; align-items: center; }
+    /* logo YAC visibile come brand-mark sopra il titolo */
+    .brandmark { height: clamp(30px, 7vw, 46px); width: auto; display: block; margin: 0 auto 8px; filter: drop-shadow(0 3px 10px #0009); }
+    /* TITOLO testuale stile Super Mario Bros: blocco 3D, contorno spesso, riempimento caldo a gradiente */
+    .title { font-family: 'Syne', sans-serif; font-weight: 800; line-height: .82; text-align: center; }
+    .t-super { display: block; font-size: clamp(15px, 3.8vw, 27px); letter-spacing: 7px; color: #F2C53D;
+      -webkit-text-stroke: 2px #2a1020; paint-order: stroke fill; text-shadow: 0 3px 0 #2a1020; margin-bottom: 3px; }
+    .t-main { display: block; font-size: clamp(36px, 9.5vw, 74px); letter-spacing: -1px;
+      background: linear-gradient(180deg, #FFE07A 0%, #F2C53D 38%, #F2994A 70%, #E14B3A 100%);
+      -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: transparent;
+      -webkit-text-stroke: 3px #2a1020; paint-order: stroke fill;
+      filter: drop-shadow(0 3px 0 #2a1020) drop-shadow(0 6px 0 #1a0a14) drop-shadow(0 10px 14px #0008); }
+    .sub { position: relative; z-index: 2; margin-top: 10px; font-size: clamp(12px, 2.4vw, 14px); color: #ece1ee; max-width: 580px; letter-spacing: .2px; line-height: 1.45; }
+    .pick { position: relative; z-index: 2; margin: 20px 0 11px; font-family: 'Syne', sans-serif; font-weight: 800; font-size: 13px; letter-spacing: 3px; color: var(--yellow); text-transform: uppercase; }
+    .cards { position: relative; z-index: 2; display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; width: 100%; max-width: 720px; }
+    @media (max-width: 560px) { .cards { grid-template-columns: repeat(2, 1fr); max-width: 400px; } }
+    .card { background: linear-gradient(180deg, #352741, #271b32); border: 2px solid var(--c-border, #4a3850); border-radius: 16px; padding: 10px 9px 13px; cursor: pointer; transition: transform .16s, box-shadow .16s, border-color .16s; position: relative; overflow: hidden; }
+    .card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px; background: var(--c, var(--yellow)); }
+    .card:hover, .card:focus, .card.gpfocus { transform: translateY(-5px); border-color: var(--c, var(--yellow)); box-shadow: 0 12px 30px #000b, 0 0 0 2px var(--c-glow, #f2c53d44); outline: none; }
+    .av { width: 100%; aspect-ratio: 1 / 1; border-radius: 11px; margin-bottom: 9px; position: relative; background-color: #2c2038; background-repeat: no-repeat; overflow: hidden; box-shadow: inset 0 -10px 18px #00000055; }
+    .nm { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 16px; color: #fff; }
+    .rl { font-size: 10px; color: var(--c, var(--yellow)); text-transform: uppercase; letter-spacing: .7px; margin-top: 2px; font-weight: 700; }
+    .pw { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 10px; color: #1a1020; background: var(--c, var(--yellow)); display: inline-block; border-radius: 6px; padding: 3px 8px; margin-top: 9px; letter-spacing: .3px; }
+    .abx { font-size: 11px; color: #d7ccda; margin-top: 6px; min-height: 18px; line-height: 1.3; }
+
+    /* ISTRUZIONI — legenda chiara e raggruppata */
+    .legend { position: relative; z-index: 2; margin-top: 16px; width: 100%; max-width: 720px;
+      display: flex; flex-direction: column; gap: 7px;
+      background: #1d1528d9; border: 1px solid #ffffff22; border-radius: 13px; padding: 11px 14px;
+      backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); }
+    .leg-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px 9px; font-size: 12.5px; color: #ece1ee; line-height: 1.5; }
+    .leg-grp { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 11px; letter-spacing: .5px; color: var(--yellow); text-transform: uppercase; }
+    .key { display: inline-block; background: #f7f1e8; color: #241a2c; font-weight: 700; font-size: 11px; border-radius: 6px; padding: 2px 7px; box-shadow: 0 2px 0 #0007; }
+    .legend b { color: var(--yellow); }
+
+    /* WIN / OVER */
+    .big { font-family: 'Syne', sans-serif; font-weight: 800; font-size: clamp(26px, 6vw, 46px); }
+    .tag { font-size: clamp(12px, 2.6vw, 15px); color: #c4b8c2; margin-top: 8px; max-width: 520px; }
+    .btn { font-family: 'Syne', sans-serif; font-weight: 700; background: var(--peach); color: #2a1020; border: none; border-radius: 999px; padding: 12px 26px; font-size: 16px; cursor: pointer; margin-top: 14px; }
+    .btn:hover { background: var(--yellow); }
+    .btn.ghost { background: #2c2030; color: #fff; }
+
+    /* PAUSE BUTTON (always reachable during gameplay, desktop + mobile) */
+    #pausebtn {
+      position: absolute; top: 12px; right: 12px; z-index: 24;
+      width: 40px; height: 40px; border-radius: 50%;
+      background: #16121Acc; border: 1.5px solid #ffffff44; color: var(--paper);
+      font-size: 15px; line-height: 1; display: flex; align-items: center; justify-content: center;
+      cursor: pointer; opacity: .8; backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px);
+      pointer-events: auto;
+    }
+    #pausebtn:hover { opacity: 1; border-color: var(--yellow); }
+    #pausebtn:active { background: var(--peach); color: #2a1020; }
+
+    /* MUTE BUTTON (sempre raggiungibile: menu + gioco, sopra gli overlay) */
+    #mutebtn {
+      position: absolute; top: 12px; right: 60px; z-index: 60;
+      width: 40px; height: 40px; border-radius: 50%;
+      background: #16121Acc; border: 1.5px solid #ffffff44; color: var(--paper);
+      font-size: 16px; line-height: 1; display: flex; align-items: center; justify-content: center;
+      cursor: pointer; opacity: .85; backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px);
+    }
+    #mutebtn:hover { opacity: 1; border-color: var(--yellow); }
+    #mutebtn.off { color: #9b8fa6; border-color: #ffffff22; }
+
+    /* FULLSCREEN BUTTON (TV): tasto F o questo bottone */
+    #fsbtn {
+      position: absolute; top: 12px; right: 108px; z-index: 60;
+      width: 40px; height: 40px; border-radius: 50%;
+      background: #16121Acc; border: 1.5px solid #ffffff44; color: var(--paper);
+      font-size: 17px; line-height: 1; display: flex; align-items: center; justify-content: center;
+      cursor: pointer; opacity: .85; backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px);
+    }
+    #fsbtn:hover { opacity: 1; border-color: var(--yellow); }
+
+    /* evidenza del focus da GAMEPAD (ben visibile da distanza divano in TV) */
+    .gpfocus { outline: 3px solid var(--yellow) !important; outline-offset: 3px;
+      box-shadow: 0 0 0 4px #f2c53d66, 0 10px 26px #000a !important; }
+    .card.gpfocus { transform: translateY(-4px); border-color: var(--yellow) !important; }
+
+    /* TOUCH CONTROLS */
+    #touch {
+      position: absolute; inset: auto 0 0 0; z-index: 25;
+      display: flex; justify-content: space-between; align-items: flex-end;
+      padding: 0 16px 26px; pointer-events: none;
+    }
+    .pad { display: flex; gap: 18px; pointer-events: auto; }
+    .pad.move { gap: 9px; }
+    .tb {
+      width: 50px; height: 50px; border-radius: 50%;
+      background: #ffffff22; border: 1px solid #ffffff44; color: #fff;
+      font-size: 19px; display: flex; align-items: center; justify-content: center;
+      user-select: none; opacity: .6; backdrop-filter: blur(3px);
+      position: relative;
+    }
+    .tb:active { background: var(--peach); color: #2a1020; opacity: .95; }
+    .tb.act { background: var(--peach); color: #2a1020; border-color: #f2994a; opacity: .85; font-size: 18px; }
+    .tb.jmp { background: var(--yellow); color: #2a1020; border-color: #c9a227; opacity: .85; }
+    .tb[data-lbl]::after { content: attr(data-lbl); position: absolute; left: 50%; transform: translateX(-50%); bottom: -15px; font-size: 9px; letter-spacing: .5px; color: #cdbfc9; opacity: .9; white-space: nowrap; }
+    @media (hover: hover) and (pointer: fine) { #touch { display: none; } }
+  </style>
+</head>
+<body>
+<div id="wrap">
+  <div id="game">
+
+    <div id="menu" class="overlay">
+      <div class="glow"></div>
+      <div class="floor"></div>
+      <div class="logo">
+        <img id="logoimg" class="brandmark" alt="YAC">
+        <div class="title">
+          <span class="t-super">SUPER</span>
+          <span class="t-main">YAC&nbsp;WORLD</span>
+        </div>
+      </div>
+      <div class="sub">Libera i saloni occupati dall'industria di massa e riportali a essere veri YAC Salon:<br>corri, salta, schiaccia i nemici e sconfiggi i boss.</div>
+      <button class="btn hidden" id="btn-continua" style="margin-top:6px">▸ Continua</button>
+      <div id="record" class="hidden" style="margin-top:6px;font-family:'Syne',sans-serif;font-weight:700;font-size:13px;color:#F2C53D"></div>
+      <div class="pick">▸ Scegli il tuo eroe ◂</div>
+      <div class="cards" id="cards"></div>
+      <div class="legend">
+        <div class="leg-row">
+          <span class="leg-grp">⌨️ Tastiera</span>
+          <span class="key">← →</span> muoviti
+          <span class="key">Spazio</span> salta
+          <span class="key">↓</span> tubi
+          <span class="key">Z</span> speciale
+        </div>
+        <div class="leg-row">
+          <span class="leg-grp">🎮 Gamepad</span>
+          <span class="key">Stick</span> muoviti
+          <span class="key">✕ / A</span> salta
+          <span class="key">▢ / X</span> speciale
+          <span class="key">Options</span> pausa
+        </div>
+        <div class="leg-row">
+          <span class="leg-grp">📺 TV</span>
+          <span class="key">F</span> o <span class="key">⛶</span> schermo intero
+          <span style="opacity:.6">·</span> colpisci i blocchi <b>?</b> per la <b>Boccetta YAC</b> → diventi GRANDE
+        </div>
+      </div>
+    </div>
+
+    <div id="win" class="overlay hidden" style="background:radial-gradient(120% 120% at 50% 0%,#2a1626,#0c0810)">
+      <img id="winlogo" style="height:52px;margin-bottom:12px;filter:drop-shadow(0 4px 12px #0008)" alt="YAC">
+      <div class="big" id="wintitle">Salone liberato — adesso è uno YAC Salon! 🎉</div>
+      <p class="tag" id="wintag">Hai cacciato la multinazionale: prodotto vero batte produzione di massa.</p>
+      <p class="tag" id="winscore" style="color:var(--yellow)"></p>
+      <button class="btn hidden" id="btn-next-win">Prossimo mondo →</button>
+      <button class="btn" id="btn-menu-win">Torna al menu</button>
+    </div>
+
+    <div id="pause" class="overlay hidden" style="background:radial-gradient(120% 120% at 50% 0%,#2a1626ee,#0c0810f2)">
+      <div class="big">Pausa ⏸</div>
+      <p class="tag" id="pausetag">Mondo 1 · La Catena di Montaggio</p>
+      <button class="btn" id="btn-resume">Riprendi</button>
+      <button class="btn ghost" id="btn-restart-pause">Ricomincia</button>
+      <button class="btn ghost" id="btn-menu-pause">Menu</button>
+    </div>
+
+    <div id="over" class="overlay hidden" style="background:radial-gradient(120% 120% at 50% 0%,#2a1626,#0c0810)">
+      <div class="big">Game Over</div>
+      <p class="tag">I flaconi-soldato hanno vinto… stavolta.</p>
+      <button class="btn" id="btn-restart">Continua</button>
+      <button class="btn ghost" id="btn-menu-over">Menu</button>
+    </div>
+
+    <button id="pausebtn" class="hidden" aria-label="Pausa">⏸</button>
+    <button id="mutebtn" aria-label="Mute audio">🔊</button>
+    <button id="fsbtn" aria-label="Schermo intero (tasto F)">⛶</button>
+
+    <div id="touch" class="hidden">
+      <div class="pad move">
+        <div class="tb" data-k="left">◀</div>
+        <div class="tb" data-k="right">▶</div>
+      </div>
+      <div class="pad">
+        <div class="tb" data-k="down" data-lbl="TUBO">▼</div>
+        <div class="tb act" data-k="special" data-lbl="SUPER">★</div>
+        <div class="tb jmp" data-k="jump" data-lbl="SALTA">▲</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+<script type="module" src="/src/main.js"></script>
+</body>
+</html>

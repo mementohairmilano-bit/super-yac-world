@@ -1,0 +1,14 @@
+# Deploy di Super Yac World su Netlify (autodeploy da GitHub).
+# Netlify esegue il build Vite e pubblica la cartella statica risultante.
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+# App a pagina singola: ogni rotta serve index.html
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
