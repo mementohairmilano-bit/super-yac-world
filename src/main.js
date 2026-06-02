@@ -48,6 +48,7 @@ function startGame(key, worldId = 1, opts = {}) {
   ['menu', 'win', 'over', 'pause'].forEach(id => document.getElementById(id).classList.add('hidden'));
   document.getElementById('pausebtn').classList.remove('hidden');
   if (isTouch()) document.getElementById('touch').classList.remove('hidden');
+  document.body.classList.add('in-game');   // attiva l'invito "ruota il telefono" in portrait
 
   if (GAME) { GAME.destroy(true); GAME = null; }
 
@@ -73,6 +74,7 @@ function restart() { startGame(SELECTED, WORLD_ID); }
 
 function toMenu() {
   if (GAME) { GAME.destroy(true); GAME = null; }
+  document.body.classList.remove('in-game');
   document.getElementById('touch').classList.add('hidden');
   document.getElementById('pausebtn').classList.add('hidden');
   ['win', 'over', 'pause'].forEach(id => document.getElementById(id).classList.add('hidden'));
