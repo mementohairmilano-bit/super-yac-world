@@ -263,11 +263,22 @@ if (installGo) installGo.onclick = async () => {
 document.getElementById('btn-install-close').onclick = () => installHelp.classList.add('hidden');
 refreshInstallBtn();
 
-// Mobile: ricalcola la scala del canvas quando cambia la viewport reale
-// (rotazione del telefono, comparsa/sparizione delle barre di Safari → 100dvh cambia)
-function refreshScale() { try { if (window._GAME && window._GAME.scale) window._GAME.scale.refresh(); } catch (e) {} }
+// Mobile: ricalcola la scala del canvas E risveglia il loop quando cambia la viewport reale.
+// Su iOS la rotazione/cambio barre può "addormentare" il loop di Phaser (gioco fermo, TEMPO
+// bloccato, comandi inattivi) senza che la wake automatica scatti → lo forziamo qui.
+function refreshScale() {
+  try {
+    const g = window._GAME;
+    if (!g) return;
+    if (g.scale) g.scale.refresh();
+    if (g.loop && typeof g.loop.wake === 'function') g.loop.wake();   // risveglia il loop se sospeso
+  } catch (e) {}
+}
 window.addEventListener('resize', refreshScale);
-window.addEventListener('orientationchange', () => { setTimeout(refreshScale, 250); setTimeout(refreshScale, 600); });
+window.addEventListener('orientationchange', () => { setTimeout(refreshScale, 200); setTimeout(refreshScale, 600); });
+window.addEventListener('focus', refreshScale);
+window.addEventListener('pageshow', refreshScale);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshScale(); });
 if (window.visualViewport) window.visualViewport.addEventListener('resize', refreshScale);
 
 // Pulsante mute (sopra agli overlay, raggiungibile anche nel menu)

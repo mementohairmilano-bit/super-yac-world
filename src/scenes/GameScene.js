@@ -2027,9 +2027,15 @@ export class GameScene extends Phaser.Scene {
     document.querySelectorAll('.tb').forEach(b => {
       const k = b.dataset.k;
       const on = e => { e.preventDefault(); this.t[k] = true; };
-      const off = e => { e.preventDefault(); this.t[k] = false; };
-      b.addEventListener('touchstart', on, { passive: false }); b.addEventListener('touchend', off); b.addEventListener('touchcancel', off);
-      b.addEventListener('mousedown', on); b.addEventListener('mouseup', off); b.addEventListener('mouseleave', off);
+      const off = () => { this.t[k] = false; };
+      // Pointer Events: unificano touch+mouse e sono affidabili su iOS Safari
+      b.addEventListener('pointerdown', on, { passive: false });
+      b.addEventListener('pointerup', off);
+      b.addEventListener('pointercancel', off);
+      b.addEventListener('pointerleave', off);
+      // fallback per browser senza Pointer Events
+      b.addEventListener('touchstart', on, { passive: false });
+      b.addEventListener('touchend', off); b.addEventListener('touchcancel', off);
     });
   }
 
