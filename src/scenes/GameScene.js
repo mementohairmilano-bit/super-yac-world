@@ -1755,6 +1755,9 @@ export class GameScene extends Phaser.Scene {
     document.getElementById('winscore').textContent = `Punti ${this.score} · Gocce ${this.gocce}`;
     // flusso multi-mondo: se c'è un livello successivo, mostra il pulsante "prossimo"
     if (window._gameShowWin) window._gameShowWin(nextId, opts.cta || L.win.cta);
+    // pulsante "Classifica" solo sulla card del FINALE (non a ogni livello)
+    if (opts.leaderboard) window._runResult = { score: this.score, world: state.worldId };
+    if (window._gameShowBoardBtn) window._gameShowBoardBtn(!!opts.leaderboard);
     document.getElementById('win').classList.remove('hidden');
   }
 
@@ -1884,7 +1887,7 @@ export class GameScene extends Phaser.Scene {
     // vero finale del gioco (dopo boss → Officina → messaggio): schermata DOM, solo Menu.
     // (musica del finale che continua sotto l'overlay)
     this.time.delayedCall(3200, () => this.showWinScreen({
-      keepMusic: true, next: null,
+      keepMusic: true, next: null, leaderboard: true,
       title: 'GRAZIE PER AVER GIOCATO',
       tag: hasAllLetters()
         ? 'Hai trovato tutte le lettere: FREEDOM. Hai spezzato le catene. Premi Menu per tornare alla rivoluzione.'
@@ -1935,6 +1938,8 @@ export class GameScene extends Phaser.Scene {
     this.state = 'over';
     if (this.timerEv) this.timerEv.paused = true;
     setBest(this.score); clearRun();   // la partita finisce: salva il record, chiudi la run in corso
+    window._runResult = { score: this.score, world: state.worldId };   // per l'invio in classifica
+    const os = document.getElementById('overscore'); if (os) os.textContent = 'Punteggio: ' + this.score + ' pt';
     AUDIO.playMusic('game_over');   // one-shot (non in loop)
     this.scene.pause();
     document.getElementById('over').classList.remove('hidden');

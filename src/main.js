@@ -1,7 +1,8 @@
 import Phaser from 'phaser';
 import { CHARACTERS } from './config.js';
-import { state, loadRun, clearRun, getBest } from './state.js';
+import { state, loadRun, clearRun, getBest, getNick, setNick } from './state.js';
 import { LEVELS } from './levels.js';
+import { submitScore, topScores, sanitizeNick } from './leaderboard.js';
 import { GameScene } from './scenes/GameScene.js';
 import { AUDIO } from './audio.js';
 // portrait con margine (NON ritagliati) così il volto si può centrare nel riquadro della card
@@ -149,6 +150,67 @@ document.getElementById('btn-restart').addEventListener('click', restart);
 document.getElementById('btn-menu-over').addEventListener('click', toMenu);
 document.getElementById('btn-restart-pause').addEventListener('click', restart);
 document.getElementById('btn-menu-pause').addEventListener('click', toMenu);
+
+// ===== Classifica globale (Supabase) =====
+const boardEl = document.getElementById('board');
+const boardList = document.getElementById('board-list');
+const boardSubmit = document.getElementById('board-submit');
+const boardNick = document.getElementById('board-nick');
+const boardSend = document.getElementById('board-send');
+const boardMyScore = document.getElementById('board-myscore');
+const boardEmpty = document.getElementById('board-empty');
+
+async function loadBoard() {
+  boardList.innerHTML = '<li style="opacity:.6;padding:8px">Carico…</li>';
+  boardEmpty.classList.add('hidden');
+  const rows = await topScores(100);
+  if (!rows.length) {
+    boardList.innerHTML = '';
+    boardEmpty.textContent = 'Ancora nessun punteggio. Sii il primo! 🚀';
+    boardEmpty.classList.remove('hidden');
+    return;
+  }
+  const myNick = getNick();
+  boardList.innerHTML = rows.map((r, i) => {
+    const mine = r.nickname === myNick;
+    const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : (i + 1) + '.';
+    return `<li style="display:flex;justify-content:space-between;gap:10px;padding:7px 12px;border-radius:8px;${mine ? 'background:#F2C53D22;' : ''}">
+      <span style="color:#F7F1E8"><span style="display:inline-block;width:28px;color:#9b8fa6">${medal}</span>${escapeHtml(r.nickname)}</span>
+      <b style="color:var(--yellow)">${r.score}</b></li>`;
+  }).join('');
+}
+function escapeHtml(s) { return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+
+function openBoard(submit) {
+  if (submit && window._runResult) {
+    boardSubmit.classList.remove('hidden');
+    boardMyScore.textContent = window._runResult.score + ' pt';
+    boardNick.value = getNick();
+    boardSend.disabled = false; boardSend.textContent = 'Invia in classifica';
+  } else {
+    boardSubmit.classList.add('hidden');
+  }
+  boardEl.classList.remove('hidden');
+  loadBoard();
+}
+function closeBoard() { boardEl.classList.add('hidden'); }
+
+if (boardSend) boardSend.onclick = async () => {
+  const nick = sanitizeNick(boardNick.value);
+  if (!window._runResult) return;
+  setNick(nick);
+  boardSend.disabled = true; boardSend.textContent = 'Invio…';
+  const ok = await submitScore(nick, window._runResult.score, window._runResult.world);
+  boardSend.textContent = ok ? 'Inviato ✓' : 'Errore — riprova';
+  boardSend.disabled = !ok;
+  if (ok) loadBoard();
+};
+document.getElementById('btn-board-menu').addEventListener('click', () => openBoard(false));
+document.getElementById('btn-board-over').addEventListener('click', () => openBoard(true));
+document.getElementById('btn-board-win').addEventListener('click', () => openBoard(true));
+document.getElementById('btn-board-close').addEventListener('click', closeBoard);
+// esposto alla GameScene per mostrare il pulsante "Classifica" sulla card del finale
+window._gameShowBoardBtn = (show) => document.getElementById('btn-board-win').classList.toggle('hidden', !show);
 
 // Pulsante mute (sopra agli overlay, raggiungibile anche nel menu)
 const muteBtn = document.getElementById('mutebtn');
