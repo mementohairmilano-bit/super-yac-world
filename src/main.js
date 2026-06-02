@@ -281,7 +281,7 @@ if (/[?&]debug/.test(location.search)) {
   if (dbg) {
     dbg.style.display = 'block';
     window.__dbgP = 0;
-    const tick = () => { window.__dbgP++; dbg.textContent = 'P:' + window.__dbgP + '  U:' + (window.__dbgU || 0) + '  S:' + (window.__dbgState || '-'); requestAnimationFrame(tick); };
+    const tick = () => { window.__dbgP++; dbg.textContent = 'P:' + window.__dbgP + ' U:' + (window.__dbgU || 0) + ' S:' + (window.__dbgState || '-') + '\nTap:' + (window.__dbgPress || 0) + ' (' + (window.__dbgLast || '-') + ') T:' + (window.__dbgT || '-'); requestAnimationFrame(tick); };
     requestAnimationFrame(tick);
   }
 }

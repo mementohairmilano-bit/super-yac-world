@@ -2026,16 +2026,23 @@ export class GameScene extends Phaser.Scene {
     const rb = document.getElementById('btn-resume'); if (rb) rb.onclick = () => this.resumeGame();
     document.querySelectorAll('.tb').forEach(b => {
       const k = b.dataset.k;
-      const on = e => { e.preventDefault(); this.t[k] = true; };
       const off = () => { this.t[k] = false; };
-      // Pointer Events: unificano touch+mouse e sono affidabili su iOS Safari
-      b.addEventListener('pointerdown', on, { passive: false });
+      // Pointer Events + setPointerCapture: il tasto "cattura" il dito finché non lo rilasci,
+      // così iOS non annulla il tocco interpretandolo come scroll/gesto (causa del non-rispondere).
+      b.addEventListener('pointerdown', e => {
+        e.preventDefault();
+        try { b.setPointerCapture(e.pointerId); } catch (_) {}
+        this.t[k] = true;
+        window.__dbgPress = (window.__dbgPress || 0) + 1; window.__dbgLast = k;   // debug ?debug
+      }, { passive: false });
       b.addEventListener('pointerup', off);
       b.addEventListener('pointercancel', off);
-      b.addEventListener('pointerleave', off);
-      // fallback per browser senza Pointer Events
-      b.addEventListener('touchstart', on, { passive: false });
-      b.addEventListener('touchend', off); b.addEventListener('touchcancel', off);
+      b.addEventListener('lostpointercapture', off);
+      // fallback per browser senza Pointer Events (Android vecchi)
+      if (!window.PointerEvent) {
+        b.addEventListener('touchstart', e => { e.preventDefault(); this.t[k] = true; window.__dbgPress = (window.__dbgPress || 0) + 1; window.__dbgLast = k; }, { passive: false });
+        b.addEventListener('touchend', off); b.addEventListener('touchcancel', off);
+      }
     });
   }
 
@@ -2060,6 +2067,7 @@ export class GameScene extends Phaser.Scene {
 
   update() {
     window.__dbgU = (window.__dbgU || 0) + 1; window.__dbgState = this.state + (this.paused ? '/pausa' : '');   // debug ?debug
+    window.__dbgT = (this.t.left ? 'L' : '') + (this.t.right ? 'R' : '') + (this.t.jump ? 'J' : '') + (this.t.special ? 'S' : '') + (this.t.down ? 'D' : '') || '-';
     const k = this.k;
     const pad = this.readPad();
     // Pausa (ESC/P/Options) e Ricomincia (R): valutati prima degli early-return
