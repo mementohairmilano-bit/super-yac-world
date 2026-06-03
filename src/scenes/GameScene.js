@@ -1316,7 +1316,14 @@ export class GameScene extends Phaser.Scene {
     this.bossShots = this.physics.add.group();
     this.physics.add.overlap(this.player, b, this.handleBossTouch, null, this);
     this.physics.add.overlap(this.player, this.bossShots, this.hitByShot, null, this);
-    if (this.heroShots) this.physics.add.overlap(this.heroShots, b, (s) => { this.damageBoss(); if (s && s.active) s.destroy(); }, null, this);   // colpi di Memento sul boss
+    // BUGFIX: con overlap(GRUPPO, sprite) Phaser passa al callback (sprite, membroGruppo) = (boss, pallottola).
+    // Prima il codice faceva s.destroy() su 's' = BOSS → distruggeva il boss da vivo (solo sparando!).
+    // Ora distruggo la PALLOTTOLA (l'argomento che NON è il boss) e danneggio il boss.
+    if (this.heroShots) this.physics.add.overlap(this.heroShots, b, (o1, o2) => {
+      const shot = (o1 === this.boss) ? o2 : o1;   // la pallottola è quella che non è il boss
+      this.damageBoss();
+      if (shot && shot.active) shot.destroy();
+    }, null, this);   // colpi di Memento sul boss
     b._pat = 0;
     b.phase = (bc.type === 'conglomerate') ? 1 : 0;   // boss finale: sistema a fasi
     this.bossPuddles = [];   // pozze d'acido (ToxiLab/Conglomerate) che restringono lo spazio sicuro
