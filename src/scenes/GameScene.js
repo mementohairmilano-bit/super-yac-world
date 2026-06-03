@@ -1725,12 +1725,17 @@ export class GameScene extends Phaser.Scene {
   }
 
   convertTime(done) {
+    // Bonus tempo → punti. Prima scalava 1 unità ogni 26ms: con molto tempo residuo (limite 300)
+    // si restava "fermi" diversi secondi dopo il salone. Ora scala a PASSI calcolati per finire
+    // sempre in ~1,2s, qualunque sia il tempo rimasto.
+    const step = Math.max(1, Math.ceil(this.timeLeft / 48));
     let n = 0;
     const ev = this.time.addEvent({
       delay: 26, loop: true, callback: () => {
         if (this.timeLeft > 0) {
-          this.timeLeft--; this.score += 50; this.updateHUD();
-          if (n++ % 4 === 0) AUDIO.sfx('score_tick');   // ticchettio durante il conteggio (tutti i livelli)
+          const d = Math.min(step, this.timeLeft);
+          this.timeLeft -= d; this.score += 50 * d; this.updateHUD();
+          if (n++ % 3 === 0) AUDIO.sfx('score_tick');   // ticchettio durante il conteggio
         } else { ev.remove(); AUDIO.sfx('level_clear'); done(); }
       }
     });
@@ -2018,6 +2023,7 @@ export class GameScene extends Phaser.Scene {
 
   heroShotHit(s, e) {
     if (!e || e.dead || !s || !s.active) return;
+    AUDIO.sfx('stomp');   // feedback del colpo a segno: il nemico non sparisce più "in silenzio"
     this.killEnemy(e); this.score += 100; this.popText(e.x, e.y - 10, '+100'); this.updateHUD();
     s.destroy();
   }
@@ -2054,20 +2060,23 @@ export class GameScene extends Phaser.Scene {
   }
 
   // Legge il gamepad 0 (PS/Xbox/generico) e mappa ai comandi. null se nessun pad collegato.
+  // Usa l'API Gamepad GREZZA (navigator.getGamepads), NON il plugin di Phaser: il gioco viene
+  // distrutto/ricreato a ogni cambio livello/restart e il plugin perdeva il pad già collegato
+  // (niente nuovo evento 'gamepadconnected'), così il controller "smetteva di funzionare" dopo
+  // essere usciti e rientrati. L'API grezza riflette sempre i pad realmente collegati.
   readPad() {
-    const gp = this.input.gamepad;
-    if (!gp || gp.total === 0) return null;
-    const pad = gp.getPad(0);
-    if (!pad || !pad.connected) return null;
-    const lsx = pad.leftStick ? pad.leftStick.x : 0;
-    const lsy = pad.leftStick ? pad.leftStick.y : 0;
+    const pads = (typeof navigator !== 'undefined' && navigator.getGamepads) ? navigator.getGamepads() : [];
+    let pad = null;
+    for (const p of pads) { if (p && p.connected) { pad = p; break; } }
+    if (!pad) return null;
     const btn = (i) => !!(pad.buttons[i] && pad.buttons[i].pressed);
+    const lsx = pad.axes[0] || 0, lsy = pad.axes[1] || 0;
     return {
-      left:    pad.left  || lsx < -0.4,
-      right:   pad.right || lsx >  0.4,
-      down:    pad.down  || lsy >  0.5,
-      jump:    pad.A || btn(0),          // X PlayStation / A Xbox (tasto basso)
-      special: pad.X || btn(2),          // Quadrato PS / X Xbox
+      left:    btn(14) || lsx < -0.4,    // d-pad sinistra o stick sinistra
+      right:   btn(15) || lsx >  0.4,    // d-pad destra o stick destra
+      down:    btn(13) || lsy >  0.5,    // d-pad giù o stick giù
+      jump:    btn(0),                   // X PlayStation / A Xbox (tasto basso)
+      special: btn(2),                   // Quadrato PS / X Xbox
       pause:   btn(9) || btn(8),         // Options/Start (o Share/Select)
     };
   }

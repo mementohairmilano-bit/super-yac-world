@@ -59,16 +59,37 @@ class AudioManager {
       this.music[k] = a;
     });
     this.sfxPool = {};   // pool di elementi audio riusabili per ogni effetto (no alloc per suono)
-    SFX.forEach(k => {
-      this.sfxUrl[k] = './assets/audio/sfx/' + k + '.' + (SFX_EXT[k] || 'ogg');
-      const warm = new Audio(this.sfxUrl[k]); warm.preload = 'auto';  // pre-carica in cache
-    });
+    SFX.forEach(k => { this.sfxUrl[k] = './assets/audio/sfx/' + k + '.' + (SFX_EXT[k] || 'ogg'); });
+  }
+
+  // pool di 4 elementi riusabili per una chiave SFX (creato la prima volta che serve)
+  _pool(key) {
+    let pool = this.sfxPool[key];
+    if (!pool) {
+      pool = this.sfxPool[key] = { els: [], i: 0 };
+      for (let j = 0; j < 4; j++) { const a = new Audio(this.sfxUrl[key]); a.preload = 'auto'; pool.els.push(a); }
+    }
+    return pool;
   }
 
   // chiamato al primo input utente (pointerdown/keydown)
   unlock() {
     if (this.unlocked) return;
     this.unlocked = true;
+    // iOS/Safari: gli HTML5 Audio vanno "toccati" durante un gesto utente, altrimenti gli effetti
+    // avviati dalla LOGICA di gioco (suono di MORTE, fine livello, fuochi…) restano MUTI — solo
+    // quelli legati a un tocco diretto (salto) si sbloccavano. Qui, al primo gesto, preparo tutti
+    // i pool e li sblocco con un play silenzioso, così ogni effetto suonerà poi quando serve.
+    try {
+      SFX.forEach(k => {
+        this._pool(k).els.forEach(a => {
+          const v = a.volume; a.muted = true;
+          const reset = () => { try { a.pause(); a.currentTime = 0; } catch (e) {} a.muted = false; a.volume = v; };
+          const pr = a.play();
+          if (pr && pr.then) pr.then(reset).catch(reset); else reset();
+        });
+      });
+    } catch (e) {}
     if (this.pending) { const k = this.pending; this.pending = null; this._start(k); }
   }
 
@@ -98,11 +119,7 @@ class AudioManager {
   // suono → meno garbage collection → meno scatti su mobile). Si sovrappongono comunque.
   sfx(key) {
     if (this.muted || !this.sfxUrl[key]) return;
-    let pool = this.sfxPool[key];
-    if (!pool) {
-      pool = this.sfxPool[key] = { els: [], i: 0 };
-      for (let j = 0; j < 4; j++) { const a = new Audio(this.sfxUrl[key]); a.preload = 'auto'; pool.els.push(a); }
-    }
+    const pool = this._pool(key);
     const a = pool.els[pool.i]; pool.i = (pool.i + 1) % pool.els.length;
     try { a.currentTime = 0; } catch (e) {}
     a.volume = this.sfxVol;
