@@ -221,22 +221,25 @@ export class GameScene extends Phaser.Scene {
 
   buildBackdrop() {
     if (this.officina) { this.buildOfficinaBackdrop(); return; }   // Mondo 0: fondo caldo, niente industriale
-    // sfondo Mondo 1 (catena di montaggio) a tutto schermo con parallasse
-    this.bgSurface = this.add.tileSprite(0, 0, this.scale.width, this.scale.height, 'bg_surface')
+    // sfondo Mondo 1 (catena di montaggio) a tutto schermo con parallasse.
+    // VW: larghezza di copertura generosa (≥ max larghezza di gioco) così il fondo riempie sempre
+    // la vista anche quando lo schermo è molto largo (niente bande/buchi ai lati).
+    const VW = Math.max(this.scale.width, 1280), VH = this.scale.height;
+    this.bgSurface = this.add.tileSprite(0, 0, VW, VH, 'bg_surface')
       .setOrigin(0).setScrollFactor(0).setDepth(-10);
     this.bgSurface.tileScaleX = this.bgSurface.tileScaleY = this.scale.height / 768;
     // dim/desaturazione/blur sono già "bakati" nell'immagine; qui aggiungo la vignette
     this.addVignette();              // bordi schermo scuri (solo sul fondo, non sul gameplay)
     // livello acqua: velo bluverde sopra tutto il gameplay per l'atmosfera sommersa
-    if (this.water) this.add.rectangle(0, 0, this.scale.width, this.scale.height, 0x1a6e8a, 0.18)
+    if (this.water) this.add.rectangle(0, 0, VW, VH, 0x1a6e8a, 0.18)
       .setOrigin(0).setScrollFactor(0).setDepth(38);
     // livello notturno: velo blu-notte (atmosfera, i neon restano vividi sopra)
-    if (this.night) this.add.rectangle(0, 0, this.scale.width, this.scale.height, 0x0a1030, 0.22)
+    if (this.night) this.add.rectangle(0, 0, VW, VH, 0x0a1030, 0.22)
       .setOrigin(0).setScrollFactor(0).setDepth(38);
 
     // livello al BUIO (3-2): un alone di luce attorno al player + lampi periodici delle insegne rotte
     if (this.dark) {
-      const DW = 1280, DH = 1100;
+      const DW = 2400, DH = 1100;   // ampio: il buio copre i lati anche con vista larga e player non centrato
       if (!this.textures.exists('spotlight')) {
         const tex = this.textures.createCanvas('spotlight', DW, DH); const ctx = tex.getContext();
         const cx = DW / 2, cy = DH / 2;
@@ -567,8 +570,9 @@ export class GameScene extends Phaser.Scene {
       g.addColorStop(0, '#2a1a0e'); g.addColorStop(0.55, '#3d2613'); g.addColorStop(1, '#190f08');
       ctx.fillStyle = g; ctx.fillRect(0, 0, W, H); tex.refresh();
     }
-    this.bgSurface = this.add.image(0, 0, 'officinabg').setOrigin(0).setScrollFactor(0).setDepth(-10);
-    this.add.rectangle(0, 0, W, H, 0xF2994A, 0.07).setOrigin(0).setScrollFactor(0).setDepth(-3);   // luce calda
+    const OW = Math.max(W, 1280);   // copre anche schermi larghi (niente buco ai lati)
+    this.bgSurface = this.add.image(0, 0, 'officinabg').setOrigin(0).setScrollFactor(0).setDepth(-10).setDisplaySize(OW, H);
+    this.add.rectangle(0, 0, OW, H, 0xF2994A, 0.07).setOrigin(0).setScrollFactor(0).setDepth(-3);   // luce calda
     this.addVignette();
   }
 
@@ -698,10 +702,29 @@ export class GameScene extends Phaser.Scene {
     // Destra: logo YAC (riga 1) + statistiche allineate a destra (riga 2)
     const wm = this.add.image(W - 10, 6, 'yaclogo').setOrigin(1, 0).setScrollFactor(0).setDepth(50).setAlpha(0.9);
     wm.setScale(18 / wm.height);
+    this.hudLogo = wm;
     this.hudStats = this.add.text(W - 10, 25, '', { ...sm, color: '#F7F1E8' }).setOrigin(1, 0).setScrollFactor(0).setDepth(50);
 
     this.buildLetterHUD();   // tracker discreto FREEDOM (lettere nascoste)
     this.updateHUD();
+
+    // se la larghezza di gioco cambia (rotazione/barre del browser), ri-allineo gli elementi HUD
+    // ancorati al centro/destra. Pulizia del listener allo shutdown della scena (evita accumulo).
+    this.scale.on('resize', this.onResize, this);
+    this.events.once('shutdown', () => { try { this.scale.off('resize', this.onResize, this); } catch (e) {} });
+  }
+
+  onResize() {
+    const W = this.scale.width;
+    if (this.timeTxt) this.timeTxt.x = W / 2;
+    if (this.hudLogo) this.hudLogo.x = W - 10;
+    if (this.hudStats) this.hudStats.x = W - 10;
+    if (this.bossBar && this.bossBar.all) {
+      const cx = W / 2;
+      this.bossBar.all[0].x = cx;            // etichetta boss
+      this.bossBar.all[1].x = cx;            // sfondo barra
+      this.bossBar.fill.x = cx - this.bossBar.bw / 2;   // riempimento (origine a sinistra)
+    }
   }
 
   updateHUD() {
