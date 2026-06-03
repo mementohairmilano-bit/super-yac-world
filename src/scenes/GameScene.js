@@ -1987,12 +1987,22 @@ export class GameScene extends Phaser.Scene {
     this.specialReady = false;
     let cd = 6000;
     if (s === 'shoot') {
-      // MEMENTO: modalità FUOCO ~6s — spara una raffica di colpi che eliminano i nemici
+      // MEMENTO: spara ESATTAMENTE 5 pallottole (prima era una raffica continua di ~6s = troppi colpi)
       cd = 9000; this.shootMode = true; AUDIO.sfx('powerup_grow');
       this.popText(p.x, p.y - 42, 'FUOCO! 🔥');
-      this.fireHeroShot();
-      this.shootEv = this.time.addEvent({ delay: 260, loop: true, callback: this.fireHeroShot, callbackScope: this });
-      this.time.delayedCall(6000, () => { this.shootMode = false; if (this.shootEv) { this.shootEv.remove(); this.shootEv = null; } this.updateHUD(); });
+      let shots = 5;
+      this.fireHeroShot(); shots--;                 // 1ª pallottola subito
+      this.shootEv = this.time.addEvent({
+        delay: 260, loop: true, callback: () => {
+          if (this.state !== 'play' || this.paused) return;   // in pausa non consuma colpi
+          this.fireHeroShot();
+          if (--shots <= 0) {                                 // finite le 5 → stop
+            this.shootMode = false;
+            if (this.shootEv) { this.shootEv.remove(); this.shootEv = null; }
+            this.updateHUD();
+          }
+        }, callbackScope: this,
+      });
     } else if (s === 'invince') {
       // YURI: INVINCIBILE ~6.5s — immune ai danni, i nemici muoiono al contatto
       cd = 10000; this.invincible = true; p.invuln = true; AUDIO.sfx('star');
