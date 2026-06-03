@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { CHARACTERS } from './config.js';
-import { state, loadRun, clearRun, getBest, getNick, setNick } from './state.js';
+import { state, loadRun, clearRun, getBest, getNick, setNick, resetLetters } from './state.js';
 import { LEVELS } from './levels.js';
 import { submitScore, topScores, sanitizeNick } from './leaderboard.js';
 import { GameScene } from './scenes/GameScene.js';
@@ -35,7 +35,9 @@ function startGame(key, worldId = 1, opts = {}) {
   //  - newRun (clic su una card) → azzera e cancella il salvataggio
   //  - resumeScore (Continua)    → riprende il totale salvato
   //  - altrimenti (prossimo mondo / ricomincia) → mantiene il totale corrente
-  if (opts.newRun) { state.runScore = 0; clearRun(); }
+  // newRun = partita da capo: azzera anche le lettere FREEDOM (altrimenti la lettera del Mondo 1
+  // risulta già presa e il suo collezionabile non compare). Il "Continua" invece le conserva.
+  if (opts.newRun) { state.runScore = 0; clearRun(); resetLetters(); }
   else if (opts.resumeScore != null) state.runScore = opts.resumeScore;
 
   SELECTED = key;
@@ -55,6 +57,9 @@ function startGame(key, worldId = 1, opts = {}) {
   GAME = window._GAME = new Phaser.Game({
     type: Phaser.AUTO,
     parent: 'game',
+    // mobile: arrotonda le posizioni (niente subpixel → più nitido e un filo più leggero) e chiede
+    // la GPU ad alte prestazioni dove disponibile
+    render: { roundPixels: true, powerPreference: 'high-performance' },
     scale: {
       mode: Phaser.Scale.FIT,
       autoCenter: Phaser.Scale.CENTER_BOTH,

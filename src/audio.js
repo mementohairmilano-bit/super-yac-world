@@ -52,7 +52,10 @@ class AudioManager {
       const a = new Audio('./assets/audio/music/' + k + '.' + (MUSIC_EXT[k] || 'ogg'));
       a.loop = (k !== 'game_over');     // tutte in loop tranne game_over
       a.volume = this.musicVol;
-      a.preload = 'auto';
+      // preload 'none': le 24 tracce (~8 MB di WAV/OGG) NON si scaricano tutte all'avvio — ognuna
+      // si carica quando serve. Su iPhone (PWA) questo elimina il picco di banda/CPU iniziale e la
+      // pressione di memoria che causavano lo "scatto"/ritardo del gioco. La traccia parte appena pronta.
+      a.preload = 'none';
       this.music[k] = a;
     });
     this.sfxPool = {};   // pool di elementi audio riusabili per ogni effetto (no alloc per suono)
