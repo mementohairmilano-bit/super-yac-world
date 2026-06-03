@@ -179,12 +179,7 @@ section{position:relative}
 .screen .novideo{display:flex;align-items:center;justify-content:center;aspect-ratio:16/9;
   flex-direction:column;gap:14px;background:url('img/sfondomondo1.png') center/cover;color:#fff;text-align:center;padding:20px}
 .screen .novideo .b{font-family:'Syne';font-weight:800;font-size:clamp(18px,3vw,26px)}
-.demo-tabs{display:flex;gap:10px;justify-content:center;margin-top:34px;flex-wrap:wrap}
-.demo-tab{font-family:'Syne',sans-serif;font-weight:800;font-size:14px;letter-spacing:.5px;
-  padding:11px 22px;border-radius:999px;cursor:pointer;background:#241a2c;color:#cdbfc9;
-  border:1.5px solid #ffffff1a;transition:.15s}
-.demo-tab.on{background:var(--yellow);color:#2a1020;border-color:var(--yellow)}
-.demo-hint{margin-top:16px;font-size:14px;color:#b9adbf}
+.demo-hint{margin-top:18px;font-size:14px;color:#b9adbf}
 
 /* EROI */
 #eroi{background:radial-gradient(110% 70% at 50% 0%,#2a1626,transparent 60%),linear-gradient(180deg,#150e1c,#1a1322)}
@@ -405,28 +400,18 @@ footer img{height:22px;margin:0 auto 14px;opacity:.9}
 <section id="demo" class="pad">
   <div class="wrap center">
     <p class="kicker rv">Guarda com'è il gioco</p>
-    <h2 class="sec rv d1 block-title">Trailer & demo giocabile</h2>
-    <p class="sec-lead rv d2">Guarda il trailer, poi prova il gioco vero — qui sotto, senza scaricare niente.</p>
-
-    <div class="demo-tabs rv d2">
-      <button class="demo-tab on" data-view="video">🎬 Trailer</button>
-      <button class="demo-tab" data-view="play">🕹️ Gioca live</button>
-    </div>
+    <h2 class="sec rv d1 block-title">Il gioco in azione</h2>
+    <p class="sec-lead rv d2">Un assaggio di Super Yac World.</p>
 
     <div class="screen rv d3">
       <!-- TRAILER. Per cambiarlo: sostituisci il file landing/img/trailer.mp4 (stesso nome) e fai commit+push.
            Finché trailer.mp4 non esiste, parte automaticamente la versione su CDN qui sotto. -->
-      <video id="trailer" poster="https://d8j0ntlcm91z4.cloudfront.net/user_36ZSveINDqXTgJuyp7Hm7JqtnJF/hf_20260603_104326_9a8e0c7e-8de5-464b-9172-2a77d5b01640.jpeg" autoplay muted loop playsinline preload="metadata">
+      <video id="trailer" poster="https://d8j0ntlcm91z4.cloudfront.net/user_36ZSveINDqXTgJuyp7Hm7JqtnJF/hf_20260603_104326_9a8e0c7e-8de5-464b-9172-2a77d5b01640.jpeg" autoplay muted loop playsinline preload="auto">
         <source src="img/trailer.mp4" type="video/mp4">
         <source src="https://d8j0ntlcm91z4.cloudfront.net/user_36ZSveINDqXTgJuyp7Hm7JqtnJF/hf_20260603_104647_e140aa71-4a2d-4d0f-9fc4-b56ce09fadff.mp4" type="video/mp4">
       </video>
-      <!-- LIVE GAME (lazy: src impostato al click) -->
-      <iframe id="liveframe" title="Super Yac World — gioca live"
-        loading="lazy" allow="fullscreen; gamepad; autoplay"
-        style="display:none" data-src="https://www.superyacworld.it"></iframe>
     </div>
-    <p class="demo-hint rv">🎬 Trailer in riproduzione · premi <b>🕹️ Gioca live</b> per provarlo qui,
-      oppure <a href="https://www.superyacworld.it" target="_blank" rel="noopener" style="color:var(--yellow);font-weight:700">aprilo a schermo intero ↗</a></p>
+    <p class="demo-hint rv">▶ Vuoi giocare? <a href="https://www.superyacworld.it" target="_blank" rel="noopener" style="color:var(--yellow);font-weight:700">Apri Super Yac World a schermo intero ↗</a></p>
   </div>
 </section>
 
@@ -644,24 +629,11 @@ const io = new IntersectionObserver((es)=>{
 },{threshold:.12});
 document.querySelectorAll('.rv').forEach(el=>io.observe(el));
 
-// demo tabs: trailer <-> live game
+// trailer: se il file non si carica (errore vero), mostra un fallback con CTA al gioco
 const trailer = document.getElementById('trailer');
-const frame = document.getElementById('liveframe');
-document.querySelectorAll('.demo-tab').forEach(tab=>{
-  tab.addEventListener('click', ()=>{
-    document.querySelectorAll('.demo-tab').forEach(t=>t.classList.remove('on'));
-    tab.classList.add('on');
-    const play = tab.dataset.view === 'play';
-    if (play && !frame.src) frame.src = frame.dataset.src;   // carica il gioco solo al primo click
-    frame.style.display = play ? 'block' : 'none';
-    trailer.style.display = play ? 'none' : 'block';
-    if (play) trailer.pause(); else trailer.play().catch(()=>{});
-  });
-});
-
-// se il trailer non si carica (CDN giù / file mancante), mostra fallback giocabile
 let trailerOk = false;
-const showFallback = ()=>{
+trailer.addEventListener('loadeddata', ()=>{ trailerOk = true; trailer.play().catch(()=>{}); });
+trailer.addEventListener('error', ()=>{   // scatta solo se TUTTE le sorgenti falliscono
   if (trailerOk || !trailer.isConnected) return;
   const s = trailer.closest('.screen');
   trailer.remove();
@@ -670,10 +642,7 @@ const showFallback = ()=>{
   nv.innerHTML = '<div class="b">Il gioco è online ora 🎮</div>'+
     '<a class="btn" href="https://www.superyacworld.it" target="_blank" rel="noopener">▶ GIOCA SU SUPERYACWORLD.IT</a>';
   s.prepend(nv);
-};
-trailer.addEventListener('loadeddata', ()=>{ trailerOk = true; });
-trailer.addEventListener('error', showFallback, true);          // cattura anche gli errori del <source>
-setTimeout(()=>{ if (trailer.readyState < 2) showFallback(); }, 6000); // niente dati dopo 6s → fallback
+});
 </script>
 </body>
 </html>
