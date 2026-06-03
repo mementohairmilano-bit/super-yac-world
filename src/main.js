@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { CHARACTERS } from './config.js';
-import { state, loadRun, clearRun, getBest, getNick, setNick } from './state.js';
+import { state, loadRun, clearRun, getBest, getNick, setNick, resetLetters } from './state.js';
 import { LEVELS } from './levels.js';
 import { submitScore, topScores, sanitizeNick } from './leaderboard.js';
 import { GameScene } from './scenes/GameScene.js';
@@ -35,7 +35,9 @@ function startGame(key, worldId = 1, opts = {}) {
   //  - newRun (clic su una card) → azzera e cancella il salvataggio
   //  - resumeScore (Continua)    → riprende il totale salvato
   //  - altrimenti (prossimo mondo / ricomincia) → mantiene il totale corrente
-  if (opts.newRun) { state.runScore = 0; clearRun(); }
+  // newRun = partita da capo: azzera anche le lettere FREEDOM (altrimenti la lettera del Mondo 1
+  // risulta già presa e il suo collezionabile non compare). Il "Continua" invece le conserva.
+  if (opts.newRun) { state.runScore = 0; clearRun(); resetLetters(); }
   else if (opts.resumeScore != null) state.runScore = opts.resumeScore;
 
   SELECTED = key;
@@ -55,6 +57,9 @@ function startGame(key, worldId = 1, opts = {}) {
   GAME = window._GAME = new Phaser.Game({
     type: Phaser.AUTO,
     parent: 'game',
+    // mobile: arrotonda le posizioni (niente subpixel → più nitido e un filo più leggero) e chiede
+    // la GPU ad alte prestazioni dove disponibile
+    render: { roundPixels: true, powerPreference: 'high-performance' },
     scale: {
       mode: Phaser.Scale.FIT,
       autoCenter: Phaser.Scale.CENTER_BOTH,
@@ -190,6 +195,8 @@ function openBoard(submit) {
     boardMyScore.textContent = window._runResult.score + ' pt';
     boardNick.value = getNick();
     boardSend.disabled = false; boardSend.textContent = 'Invia in classifica';
+    // porta subito il giocatore sul campo nome: così "salva il punteggio" è un gesto solo
+    setTimeout(() => { try { boardNick.focus(); if (!boardNick.value) boardNick.select(); } catch (e) {} }, 60);
   } else {
     boardSubmit.classList.add('hidden');
   }
@@ -214,6 +221,9 @@ document.getElementById('btn-board-win').addEventListener('click', () => openBoa
 document.getElementById('btn-board-close').addEventListener('click', closeBoard);
 // esposto alla GameScene per mostrare il pulsante "Classifica" sulla card del finale
 window._gameShowBoardBtn = (show) => document.getElementById('btn-board-win').classList.toggle('hidden', !show);
+// esposto alla GameScene: a fine partita apre da solo il form di salvataggio (col nome già a fuoco),
+// così il giocatore non deve cercare il pulsante. Non fa nulla se non c'è un punteggio da inviare.
+window._promptSaveScore = () => { if (window._runResult && boardEl.classList.contains('hidden')) openBoard(true); };
 
 // ===== Blocco zoom/pan accidentale con due dita (iOS Safari ignora user-scalable=no) =====
 // Niente più "lo schermo si ingrandisce/sposta" toccando con due dita. La PWA installata

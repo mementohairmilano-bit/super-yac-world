@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { PAL } from '../config.js';
-import { state, collectLetter, hasAllLetters, hasLetter, SECRET_WORD, saveRun, clearRun, setBest } from '../state.js';
+import { state, collectLetter, hasAllLetters, hasLetter, SECRET_WORD, saveRun, clearRun, setBest, getBest } from '../state.js';
 import { AUDIO } from '../audio.js';
 import { LEVELS, OFFICINA_ID } from '../levels.js';
 
@@ -1475,6 +1475,7 @@ export class GameScene extends Phaser.Scene {
   // Cambio fase: più veloce, l'arena si attiva (fase 2+), il nucleo si espone (fase 3).
   enterBossPhase(n) {
     const b = this.boss; if (!b) return; b.phase = n;
+    this.tweens.killTweensOf(b); b.setAlpha(1);   // chiude eventuali lampeggi in corso (niente boss "fantasma")
     this.popText(b.x, this.H - 188, n === 2 ? 'FASE 2 — IL SISTEMA' : 'FASE 3 — IL COLLASSO');
     this.cameras.main.flash(300, 140, 60, 200); this.cameras.main.shake(220, 0.008);
     AUDIO.sfx('phase_shift');
@@ -1609,7 +1610,11 @@ export class GameScene extends Phaser.Scene {
     AUDIO.sfx('boss_hit');                                   // colpo a segno (boss ancora vivo)
     this.bossInvuln = true;                                   // ~0.8s di invulnerabilità → 1 HP per colpo
     this.cameras.main.shake(120, 0.006);
-    this.tweens.add({ targets: b, alpha: 0.3, yoyo: true, repeat: 5, duration: 70, onComplete: () => { if (b.active) b.alpha = 1; } });
+    // lampeggio di danno. PRIMA azzero eventuali tween di alpha ancora in corso e riporto l'alpha a 1:
+    // sui boss con più HP (5/6/7/9) i colpi ravvicinati impilavano più tween di alpha e potevano
+    // lasciare il boss semitrasparente o INVISIBILE (vivo ma non si vedeva → impossibile finirlo).
+    this.tweens.killTweensOf(b); b.setAlpha(1);
+    this.tweens.add({ targets: b, alpha: 0.3, yoyo: true, repeat: 5, duration: 70, onComplete: () => { if (b.active) b.setAlpha(1); } });
     this.time.delayedCall(800, () => { this.bossInvuln = false; });
   }
 
@@ -1630,6 +1635,7 @@ export class GameScene extends Phaser.Scene {
     this.tweens.add({ targets: txt, y: 80, alpha: 0, delay: 1500, duration: 600, onComplete: () => txt.destroy() });
     if (b) {
       b.setVelocity(0, 0); if (b.body) b.body.checkCollision.none = true;
+      this.tweens.killTweensOf(b); b.setAlpha(1);   // niente lampeggio residuo che combatta col "si sbriciola"
       this.tweens.add({ targets: b, x: '+=4', yoyo: true, repeat: 9, duration: 38 });       // trema
       this.tweens.add({ targets: b, scaleY: 0.1, alpha: 0, angle: -8, delay: 400, duration: 440, onComplete: () => b.destroy() }); // si sbriciola
     }
@@ -1725,12 +1731,17 @@ export class GameScene extends Phaser.Scene {
   }
 
   convertTime(done) {
+    // Bonus tempo → punti. Prima scalava 1 unità ogni 26ms: con molto tempo residuo (limite 300)
+    // si restava "fermi" diversi secondi dopo il salone. Ora scala a PASSI calcolati per finire
+    // sempre in ~1,2s, qualunque sia il tempo rimasto.
+    const step = Math.max(1, Math.ceil(this.timeLeft / 48));
     let n = 0;
     const ev = this.time.addEvent({
       delay: 26, loop: true, callback: () => {
         if (this.timeLeft > 0) {
-          this.timeLeft--; this.score += 50; this.updateHUD();
-          if (n++ % 4 === 0) AUDIO.sfx('score_tick');   // ticchettio durante il conteggio (tutti i livelli)
+          const d = Math.min(step, this.timeLeft);
+          this.timeLeft -= d; this.score += 50 * d; this.updateHUD();
+          if (n++ % 3 === 0) AUDIO.sfx('score_tick');   // ticchettio durante il conteggio
         } else { ev.remove(); AUDIO.sfx('level_clear'); done(); }
       }
     });
@@ -1759,9 +1770,11 @@ export class GameScene extends Phaser.Scene {
     // flusso multi-mondo: se c'è un livello successivo, mostra il pulsante "prossimo"
     if (window._gameShowWin) window._gameShowWin(nextId, opts.cta || L.win.cta);
     // pulsante "Classifica" solo sulla card del FINALE (non a ogni livello)
-    if (opts.leaderboard) window._runResult = { score: this.score, world: state.worldId };
+    if (opts.leaderboard) window._runResult = { score: getBest(), world: state.worldId };
     if (window._gameShowBoardBtn) window._gameShowBoardBtn(!!opts.leaderboard);
     document.getElementById('win').classList.remove('hidden');
+    // fine del gioco (card finale): proponi da solo il salvataggio in classifica
+    if (opts.leaderboard) setTimeout(() => { if (window._promptSaveScore) window._promptSaveScore(); }, 700);
   }
 
   // ===================== SEQUENZA FINALE — la chiusura (Beat 7) =====================
@@ -1941,11 +1954,14 @@ export class GameScene extends Phaser.Scene {
     this.state = 'over';
     if (this.timerEv) this.timerEv.paused = true;
     setBest(this.score); clearRun();   // la partita finisce: salva il record, chiudi la run in corso
-    window._runResult = { score: this.score, world: state.worldId };   // per l'invio in classifica
+    // in classifica va il record personale (lo stesso valore mostrato nella home), non solo l'ultima run
+    window._runResult = { score: getBest(), world: state.worldId };
     const os = document.getElementById('overscore'); if (os) os.textContent = 'Punteggio: ' + this.score + ' pt';
     AUDIO.playMusic('game_over');   // one-shot (non in loop)
     this.scene.pause();
     document.getElementById('over').classList.remove('hidden');
+    // dopo un attimo (così si vede la card "Game Over") proponi subito il salvataggio in classifica
+    setTimeout(() => { if (window._promptSaveScore) window._promptSaveScore(); }, 700);
   }
 
   enterPipe() {
@@ -1971,12 +1987,22 @@ export class GameScene extends Phaser.Scene {
     this.specialReady = false;
     let cd = 6000;
     if (s === 'shoot') {
-      // MEMENTO: modalità FUOCO ~6s — spara una raffica di colpi che eliminano i nemici
+      // MEMENTO: spara ESATTAMENTE 5 pallottole (prima era una raffica continua di ~6s = troppi colpi)
       cd = 9000; this.shootMode = true; AUDIO.sfx('powerup_grow');
       this.popText(p.x, p.y - 42, 'FUOCO! 🔥');
-      this.fireHeroShot();
-      this.shootEv = this.time.addEvent({ delay: 260, loop: true, callback: this.fireHeroShot, callbackScope: this });
-      this.time.delayedCall(6000, () => { this.shootMode = false; if (this.shootEv) { this.shootEv.remove(); this.shootEv = null; } this.updateHUD(); });
+      let shots = 5;
+      this.fireHeroShot(); shots--;                 // 1ª pallottola subito
+      this.shootEv = this.time.addEvent({
+        delay: 260, loop: true, callback: () => {
+          if (this.state !== 'play' || this.paused) return;   // in pausa non consuma colpi
+          this.fireHeroShot();
+          if (--shots <= 0) {                                 // finite le 5 → stop
+            this.shootMode = false;
+            if (this.shootEv) { this.shootEv.remove(); this.shootEv = null; }
+            this.updateHUD();
+          }
+        }, callbackScope: this,
+      });
     } else if (s === 'invince') {
       // YURI: INVINCIBILE ~6.5s — immune ai danni, i nemici muoiono al contatto
       cd = 10000; this.invincible = true; p.invuln = true; AUDIO.sfx('star');
@@ -2013,6 +2039,7 @@ export class GameScene extends Phaser.Scene {
 
   heroShotHit(s, e) {
     if (!e || e.dead || !s || !s.active) return;
+    AUDIO.sfx('stomp');   // feedback del colpo a segno: il nemico non sparisce più "in silenzio"
     this.killEnemy(e); this.score += 100; this.popText(e.x, e.y - 10, '+100'); this.updateHUD();
     s.destroy();
   }
@@ -2049,20 +2076,23 @@ export class GameScene extends Phaser.Scene {
   }
 
   // Legge il gamepad 0 (PS/Xbox/generico) e mappa ai comandi. null se nessun pad collegato.
+  // Usa l'API Gamepad GREZZA (navigator.getGamepads), NON il plugin di Phaser: il gioco viene
+  // distrutto/ricreato a ogni cambio livello/restart e il plugin perdeva il pad già collegato
+  // (niente nuovo evento 'gamepadconnected'), così il controller "smetteva di funzionare" dopo
+  // essere usciti e rientrati. L'API grezza riflette sempre i pad realmente collegati.
   readPad() {
-    const gp = this.input.gamepad;
-    if (!gp || gp.total === 0) return null;
-    const pad = gp.getPad(0);
-    if (!pad || !pad.connected) return null;
-    const lsx = pad.leftStick ? pad.leftStick.x : 0;
-    const lsy = pad.leftStick ? pad.leftStick.y : 0;
+    const pads = (typeof navigator !== 'undefined' && navigator.getGamepads) ? navigator.getGamepads() : [];
+    let pad = null;
+    for (const p of pads) { if (p && p.connected) { pad = p; break; } }
+    if (!pad) return null;
     const btn = (i) => !!(pad.buttons[i] && pad.buttons[i].pressed);
+    const lsx = pad.axes[0] || 0, lsy = pad.axes[1] || 0;
     return {
-      left:    pad.left  || lsx < -0.4,
-      right:   pad.right || lsx >  0.4,
-      down:    pad.down  || lsy >  0.5,
-      jump:    pad.A || btn(0),          // X PlayStation / A Xbox (tasto basso)
-      special: pad.X || btn(2),          // Quadrato PS / X Xbox
+      left:    btn(14) || lsx < -0.4,    // d-pad sinistra o stick sinistra
+      right:   btn(15) || lsx >  0.4,    // d-pad destra o stick destra
+      down:    btn(13) || lsy >  0.5,    // d-pad giù o stick giù
+      jump:    btn(0),                   // X PlayStation / A Xbox (tasto basso)
+      special: btn(2),                   // Quadrato PS / X Xbox
       pause:   btn(9) || btn(8),         // Options/Start (o Share/Select)
     };
   }
