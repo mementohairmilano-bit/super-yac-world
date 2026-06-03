@@ -199,13 +199,19 @@ async function loadBoard() {
 function escapeHtml(s) { return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
 
 function openBoard(submit) {
-  if (submit && window._runResult) {
+  // Cosa si può inviare in classifica: il risultato di fine partita (_runResult) OPPURE, in ogni
+  // altro momento (es. dal menu), il PROPRIO RECORD personale. Così il nome si può sempre mettere,
+  // anche solo vincendo i livelli senza mai morire.
+  const best = getBest();
+  const target = window._runResult || (best > 0 ? { score: best, world: state.worldId || null } : null);
+  window._boardTarget = target;
+  if (target) {
     boardSubmit.classList.remove('hidden');
-    boardMyScore.textContent = window._runResult.score + ' pt';
+    boardMyScore.textContent = target.score + ' pt';
     boardNick.value = getNick();
     boardSend.disabled = false; boardSend.textContent = 'Invia in classifica';
-    // porta subito il giocatore sul campo nome: così "salva il punteggio" è un gesto solo
-    setTimeout(() => { try { boardNick.focus(); if (!boardNick.value) boardNick.select(); } catch (e) {} }, 60);
+    // a fine partita (submit=true) porto subito il dito sul campo nome
+    if (submit) setTimeout(() => { try { boardNick.focus(); if (!boardNick.value) boardNick.select(); } catch (e) {} }, 60);
   } else {
     boardSubmit.classList.add('hidden');
   }
@@ -215,11 +221,12 @@ function openBoard(submit) {
 function closeBoard() { boardEl.classList.add('hidden'); }
 
 if (boardSend) boardSend.onclick = async () => {
+  const target = window._boardTarget;
+  if (!target) return;
   const nick = sanitizeNick(boardNick.value);
-  if (!window._runResult) return;
   setNick(nick);
   boardSend.disabled = true; boardSend.textContent = 'Invio…';
-  const ok = await submitScore(nick, window._runResult.score, window._runResult.world);
+  const ok = await submitScore(nick, target.score, target.world);
   boardSend.textContent = ok ? 'Inviato ✓' : 'Errore — riprova';
   boardSend.disabled = !ok;
   if (ok) loadBoard();
