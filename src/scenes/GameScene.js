@@ -2036,14 +2036,13 @@ export class GameScene extends Phaser.Scene {
         e.preventDefault();
         try { b.setPointerCapture(e.pointerId); } catch (_) {}
         this.t[k] = true;
-        window.__dbgPress = (window.__dbgPress || 0) + 1; window.__dbgLast = k;   // debug ?debug
       }, { passive: false });
       b.addEventListener('pointerup', off);
       b.addEventListener('pointercancel', off);
       b.addEventListener('lostpointercapture', off);
       // fallback per browser senza Pointer Events (Android vecchi)
       if (!window.PointerEvent) {
-        b.addEventListener('touchstart', e => { e.preventDefault(); this.t[k] = true; window.__dbgPress = (window.__dbgPress || 0) + 1; window.__dbgLast = k; }, { passive: false });
+        b.addEventListener('touchstart', e => { e.preventDefault(); this.t[k] = true; }, { passive: false });
         b.addEventListener('touchend', off); b.addEventListener('touchcancel', off);
       }
     });
@@ -2069,8 +2068,6 @@ export class GameScene extends Phaser.Scene {
   }
 
   update() {
-    window.__dbgU = (window.__dbgU || 0) + 1; window.__dbgState = this.state + (this.paused ? '/pausa' : '');   // debug ?debug
-    window.__dbgT = (this.t.left ? 'L' : '') + (this.t.right ? 'R' : '') + (this.t.jump ? 'J' : '') + (this.t.special ? 'S' : '') + (this.t.down ? 'D' : '') || '-';
     try {   // protezione: un errore in un frame NON deve uccidere il loop (su iOS lo faceva)
     const k = this.k;
     const pad = this.readPad();
@@ -2252,7 +2249,7 @@ export class GameScene extends Phaser.Scene {
     this.onPipe = null;
     if (p.y > this.H + 90) this.loseLife();
     } catch (e) {
-      window.__dbgErr = ((e && e.message) || String(e)) + ' | ' + (((e && e.stack) || '').split('\n')[1] || '').trim().slice(0, 90);
+      if (!this._errLogged) { this._errLogged = true; console.error('update error:', e); }   // logga una volta, non uccide il loop
     }
   }
 }
