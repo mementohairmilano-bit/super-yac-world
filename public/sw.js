@@ -2,7 +2,7 @@
 // Strategia: runtime caching same-origin (offline DOPO la prima visita), navigazioni
 // network-first con fallback a index. Le chiamate cross-origin (Supabase/classifica) NON
 // vengono toccate → la classifica resta sempre "live" e non funziona offline (corretto).
-const CACHE = 'syw-v4';
+const CACHE = 'syw-v5';
 
 self.addEventListener('install', (e) => {
   e.waitUntil((async () => {
@@ -25,11 +25,12 @@ self.addEventListener('fetch', (e) => {
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;   // lascia passare Supabase & co.
 
-  // navigazioni: rete prima, poi cache (offline)
+  // navigazioni: SEMPRE rete fresca (cache:'reload' bypassa anche la cache HTTP del browser, così
+  // gli aggiornamenti arrivano subito su iPhone), poi cache solo come fallback offline.
   if (req.mode === 'navigate') {
     e.respondWith((async () => {
-      try { return await fetch(req); }
-      catch (err) { return (await caches.match(req)) || (await caches.match('/index.html')) || (await caches.match('/')) || Response.error(); }
+      try { return await fetch(req, { cache: 'reload' }); }
+      catch (err) { return (await caches.match('/index.html')) || (await caches.match('/')) || Response.error(); }
     })());
     return;
   }
