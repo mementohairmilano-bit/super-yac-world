@@ -6,10 +6,10 @@ import { submitScore, topScores, sanitizeNick } from './leaderboard.js';
 import { GameScene } from './scenes/GameScene.js';
 import { AUDIO } from './audio.js';
 // portrait con margine (NON ritagliati) così il volto si può centrare nel riquadro della card
-import mementoImg from '../assets/Memento_card.png';
-import yuriImg from '../assets/Yuri_card.png';
-import carmineImg from '../assets/carmine_card.png';
-import andreaImg from '../assets/andrea_card.png';
+import mementoImg from '../assets/Memento_card.webp';
+import yuriImg from '../assets/Yuri_card.webp';
+import carmineImg from '../assets/carmine_card.webp';
+import andreaImg from '../assets/andrea_card.webp';
 
 const CARD_IMG = { memento: mementoImg, yuri: yuriImg, carmine: carmineImg, andrea: andreaImg };
 // Inquadratura del volto nella card: zoom (background-size) + posizione verticale (Y%).
@@ -144,7 +144,7 @@ if (continuaBtn) continuaBtn.onclick = () => {
 refreshMenu();
 
 // Set logo images
-const logoUrl = new URL('../assets/logo_yac.png', import.meta.url).href;
+const logoUrl = new URL('../assets/logo_yac.webp', import.meta.url).href;
 document.getElementById('logoimg').src = logoUrl;
 document.getElementById('winlogo').src = logoUrl;
 
