@@ -30,6 +30,16 @@ function isTouch() {
   return matchMedia('(hover:none),(pointer:coarse)').matches;
 }
 
+// Dimensione di gioco: altezza FISSA (506) e larghezza che RIEMPIE lo schermo all'aspect del
+// dispositivo → in orizzontale niente bande nere ai lati (si vede più scena), e i personaggi
+// restano della stessa dimensione. Limiti per non zoomare troppo dentro/fuori.
+function gameSize() {
+  const w = window.innerWidth || 1, h = window.innerHeight || 1;
+  const H = 506;
+  const W = Math.max(560, Math.min(1280, Math.round(H * (w / h))));
+  return { width: W, height: H };
+}
+
 function startGame(key, worldId = 1, opts = {}) {
   // Gestione punteggio CUMULATIVO della run:
   //  - newRun (clic su una card) → azzera e cancella il salvataggio
@@ -71,8 +81,7 @@ function startGame(key, worldId = 1, opts = {}) {
     scale: {
       mode: Phaser.Scale.FIT,
       autoCenter: Phaser.Scale.CENTER_BOTH,
-      width: 560,    // ~17 blocchi visibili (zoom stile Super Mario Bros); altezza piena 506
-      height: 506,
+      ...gameSize(),   // larghezza adattata allo schermo (altezza fissa 506) → niente bande ai lati
     },
     physics: {
       default: 'arcade',
@@ -314,7 +323,15 @@ if (!isStandalone()) setTimeout(() => { try { openInstallHelp(); } catch (e) {} 
 let _scaleT = 0;
 function refreshScale() {
   clearTimeout(_scaleT);
-  _scaleT = setTimeout(() => { try { if (window._GAME && window._GAME.scale) window._GAME.scale.refresh(); } catch (e) {} }, 120);
+  _scaleT = setTimeout(() => {
+    try {
+      if (window._GAME && window._GAME.scale) {
+        const s = gameSize();
+        window._GAME.scale.setGameSize(s.width, s.height);   // riadatta la larghezza alla rotazione/barre
+        window._GAME.scale.refresh();
+      }
+    } catch (e) {}
+  }, 120);
 }
 window.addEventListener('resize', refreshScale);
 window.addEventListener('orientationchange', refreshScale);
