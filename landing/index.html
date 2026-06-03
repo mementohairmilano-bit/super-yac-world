@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<title>SUPER YAC WORLD — Spezza le catene. Break the Mold.</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Super Yac World: il platform game dove combatti le multinazionali della bellezza di massa e liberi i saloni. Da parrucchieri, per parrucchieri. Break the Mold.">
+<meta name="theme-color" content="#150e1c">
+
+<!-- Open Graph -->
+<meta property="og:title" content="SUPER YAC WORLD — Spezza le catene">
+<meta property="og:description" content="Corri, salta e sconfiggi le multinazionali della bellezza di massa. Libera i saloni e riportali a essere veri YAC Salon.">
+<meta property="og:type" content="website">
+<meta property="og:image" content="img/bg_m6_plaza.png">
+
+<link rel="icon" type="image/png" href="img/coin_goccia.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+:root{
+  --yellow:#F2C53D; --gold:#C9A227; --peach:#F2994A;
+  --rose:#C97B84; --magenta:#D96BA0; --green:#5FC27E;
+  --aubergine:#3B1E33; --ink:#120E16; --paper:#F7F1E8;
+  --dark1:#2a1f33; --dark2:#150e1c; --cold:#3aa0d6;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{
+  font-family:'DM Sans',sans-serif; color:var(--paper);
+  background:var(--dark2); overflow-x:hidden; line-height:1.55;
+  -webkit-font-smoothing:antialiased;
+}
+img{max-width:100%;display:block}
+a{color:inherit;text-decoration:none}
+.wrap{width:min(1180px,92vw);margin:0 auto}
+
+/* ---------- TIPOGRAFIA STILE GIOCO ---------- */
+.kicker{font-family:'Syne',sans-serif;font-weight:800;letter-spacing:4px;
+  text-transform:uppercase;font-size:clamp(11px,1.4vw,13px);color:var(--yellow)}
+h2.sec{font-family:'Syne',sans-serif;font-weight:800;line-height:1;
+  font-size:clamp(30px,5.6vw,58px);margin:10px 0 18px;letter-spacing:-1px}
+.sec-lead{font-size:clamp(15px,1.9vw,18px);color:#d7ccda;max-width:680px}
+/* titolo "blocco 3D" come nel gioco */
+.block-title{font-family:'Syne',sans-serif;font-weight:800;
+  background:linear-gradient(180deg,#FFE07A 0%,#F2C53D 38%,#F2994A 70%,#E14B3A 100%);
+  -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;
+  -webkit-text-stroke:3px #2a1020;paint-order:stroke fill;
+  filter:drop-shadow(0 3px 0 #2a1020) drop-shadow(0 6px 0 #1a0a14) drop-shadow(0 11px 16px #0009);}
+
+/* ---------- BOTTONI ---------- */
+.btn{display:inline-flex;align-items:center;gap:9px;font-family:'Syne',sans-serif;
+  font-weight:800;font-size:clamp(15px,1.8vw,18px);letter-spacing:.3px;
+  padding:15px 30px;border-radius:999px;border:none;cursor:pointer;
+  transition:transform .15s ease,box-shadow .15s ease,filter .15s ease;
+  background:linear-gradient(180deg,#FFD95C,#F2994A);color:#2a1020;
+  box-shadow:0 6px 0 #b46a26,0 12px 26px #0007;}
+.btn:hover{transform:translateY(-2px);box-shadow:0 8px 0 #b46a26,0 16px 32px #0008;filter:saturate(1.1)}
+.btn:active{transform:translateY(3px);box-shadow:0 2px 0 #b46a26,0 6px 14px #0007}
+.btn.ghost{background:#241a2c;color:var(--paper);box-shadow:0 6px 0 #0d0913,0 12px 26px #0006;
+  border:1.5px solid #ffffff22}
+.btn.ghost:hover{border-color:var(--yellow)}
+.btn.store{background:linear-gradient(180deg,#E07CB0,#A0476F);color:#fff;box-shadow:0 6px 0 #6e2f4d,0 12px 26px #0007}
+
+/* ---------- NAV ---------- */
+nav{position:fixed;inset:0 0 auto 0;z-index:100;display:flex;align-items:center;
+  justify-content:space-between;padding:14px 0;backdrop-filter:blur(8px);
+  background:linear-gradient(180deg,#150e1ce6,#150e1c66 70%,transparent);
+  transition:background .3s,padding .3s}
+nav.solid{background:#150e1cf2;padding:9px 0;box-shadow:0 6px 24px #0007}
+nav .wrap{display:flex;align-items:center;justify-content:space-between;width:min(1180px,92vw)}
+.nav-logo{display:flex;align-items:center;gap:10px;font-family:'Syne',sans-serif;
+  font-weight:800;font-size:18px;letter-spacing:1px}
+.nav-logo img{height:26px;filter:drop-shadow(0 2px 6px #0008)}
+.nav-links{display:flex;align-items:center;gap:26px}
+.nav-links a{font-weight:600;font-size:14px;color:#d7ccda;transition:color .15s}
+.nav-links a:hover{color:var(--yellow)}
+.nav-play{padding:10px 22px;font-size:14px;box-shadow:0 4px 0 #b46a26,0 8px 18px #0007}
+@media(max-width:760px){.nav-links a:not(.nav-play){display:none}}
+
+/* ---------- HERO ---------- */
+.hero{position:relative;min-height:100svh;display:flex;align-items:center;
+  padding:120px 0 70px;overflow:hidden}
+.hero-bg{position:absolute;inset:0;background:url('img/bg_m6_plaza.png') center/cover no-repeat;
+  transform:scale(1.12);will-change:transform;filter:saturate(.85)}
+.hero-bg::after{content:'';position:absolute;inset:0;
+  background:radial-gradient(120% 90% at 50% 0%,#2a162688,#0c0810 78%),
+            linear-gradient(180deg,#150e1c33,#150e1c 96%)}
+.hero .wrap{position:relative;z-index:3;text-align:center;display:flex;flex-direction:column;align-items:center}
+.hero-logo{height:clamp(36px,7vw,56px);margin-bottom:18px;filter:drop-shadow(0 4px 14px #000a)}
+.t-super{display:block;font-family:'Syne',sans-serif;font-weight:800;
+  font-size:clamp(16px,4vw,30px);letter-spacing:9px;color:#F2C53D;
+  -webkit-text-stroke:2px #2a1020;paint-order:stroke fill;text-shadow:0 3px 0 #2a1020;margin-bottom:6px}
+.t-main{display:block;font-size:clamp(48px,12vw,120px);line-height:.82;letter-spacing:-2px}
+.hero-tag{margin-top:20px;font-family:'Syne',sans-serif;font-weight:700;
+  font-size:clamp(18px,3vw,30px);color:#fff}
+.hero-tag b{color:var(--yellow)}
+.hero-sub{margin-top:14px;font-size:clamp(15px,2vw,18px);color:#e7dcea;max-width:620px}
+.hero-cta{margin-top:30px;display:flex;gap:14px;flex-wrap:wrap;justify-content:center}
+.hero-runner{position:absolute;bottom:42px;left:-130px;width:clamp(70px,9vw,104px);z-index:4;
+  filter:drop-shadow(0 8px 12px #0009);animation:run 13s linear infinite}
+@keyframes run{0%{left:-130px;transform:scaleX(1) translateY(0)}
+  10%{transform:scaleX(1) translateY(-26px)}20%{transform:scaleX(1) translateY(0)}
+  100%{left:110vw;transform:scaleX(1) translateY(0)}}
+/* gocce d'oro che salgono */
+.drop{position:absolute;width:26px;opacity:.0;z-index:2;animation:floatup linear infinite;pointer-events:none}
+@keyframes floatup{0%{transform:translateY(40px) rotate(0);opacity:0}
+  12%{opacity:.9}88%{opacity:.9}100%{transform:translateY(-86vh) rotate(40deg);opacity:0}}
+.scrollcue{position:absolute;bottom:18px;left:50%;transform:translateX(-50%);z-index:5;
+  font-size:12px;letter-spacing:2px;color:#cdbfc9;text-transform:uppercase;font-family:'Syne',sans-serif;font-weight:700;
+  animation:bob 1.8s ease-in-out infinite}
+@keyframes bob{50%{transform:translate(-50%,7px)}}
+
+/* ---------- SEZIONI ---------- */
+section{position:relative}
+.pad{padding:clamp(64px,9vw,120px) 0}
+.center{text-align:center;display:flex;flex-direction:column;align-items:center}
+
+/* MANIFESTO */
+#manifesto{background:
+  radial-gradient(100% 60% at 50% 0%,#2a1626 0%,transparent 60%),
+  linear-gradient(180deg,#150e1c,#1a1322)}
+.manifesto-quote{font-family:'Syne',sans-serif;font-weight:800;line-height:1.05;
+  font-size:clamp(26px,4.8vw,50px);max-width:900px;margin:0 auto}
+.manifesto-quote .hl{color:var(--yellow)}
+.manifesto-body{margin:26px auto 0;max-width:680px;color:#d7ccda;font-size:clamp(15px,1.9vw,18px)}
+/* before/after */
+.beforeafter{display:grid;grid-template-columns:1fr auto 1fr;gap:clamp(14px,2.5vw,34px);
+  align-items:center;margin-top:48px;width:100%}
+.ba-card{border-radius:18px;overflow:hidden;position:relative;border:2px solid #ffffff14;
+  box-shadow:0 18px 40px #0008}
+.ba-card img{width:100%;aspect-ratio:4/3;object-fit:cover}
+.ba-card .lbl{position:absolute;left:0;right:0;bottom:0;padding:16px;
+  font-family:'Syne',sans-serif;font-weight:800;font-size:clamp(15px,2vw,20px);
+  background:linear-gradient(0deg,#000d,transparent)}
+.ba-card.cold .lbl{color:#cfe3ef}.ba-card.cold img{filter:grayscale(.7) brightness(.8)}
+.ba-card.warm .lbl{color:var(--yellow)}
+.ba-card .tagk{display:block;font-family:'DM Sans';font-weight:600;font-size:12px;
+  letter-spacing:1px;text-transform:uppercase;opacity:.75;margin-bottom:3px}
+.ba-arrow{font-size:clamp(26px,5vw,48px);color:var(--peach);filter:drop-shadow(0 0 12px #f2994a66)}
+@media(max-width:680px){.beforeafter{grid-template-columns:1fr;gap:8px}
+  .ba-arrow{transform:rotate(90deg);margin:2px 0}}
+
+/* FEATURES */
+.feat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));
+  gap:16px;margin-top:46px;width:100%}
+.feat{background:linear-gradient(180deg,#2a1f33,#1d1528);border:1.5px solid #ffffff14;
+  border-radius:16px;padding:24px 20px;text-align:left;transition:transform .18s,border-color .18s}
+.feat:hover{transform:translateY(-5px);border-color:var(--c,var(--yellow))}
+.feat .ic{font-size:30px;margin-bottom:10px}
+.feat h3{font-family:'Syne',sans-serif;font-weight:800;font-size:18px;margin-bottom:5px}
+.feat p{font-size:14px;color:#c9bdcc}
+
+/* DEMO / VIDEO */
+#demo{background:linear-gradient(180deg,#1a1322,#150e1c)}
+.screen{position:relative;margin:46px auto 0;width:100%;max-width:1000px;
+  border-radius:20px;overflow:hidden;border:3px solid #ffffff1a;
+  box-shadow:0 30px 70px #000a,0 0 0 6px #0d0913,0 0 0 8px #ffffff10;background:#0b0810}
+.screen::before{content:'';position:absolute;inset:0;z-index:3;pointer-events:none;
+  box-shadow:inset 0 0 90px #0009}
+.screen video,.screen iframe{display:block;width:100%;aspect-ratio:16/9;border:0;background:#0b0810}
+.screen .novideo{display:flex;align-items:center;justify-content:center;aspect-ratio:16/9;
+  flex-direction:column;gap:14px;background:url('img/sfondomondo1.png') center/cover;color:#fff;text-align:center;padding:20px}
+.screen .novideo .b{font-family:'Syne';font-weight:800;font-size:clamp(18px,3vw,26px)}
+.demo-tabs{display:flex;gap:10px;justify-content:center;margin-top:34px;flex-wrap:wrap}
+.demo-tab{font-family:'Syne',sans-serif;font-weight:800;font-size:14px;letter-spacing:.5px;
+  padding:11px 22px;border-radius:999px;cursor:pointer;background:#241a2c;color:#cdbfc9;
+  border:1.5px solid #ffffff1a;transition:.15s}
+.demo-tab.on{background:var(--yellow);color:#2a1020;border-color:var(--yellow)}
+.demo-hint{margin-top:16px;font-size:14px;color:#b9adbf}
+
+/* EROI */
+#eroi{background:radial-gradient(110% 70% at 50% 0%,#2a1626,transparent 60%),linear-gradient(180deg,#150e1c,#1a1322)}
+.heroes{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;margin-top:46px;width:100%}
+@media(max-width:860px){.heroes{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:460px){.heroes{grid-template-columns:1fr}}
+.hcard{background:linear-gradient(180deg,#352741,#241a2e);border:2px solid #4a3850;
+  border-radius:18px;padding:16px 14px 20px;text-align:center;position:relative;overflow:hidden;
+  transition:transform .18s,border-color .18s,box-shadow .18s}
+.hcard::before{content:'';position:absolute;top:0;left:0;right:0;height:5px;background:var(--c)}
+.hcard:hover{transform:translateY(-7px);border-color:var(--c);
+  box-shadow:0 18px 38px #000b,0 0 0 2px var(--c)}
+.hcard .av{width:100%;aspect-ratio:1;border-radius:14px;object-fit:contain;
+  background:radial-gradient(circle at 50% 30%,#ffffff14,#1c1426);margin-bottom:12px}
+.hcard .nm{font-family:'Syne',sans-serif;font-weight:800;font-size:22px}
+.hcard .rl{font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--c);font-weight:700;margin-top:2px}
+.hcard .pw{display:inline-block;font-family:'Syne',sans-serif;font-weight:800;font-size:11px;
+  background:var(--c);color:#1a1020;border-radius:7px;padding:4px 10px;margin:11px 0 9px}
+.hcard .ab{font-size:13px;color:#d2c6d6;font-style:italic;line-height:1.4}
+
+/* MOSTRI */
+#mostri{background:linear-gradient(180deg,#1a1322,#120c18)}
+.boss-final{display:flex;align-items:center;gap:clamp(20px,4vw,50px);margin-top:46px;
+  background:linear-gradient(110deg,#0e1726,#1a1230);border:2px solid #2f4a63;
+  border-radius:22px;padding:clamp(22px,4vw,40px);box-shadow:0 24px 60px #000a;flex-wrap:wrap}
+.boss-final img{width:clamp(120px,20vw,210px);filter:drop-shadow(0 0 30px #3aa0d655)}
+.boss-final .bf-txt{flex:1;min-width:240px}
+.boss-final .bf-tag{font-family:'Syne';font-weight:800;letter-spacing:3px;font-size:12px;
+  text-transform:uppercase;color:var(--cold)}
+.boss-final h3{font-family:'Syne',sans-serif;font-weight:800;font-size:clamp(26px,4vw,40px);margin:6px 0 10px}
+.boss-final p{color:#c8d4de;max-width:560px}
+.villains{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:16px;margin-top:18px;width:100%}
+.villain{background:#1c1626;border:1.5px solid #ffffff12;border-radius:16px;padding:18px 14px;
+  text-align:center;transition:transform .18s,border-color .18s}
+.villain:hover{transform:translateY(-6px) rotate(-1deg);border-color:var(--cold)}
+.villain img{height:96px;margin:0 auto 12px;object-fit:contain;filter:drop-shadow(0 6px 10px #0008)}
+.villain .vn{font-family:'Syne',sans-serif;font-weight:800;font-size:16px}
+.villain .vw{font-size:11px;letter-spacing:.5px;text-transform:uppercase;color:var(--cold);font-weight:700;margin:3px 0 6px}
+.villain .vd{font-size:12.5px;color:#bdb2c2;line-height:1.4}
+.minions{display:flex;flex-wrap:wrap;gap:14px;justify-content:center;margin-top:26px;width:100%}
+.minion{display:flex;align-items:center;gap:10px;background:#1c1626;border:1.5px solid #ffffff12;
+  border-radius:999px;padding:8px 18px 8px 8px;font-size:13.5px}
+.minion img{height:42px;width:42px;object-fit:contain}
+.minion b{font-family:'Syne';font-weight:800}
+
+/* VISION YAC */
+#vision{background:
+  radial-gradient(120% 80% at 80% 0%,#3a261f 0%,transparent 55%),
+  radial-gradient(100% 70% at 10% 100%,#2a1626 0%,transparent 55%),
+  linear-gradient(180deg,#120c18,#1a1322)}
+.vision-grid{display:grid;grid-template-columns:1.2fr .8fr;gap:clamp(28px,5vw,64px);align-items:center}
+@media(max-width:820px){.vision-grid{grid-template-columns:1fr;text-align:center}}
+.vision-grid .mascot{position:relative}
+.vision-grid .mascot img{width:min(340px,80%);margin:0 auto;
+  filter:drop-shadow(0 20px 40px #0009);animation:bobm 4s ease-in-out infinite}
+@keyframes bobm{50%{transform:translateY(-14px)}}
+.vision-points{list-style:none;margin-top:24px;display:flex;flex-direction:column;gap:16px}
+.vision-points li{display:flex;gap:14px;align-items:flex-start;text-align:left}
+.vision-points .vp-ic{flex:none;width:42px;height:42px;border-radius:12px;display:grid;place-items:center;
+  font-size:20px;background:linear-gradient(180deg,#F2C53D,#F2994A);color:#2a1020}
+.vision-points h4{font-family:'Syne',sans-serif;font-weight:800;font-size:17px;margin-bottom:2px}
+.vision-points p{font-size:14px;color:#cabfce}
+.btm{display:inline-block;margin-top:30px;font-family:'Syne',sans-serif;font-weight:800;
+  font-size:clamp(20px,3vw,30px);color:#fff}
+.btm .gold{background:linear-gradient(90deg,#FFE07A,#F2994A);-webkit-background-clip:text;
+  background-clip:text;-webkit-text-fill-color:transparent}
+
+/* CTA STORE */
+#store{position:relative;overflow:hidden;text-align:center;
+  background:linear-gradient(180deg,#1a1322,#2a1626)}
+#store .glow{position:absolute;width:700px;height:700px;border-radius:50%;top:-340px;left:50%;
+  transform:translateX(-50%);background:radial-gradient(circle,#F2994A44,transparent 65%);filter:blur(20px)}
+#store .wrap{position:relative;z-index:2;display:flex;flex-direction:column;align-items:center}
+#store .coins{display:flex;gap:8px;margin-bottom:18px}
+#store .coins img{width:30px;animation:spin 2.4s ease-in-out infinite}
+#store .coins img:nth-child(2){animation-delay:.2s}#store .coins img:nth-child(3){animation-delay:.4s}
+@keyframes spin{50%{transform:scaleX(-1) translateY(-8px)}}
+#store p.lead{max-width:560px;color:#e6dbe9;font-size:clamp(15px,2vw,18px);margin:8px 0 4px}
+
+/* FOOTER */
+footer{background:#0d0913;padding:40px 0;text-align:center;color:#9b8fa6;font-size:13px}
+footer .frow{display:flex;gap:22px;justify-content:center;flex-wrap:wrap;margin-bottom:16px}
+footer a:hover{color:var(--yellow)}
+footer img{height:22px;margin:0 auto 14px;opacity:.9}
+
+/* SCROLL REVEAL */
+.rv{opacity:0;transform:translateY(34px);transition:opacity .7s ease,transform .7s ease}
+.rv.in{opacity:1;transform:none}
+.rv.d1{transition-delay:.08s}.rv.d2{transition-delay:.16s}.rv.d3{transition-delay:.24s}.rv.d4{transition-delay:.32s}
+@media(prefers-reduced-motion:reduce){
+  .rv{opacity:1;transform:none}.hero-runner,.drop,.scrollcue,#store .coins img,.vision-grid .mascot img{animation:none}
+}
+</style>
+</head>
+<body>
+
+<!-- ====== NAV ====== -->
+<nav id="nav">
+  <div class="wrap">
+    <a class="nav-logo" href="#top"><img src="img/logo_yac.png" alt="YAC"> SUPER YAC WORLD</a>
+    <div class="nav-links">
+      <a href="#manifesto">Il messaggio</a>
+      <a href="#demo">Il gioco</a>
+      <a href="#eroi">Eroi</a>
+      <a href="#mostri">Nemici</a>
+      <a href="#vision">Vision YAC</a>
+      <a class="btn nav-play" href="https://www.superyacworld.it" target="_blank" rel="noopener">▶ GIOCA</a>
+    </div>
+  </div>
+</nav>
+
+<!-- ====== HERO ====== -->
+<header class="hero" id="top">
+  <div class="hero-bg" id="heroBg"></div>
+  <div id="drops"></div>
+  <img class="hero-runner" src="img/char_memento.png" alt="">
+  <div class="wrap">
+    <img class="hero-logo" src="img/logo_yac.png" alt="YAC">
+    <div>
+      <span class="t-super">SUPER</span>
+      <span class="t-main block-title">YAC&nbsp;WORLD</span>
+    </div>
+    <p class="hero-tag">Spezza le catene. <b>Break the Mold.</b></p>
+    <p class="hero-sub">Le multinazionali della bellezza di massa hanno occupato i saloni e vogliono tutti
+      uguali, pettinati allo stesso modo. Corri, salta, schiaccia i loro mostri e libera il tuo mondo.</p>
+    <div class="hero-cta">
+      <a class="btn" href="https://www.superyacworld.it" target="_blank" rel="noopener">▶ GIOCA ORA — GRATIS</a>
+      <a class="btn ghost" href="#demo">Guarda com'è il gioco</a>
+    </div>
+  </div>
+  <div class="scrollcue">▼ scopri</div>
+</header>
+
+<!-- ====== MANIFESTO ====== -->
+<section id="manifesto" class="pad">
+  <div class="wrap center">
+    <p class="kicker rv">Il messaggio</p>
+    <p class="manifesto-quote rv d1">La bellezza non nasce in <span class="hl">catena di montaggio</span>.
+      Non si ripete identica. <span class="hl">Si libera.</span></p>
+    <p class="manifesto-body rv d2">In Super Yac World non combatti un concorrente: combatti <b>il sistema</b>.
+      Una macchina senza volto che si è presa il volto di tutti, che trasforma ogni salone in un negozio
+      uguale all'altro. Mondo dopo mondo, sconfiggi i marchi-mostri e riporti i saloni a essere veri
+      <b>YAC Salon</b>: caldi, umani, diversi.</p>
+
+    <div class="beforeafter">
+      <div class="ba-card cold rv d1">
+        <img src="img/salon_corp.png" alt="Salone occupato dalla multinazionale">
+        <span class="lbl"><span class="tagk">Prima</span>Occupato dalla multinazionale</span>
+      </div>
+      <div class="ba-arrow rv d2">➜</div>
+      <div class="ba-card warm rv d3">
+        <img src="img/saloneyac.png" alt="YAC Salon liberato">
+        <span class="lbl"><span class="tagk">Dopo</span>Liberato — è uno YAC Salon</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ====== FEATURES / COME SI GIOCA ====== -->
+<section class="pad">
+  <div class="wrap center">
+    <p class="kicker rv">Come si gioca</p>
+    <h2 class="sec rv d1 block-title">Un platform, sei mondi, una rivoluzione</h2>
+    <p class="sec-lead rv d2">Stile Super Mario, anima YAC. Corri, salta, raccogli Gocce d'Oro e
+      sconfiggi i boss alla fine di ogni mondo.</p>
+    <div class="feat-grid">
+      <div class="feat rv" style="--c:var(--peach)"><div class="ic">🏃</div><h3>Corri & salta</h3><p>Platform 2D classico: corsa, salto variabile, nemici da schiacciare e tubi da esplorare.</p></div>
+      <div class="feat rv d1" style="--c:var(--magenta)"><div class="ic">🦸</div><h3>4 eroi YAC</h3><p>Cambia personaggio al volo: ognuno ha un'abilità speciale diversa.</p></div>
+      <div class="feat rv d2" style="--c:var(--yellow)"><div class="ic">🌍</div><h3>6 mondi × 3 livelli</h3><p>Dalla Catena di Montaggio alla Big Beauty Tower, fino allo scontro col Conglomerato.</p></div>
+      <div class="feat rv d3" style="--c:var(--gold)"><div class="ic">💧</div><h3>Gocce d'Oro</h3><p>Le "monete" YAC: raccoglile, fai punti e guadagna vite extra.</p></div>
+      <div class="feat rv" style="--c:var(--rose)"><div class="ic">🎮</div><h3>Ovunque</h3><p>Tastiera, touch su mobile, gamepad PlayStation/Xbox e anche su TV a schermo intero.</p></div>
+      <div class="feat rv d1" style="--c:var(--green)"><div class="ic">🏆</div><h3>Classifica</h3><p>Scala la classifica globale e sfida tutta la community.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ====== DEMO / VIDEO ====== -->
+<section id="demo" class="pad">
+  <div class="wrap center">
+    <p class="kicker rv">Guarda com'è il gioco</p>
+    <h2 class="sec rv d1 block-title">Trailer & demo giocabile</h2>
+    <p class="sec-lead rv d2">Guarda il trailer, poi prova il gioco vero — qui sotto, senza scaricare niente.</p>
+
+    <div class="demo-tabs rv d2">
+      <button class="demo-tab on" data-view="video">🎬 Trailer</button>
+      <button class="demo-tab" data-view="play">🕹️ Gioca live</button>
+    </div>
+
+    <div class="screen rv d3">
+      <!-- TRAILER (ospitato su CDN; se non disponibile, scatta il fallback giocabile qui sotto) -->
+      <video id="trailer" poster="img/bg_m6_plaza.png" autoplay muted loop playsinline preload="metadata">
+        <source src="https://d8j0ntlcm91z4.cloudfront.net/user_36ZSveINDqXTgJuyp7Hm7JqtnJF/hf_20260603_090432_6d39d7a6-fd12-4261-8d25-ad021e77929b.mp4" type="video/mp4">
+      </video>
+      <!-- LIVE GAME (lazy: src impostato al click) -->
+      <iframe id="liveframe" title="Super Yac World — gioca live"
+        loading="lazy" allow="fullscreen; gamepad; autoplay"
+        style="display:none" data-src="https://www.superyacworld.it"></iframe>
+    </div>
+    <p class="demo-hint rv">🎬 Trailer in riproduzione · premi <b>🕹️ Gioca live</b> per provarlo qui,
+      oppure <a href="https://www.superyacworld.it" target="_blank" rel="noopener" style="color:var(--yellow);font-weight:700">aprilo a schermo intero ↗</a></p>
+  </div>
+</section>
+
+<!-- ====== EROI ====== -->
+<section id="eroi" class="pad">
+  <div class="wrap center">
+    <p class="kicker rv">Gli ambasciatori del brand</p>
+    <h2 class="sec rv d1 block-title">Scegli il tuo eroe</h2>
+    <p class="sec-lead rv d2">Quattro personaggi, quattro abilità. Sono YAC: grinta, energia e una visione fresca del mestiere.</p>
+    <div class="heroes">
+      <div class="hcard rv" style="--c:var(--magenta)">
+        <img class="av" src="img/Memento_card.png" alt="Memento">
+        <div class="nm">Memento</div><div class="rl">La voce</div>
+        <span class="pw">Colpo Viral</span>
+        <p class="ab">"Quando parla, il mondo ascolta." Stordisce più nemici ad area.</p>
+      </div>
+      <div class="hcard rv d1" style="--c:var(--green)">
+        <img class="av" src="img/Yuri_card.png" alt="Yuri">
+        <div class="nm">Yuri</div><div class="rl">La creatività</div>
+        <span class="pw">Doppio salto + Dash</span>
+        <p class="ab">"Dove gli altri vedono un muro, vede una tela." Il più agile, lascia una scia di colore.</p>
+      </div>
+      <div class="hcard rv d2" style="--c:var(--cold)">
+        <img class="av" src="img/carmine_card.png" alt="Carmine">
+        <div class="nm">Carmine</div><div class="rl">La solidità</div>
+        <span class="pw">Scudo</span>
+        <p class="ab">"Regge i colpi perché ci tiene." Para i danni e sfonda gli ostacoli.</p>
+      </div>
+      <div class="hcard rv d3" style="--c:var(--peach)">
+        <img class="av" src="img/andrea_card.png" alt="Andrea">
+        <div class="nm">Andrea</div><div class="rl">Il tempo</div>
+        <span class="pw">Regia</span>
+        <p class="ab">"Quando serve, ferma tutto e detta il ritmo." Rallenta il tempo.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ====== MOSTRI ====== -->
+<section id="mostri" class="pad">
+  <div class="wrap center">
+    <p class="kicker rv">I nemici da battere</p>
+    <h2 class="sec rv d1 block-title">Le multinazionali (e i loro mostri)</h2>
+    <p class="sec-lead rv d2">Ogni boss è un marchio-parodia della bellezza di massa. Alla fine scopri che
+      un solo sistema li possiede tutti.</p>
+
+    <div class="boss-final rv d1">
+      <img src="img/boss_conglomerate.png" alt="The Conglomerate">
+      <div class="bf-txt">
+        <span class="bf-tag">Boss finale · 3 fasi</span>
+        <h3>The Conglomerate</h3>
+        <p>La macchina senza volto che possiede tutti i marchi. Non è un cattivo: è il sistema che ci
+          vuole tutti uguali, in fila, pettinati allo stesso modo. Spezzalo — e libera tutti.</p>
+      </div>
+    </div>
+
+    <div class="villains">
+      <div class="villain rv"><img src="img/boss.png" alt="MegaGloss"><div class="vn">MegaGloss</div><div class="vw">La Catena di Montaggio</div><p class="vd">Lucida tutto, soffoca tutto. Il primo a sbarrarti la strada.</p></div>
+      <div class="villain rv d1"><img src="img/boss_boxking.png" alt="BoxKing"><div class="vn">BoxKing</div><div class="vw">Il Magazzino</div><p class="vd">Re degli scatoloni: ti seppellisce sotto la merce in serie.</p></div>
+      <div class="villain rv d2"><img src="img/boss_viralcorp.png" alt="ViralCorp"><div class="vn">ViralCorp</div><div class="vw">Reparto Marketing</div><p class="vd">Spam, like finti e volantini a raffica. Tutta apparenza.</p></div>
+      <div class="villain rv d3"><img src="img/boss_toxilab.png" alt="ToxiLab"><div class="vn">ToxiLab</div><div class="vw">Laboratorio Chimico</div><p class="vd">Chimica tossica spacciata per bellezza. Il pavimento brucia.</p></div>
+      <div class="villain rv"><img src="img/boss_unibeauty.png" alt="Unibeauty"><div class="vn">Unibeauty</div><div class="vw">La Borsa / Direzione</div><p class="vd">Vuole essere "l'unico" e rendere tutti identici. Il più veloce.</p></div>
+    </div>
+
+    <div class="minions">
+      <div class="minion rv"><img src="img/enemy_promoter.png" alt=""><span>Il <b>Promoter</b> virale</span></div>
+      <div class="minion rv d1"><img src="img/enemy_spraybill.png" alt=""><span><b>Spruzzabot</b></span></div>
+      <div class="minion rv d2"><img src="img/enemy_goccia_corrosiva.png" alt=""><span><b>Goccia corrosiva</b></span></div>
+      <div class="minion rv d3"><img src="img/enemy_bolletta_bill.png" alt=""><span><b>Bolletta</b> esplosiva</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ====== VISION YAC ====== -->
+<section id="vision" class="pad">
+  <div class="wrap">
+    <div class="vision-grid">
+      <div>
+        <p class="kicker rv">La vision YAC</p>
+        <h2 class="sec rv d1 block-title">Da parrucchieri, per parrucchieri</h2>
+        <p class="sec-lead rv d2">YAC nasce da chi sta <b>dietro</b> la sedia — non davanti a un foglio di
+          calcolo. Grinta, energia e un'idea fresca di cosa può essere questo mestiere.</p>
+        <ul class="vision-points">
+          <li class="rv d1"><span class="vp-ic">⛓️‍💥</span><div><h4>Spezziamo le catene</h4><p>Non seguiamo la moda della produzione di massa. La rompiamo.</p></div></li>
+          <li class="rv d2"><span class="vp-ic">🤝</span><div><h4>Costruiamo una community</h4><p>Non parliamo a una folla: facciamo squadra con chi ama il mestiere.</p></div></li>
+          <li class="rv d3"><span class="vp-ic">✨</span><div><h4>La bellezza è umana</h4><p>Dove c'era una macchina, ora c'è una mano. Diversa, vera, libera.</p></div></li>
+        </ul>
+        <span class="btm rv d4">YAC — <span class="gold">Break the Mold.</span></span>
+      </div>
+      <div class="mascot rv d2">
+        <img src="img/dino_entusiasta.png" alt="La mascotte YAC">
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ====== CTA STORE ====== -->
+<section id="store" class="pad">
+  <div class="glow"></div>
+  <div class="wrap">
+    <div class="coins"><img src="img/coin_goccia.png" alt=""><img src="img/coin_goccia.png" alt=""><img src="img/coin_goccia.png" alt=""></div>
+    <p class="kicker rv">La rivoluzione continua fuori dal gioco</p>
+    <h2 class="sec rv d1 block-title">Porta YAC nel tuo salone</h2>
+    <p class="lead rv d2">Hai liberato i saloni nel gioco. Ora scopri i prodotti e gli strumenti YAC
+      veri: tutto quello che serve per spezzare le catene anche dietro la tua sedia.</p>
+    <div class="hero-cta rv d3" style="justify-content:center;margin-top:26px">
+      <a class="btn store" href="https://www.yacstore.it" target="_blank" rel="noopener">🛒 Vai su Yacstore.it</a>
+      <a class="btn ghost" href="https://www.superyacworld.it" target="_blank" rel="noopener">▶ Rigioca</a>
+    </div>
+  </div>
+</section>
+
+<!-- ====== FOOTER ====== -->
+<footer>
+  <div class="wrap">
+    <img src="img/logo_yac.png" alt="YAC">
+    <div class="frow">
+      <a href="https://www.superyacworld.it" target="_blank" rel="noopener">Gioca</a>
+      <a href="https://www.yacstore.it" target="_blank" rel="noopener">Yacstore.it</a>
+      <a href="#manifesto">Il messaggio</a>
+      <a href="#eroi">Eroi</a>
+    </div>
+    <p>Super Yac World — un gioco Memento, una visione YAC. Spezza le catene.</p>
+    <p style="margin-top:6px;opacity:.6">© <span id="yr"></span> YAC · I marchi-nemici sono pura parodia.</p>
+  </div>
+</footer>
+
+<script>
+// anno
+document.getElementById('yr').textContent = new Date().getFullYear();
+
+// nav solid on scroll
+const nav = document.getElementById('nav');
+addEventListener('scroll', () => nav.classList.toggle('solid', scrollY > 40), {passive:true});
+
+// hero parallax
+const heroBg = document.getElementById('heroBg');
+addEventListener('scroll', () => {
+  if (scrollY < innerHeight) heroBg.style.transform = `scale(1.12) translateY(${scrollY*0.25}px)`;
+}, {passive:true});
+
+// gocce d'oro fluttuanti
+const dropsBox = document.getElementById('drops');
+for (let i=0;i<9;i++){
+  const d = document.createElement('img');
+  d.src='img/coin_goccia.png'; d.className='drop';
+  d.style.left = (5+Math.random()*90)+'%';
+  d.style.bottom = '0';
+  d.style.width = (16+Math.random()*18)+'px';
+  d.style.animationDuration = (7+Math.random()*7)+'s';
+  d.style.animationDelay = (-Math.random()*10)+'s';
+  dropsBox.appendChild(d);
+}
+
+// scroll reveal
+const io = new IntersectionObserver((es)=>{
+  es.forEach(e=>{ if(e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target);} });
+},{threshold:.12});
+document.querySelectorAll('.rv').forEach(el=>io.observe(el));
+
+// demo tabs: trailer <-> live game
+const trailer = document.getElementById('trailer');
+const frame = document.getElementById('liveframe');
+document.querySelectorAll('.demo-tab').forEach(tab=>{
+  tab.addEventListener('click', ()=>{
+    document.querySelectorAll('.demo-tab').forEach(t=>t.classList.remove('on'));
+    tab.classList.add('on');
+    const play = tab.dataset.view === 'play';
+    if (play && !frame.src) frame.src = frame.dataset.src;   // carica il gioco solo al primo click
+    frame.style.display = play ? 'block' : 'none';
+    trailer.style.display = play ? 'none' : 'block';
+    if (play) trailer.pause(); else trailer.play().catch(()=>{});
+  });
+});
+
+// se il trailer non si carica (CDN giù / file mancante), mostra fallback giocabile
+let trailerOk = false;
+const showFallback = ()=>{
+  if (trailerOk || !trailer.isConnected) return;
+  const s = trailer.closest('.screen');
+  trailer.remove();
+  const nv = document.createElement('div');
+  nv.className='novideo';
+  nv.innerHTML = '<div class="b">Il gioco è online ora 🎮</div>'+
+    '<a class="btn" href="https://www.superyacworld.it" target="_blank" rel="noopener">▶ GIOCA SU SUPERYACWORLD.IT</a>';
+  s.prepend(nv);
+};
+trailer.addEventListener('loadeddata', ()=>{ trailerOk = true; });
+trailer.addEventListener('error', showFallback, true);          // cattura anche gli errori del <source>
+setTimeout(()=>{ if (trailer.readyState < 2) showFallback(); }, 6000); // niente dati dopo 6s → fallback
+</script>
+</body>
+</html>
