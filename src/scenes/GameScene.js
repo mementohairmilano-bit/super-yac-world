@@ -1475,6 +1475,7 @@ export class GameScene extends Phaser.Scene {
   // Cambio fase: più veloce, l'arena si attiva (fase 2+), il nucleo si espone (fase 3).
   enterBossPhase(n) {
     const b = this.boss; if (!b) return; b.phase = n;
+    this.tweens.killTweensOf(b); b.setAlpha(1);   // chiude eventuali lampeggi in corso (niente boss "fantasma")
     this.popText(b.x, this.H - 188, n === 2 ? 'FASE 2 — IL SISTEMA' : 'FASE 3 — IL COLLASSO');
     this.cameras.main.flash(300, 140, 60, 200); this.cameras.main.shake(220, 0.008);
     AUDIO.sfx('phase_shift');
@@ -1609,7 +1610,11 @@ export class GameScene extends Phaser.Scene {
     AUDIO.sfx('boss_hit');                                   // colpo a segno (boss ancora vivo)
     this.bossInvuln = true;                                   // ~0.8s di invulnerabilità → 1 HP per colpo
     this.cameras.main.shake(120, 0.006);
-    this.tweens.add({ targets: b, alpha: 0.3, yoyo: true, repeat: 5, duration: 70, onComplete: () => { if (b.active) b.alpha = 1; } });
+    // lampeggio di danno. PRIMA azzero eventuali tween di alpha ancora in corso e riporto l'alpha a 1:
+    // sui boss con più HP (5/6/7/9) i colpi ravvicinati impilavano più tween di alpha e potevano
+    // lasciare il boss semitrasparente o INVISIBILE (vivo ma non si vedeva → impossibile finirlo).
+    this.tweens.killTweensOf(b); b.setAlpha(1);
+    this.tweens.add({ targets: b, alpha: 0.3, yoyo: true, repeat: 5, duration: 70, onComplete: () => { if (b.active) b.setAlpha(1); } });
     this.time.delayedCall(800, () => { this.bossInvuln = false; });
   }
 
@@ -1630,6 +1635,7 @@ export class GameScene extends Phaser.Scene {
     this.tweens.add({ targets: txt, y: 80, alpha: 0, delay: 1500, duration: 600, onComplete: () => txt.destroy() });
     if (b) {
       b.setVelocity(0, 0); if (b.body) b.body.checkCollision.none = true;
+      this.tweens.killTweensOf(b); b.setAlpha(1);   // niente lampeggio residuo che combatta col "si sbriciola"
       this.tweens.add({ targets: b, x: '+=4', yoyo: true, repeat: 9, duration: 38 });       // trema
       this.tweens.add({ targets: b, scaleY: 0.1, alpha: 0, angle: -8, delay: 400, duration: 440, onComplete: () => b.destroy() }); // si sbriciola
     }
