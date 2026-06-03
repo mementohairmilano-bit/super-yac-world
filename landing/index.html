@@ -358,8 +358,10 @@ footer img{height:22px;margin:0 auto 14px;opacity:.9}
     </div>
 
     <div class="screen rv d3">
-      <!-- TRAILER (ospitato su CDN; se non disponibile, scatta il fallback giocabile qui sotto) -->
+      <!-- TRAILER. Per cambiarlo: sostituisci il file landing/img/trailer.mp4 (stesso nome) e fai commit+push.
+           Finché trailer.mp4 non esiste, parte automaticamente la versione su CDN qui sotto. -->
       <video id="trailer" poster="img/bg_m6_plaza.png" autoplay muted loop playsinline preload="metadata">
+        <source src="img/trailer.mp4" type="video/mp4">
         <source src="https://d8j0ntlcm91z4.cloudfront.net/user_36ZSveINDqXTgJuyp7Hm7JqtnJF/hf_20260603_090432_6d39d7a6-fd12-4261-8d25-ad021e77929b.mp4" type="video/mp4">
       </video>
       <!-- LIVE GAME (lazy: src impostato al click) -->
