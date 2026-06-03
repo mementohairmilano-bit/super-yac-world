@@ -227,7 +227,10 @@ export class GameScene extends Phaser.Scene {
     const VW = Math.max(this.scale.width, 1280), VH = this.scale.height;
     this.bgSurface = this.add.tileSprite(0, 0, VW, VH, 'bg_surface')
       .setOrigin(0).setScrollFactor(0).setDepth(-10);
-    this.bgSurface.tileScaleX = this.bgSurface.tileScaleY = this.scale.height / 768;
+    // riempi l'ALTEZZA con UNA sola copia dell'immagine (niente ripetizione verticale = niente
+    // banda/scalino a metà schermo). Scala uguale su X e Y per non deformare il fondo.
+    const bgH = (this.textures.get('bg_surface').getSourceImage() || {}).height || 768;
+    this.bgSurface.tileScaleX = this.bgSurface.tileScaleY = VH / bgH;
     // dim/desaturazione/blur sono già "bakati" nell'immagine; qui aggiungo la vignette
     this.addVignette();              // bordi schermo scuri (solo sul fondo, non sul gameplay)
     // livello acqua: velo bluverde sopra tutto il gameplay per l'atmosfera sommersa
