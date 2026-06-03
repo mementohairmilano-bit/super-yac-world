@@ -25,7 +25,10 @@
     html, body { height: 100%; height: -webkit-fill-available; background: #000; font-family: 'DM Sans', sans-serif; color: var(--paper); overflow: hidden; }
     /* iOS: 100vh include l'area dietro le barre di Safari → canvas tagliato/nero.
        100dvh (viewport dinamica) usa solo l'area visibile. Fallback per Safari vecchi. */
-    #wrap { position: relative; width: 100vw; height: 100vh; height: -webkit-fill-available; height: 100dvh; display: flex; align-items: center; justify-content: center; background: #000; }
+    /* sfondo del contenitore = bande del letterbox: dark del brand (non nero) → look voluto */
+    #wrap { position: relative; width: 100vw; height: 100vh; height: -webkit-fill-available; height: 100dvh; display: flex; align-items: center; justify-content: center; background: radial-gradient(130% 130% at 50% 0%, #241629, #0c0810); }
+    /* in PWA (già a schermo intero) il tasto schermo-intero è inutile */
+    @media (display-mode: standalone) { #fsbtn { display: none; } }
     #game { width: 100%; height: 100%; position: relative; }
     canvas { display: block; margin: 0 auto; }
 
@@ -107,7 +110,7 @@
 
     /* PAUSE BUTTON (always reachable during gameplay, desktop + mobile) */
     #pausebtn {
-      position: absolute; top: 12px; right: 12px; z-index: 24;
+      position: absolute; top: calc(12px + env(safe-area-inset-top)); right: calc(12px + env(safe-area-inset-right)); z-index: 24;
       width: 40px; height: 40px; border-radius: 50%;
       background: #16121Acc; border: 1.5px solid #ffffff44; color: var(--paper);
       font-size: 15px; line-height: 1; display: flex; align-items: center; justify-content: center;
@@ -119,7 +122,7 @@
 
     /* MUTE BUTTON (sempre raggiungibile: menu + gioco, sopra gli overlay) */
     #mutebtn {
-      position: absolute; top: 12px; right: 60px; z-index: 60;
+      position: absolute; top: calc(12px + env(safe-area-inset-top)); right: calc(60px + env(safe-area-inset-right)); z-index: 60;
       width: 40px; height: 40px; border-radius: 50%;
       background: #16121Acc; border: 1.5px solid #ffffff44; color: var(--paper);
       font-size: 16px; line-height: 1; display: flex; align-items: center; justify-content: center;
@@ -130,7 +133,7 @@
 
     /* FULLSCREEN BUTTON (TV): tasto F o questo bottone */
     #fsbtn {
-      position: absolute; top: 12px; right: 108px; z-index: 60;
+      position: absolute; top: calc(12px + env(safe-area-inset-top)); right: calc(108px + env(safe-area-inset-right)); z-index: 60;
       width: 40px; height: 40px; border-radius: 50%;
       background: #16121Acc; border: 1.5px solid #ffffff44; color: var(--paper);
       font-size: 17px; line-height: 1; display: flex; align-items: center; justify-content: center;
