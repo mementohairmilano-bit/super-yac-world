@@ -1762,6 +1762,8 @@ export class GameScene extends Phaser.Scene {
     if (opts.leaderboard) window._runResult = { score: getBest(), world: state.worldId };
     if (window._gameShowBoardBtn) window._gameShowBoardBtn(!!opts.leaderboard);
     document.getElementById('win').classList.remove('hidden');
+    // fine del gioco (card finale): proponi da solo il salvataggio in classifica
+    if (opts.leaderboard) setTimeout(() => { if (window._promptSaveScore) window._promptSaveScore(); }, 700);
   }
 
   // ===================== SEQUENZA FINALE — la chiusura (Beat 7) =====================
@@ -1947,6 +1949,8 @@ export class GameScene extends Phaser.Scene {
     AUDIO.playMusic('game_over');   // one-shot (non in loop)
     this.scene.pause();
     document.getElementById('over').classList.remove('hidden');
+    // dopo un attimo (così si vede la card "Game Over") proponi subito il salvataggio in classifica
+    setTimeout(() => { if (window._promptSaveScore) window._promptSaveScore(); }, 700);
   }
 
   enterPipe() {

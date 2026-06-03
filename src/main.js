@@ -216,6 +216,9 @@ document.getElementById('btn-board-win').addEventListener('click', () => openBoa
 document.getElementById('btn-board-close').addEventListener('click', closeBoard);
 // esposto alla GameScene per mostrare il pulsante "Classifica" sulla card del finale
 window._gameShowBoardBtn = (show) => document.getElementById('btn-board-win').classList.toggle('hidden', !show);
+// esposto alla GameScene: a fine partita apre da solo il form di salvataggio (col nome già a fuoco),
+// così il giocatore non deve cercare il pulsante. Non fa nulla se non c'è un punteggio da inviare.
+window._promptSaveScore = () => { if (window._runResult && boardEl.classList.contains('hidden')) openBoard(true); };
 
 // ===== Blocco zoom/pan accidentale con due dita (iOS Safari ignora user-scalable=no) =====
 // Niente più "lo schermo si ingrandisce/sposta" toccando con due dita. La PWA installata
