@@ -358,9 +358,11 @@ footer img{height:22px;margin:0 auto 14px;opacity:.9}
     </div>
 
     <div class="screen rv d3">
-      <!-- TRAILER (ospitato su CDN; se non disponibile, scatta il fallback giocabile qui sotto) -->
-      <video id="trailer" poster="img/bg_m6_plaza.png" autoplay muted loop playsinline preload="metadata">
-        <source src="https://d8j0ntlcm91z4.cloudfront.net/user_36ZSveINDqXTgJuyp7Hm7JqtnJF/hf_20260603_090432_6d39d7a6-fd12-4261-8d25-ad021e77929b.mp4" type="video/mp4">
+      <!-- TRAILER. Per cambiarlo: sostituisci il file landing/img/trailer.mp4 (stesso nome) e fai commit+push.
+           Finché trailer.mp4 non esiste, parte automaticamente la versione su CDN qui sotto. -->
+      <video id="trailer" poster="https://d8j0ntlcm91z4.cloudfront.net/user_36ZSveINDqXTgJuyp7Hm7JqtnJF/hf_20260603_104326_9a8e0c7e-8de5-464b-9172-2a77d5b01640.jpeg" autoplay muted loop playsinline preload="metadata">
+        <source src="img/trailer.mp4" type="video/mp4">
+        <source src="https://d8j0ntlcm91z4.cloudfront.net/user_36ZSveINDqXTgJuyp7Hm7JqtnJF/hf_20260603_104647_e140aa71-4a2d-4d0f-9fc4-b56ce09fadff.mp4" type="video/mp4">
       </video>
       <!-- LIVE GAME (lazy: src impostato al click) -->
       <iframe id="liveframe" title="Super Yac World — gioca live"
