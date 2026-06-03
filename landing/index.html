@@ -265,6 +265,33 @@ footer img{height:22px;margin:0 auto 14px;opacity:.9}
 @media(prefers-reduced-motion:reduce){
   .rv{opacity:1;transform:none}.hero-runner,.drop,.scrollcue,#store .coins img,.vision-grid .mascot img{animation:none}
 }
+
+/* ===== Aggiustamenti MOBILE ===== */
+@media(max-width:600px){
+  .hero{padding-top:96px;min-height:auto;padding-bottom:64px}
+  .t-super{letter-spacing:6px}
+  /* il titolo va a capo (YAC / WORLD) e non sfora più ai lati */
+  .t-main{font-size:clamp(38px,13.5vw,72px);letter-spacing:-1px;line-height:.9}
+  .hero-sub{font-size:15px}
+  .hero-cta{width:100%}
+  .hero-cta .btn{width:100%;justify-content:center}
+  /* lo sprite che corre copriva testo/▼ SCOPRI su mobile: lo togliamo */
+  .hero-runner{display:none}
+  .scrollcue{display:none}
+  /* meno gocce invadenti */
+  .drop{opacity:.7}
+}
+
+/* Pulsante musica */
+#musicbtn{position:fixed;z-index:90;right:16px;bottom:calc(16px + env(safe-area-inset-bottom));
+  display:inline-flex;align-items:center;gap:6px;font-family:'Syne',sans-serif;font-weight:800;
+  font-size:13px;letter-spacing:.3px;color:var(--paper);
+  background:#241a2cd9;border:1.5px solid #ffffff22;border-radius:999px;padding:10px 16px;
+  cursor:pointer;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
+  box-shadow:0 8px 22px #0008;transition:transform .15s,border-color .15s,background .15s}
+#musicbtn:hover{transform:translateY(-2px);border-color:var(--yellow)}
+#musicbtn.on{background:linear-gradient(180deg,#FFD95C,#F2994A);color:#2a1020;border-color:#c9a227}
+@media(max-width:600px){#musicbtn{font-size:12px;padding:9px 13px}#musiclbl{display:none}}
 </style>
 </head>
 <body>
@@ -293,7 +320,7 @@ footer img{height:22px;margin:0 auto 14px;opacity:.9}
     <img class="hero-logo" src="img/logo_yac.png" alt="YAC">
     <div>
       <span class="t-super">SUPER</span>
-      <span class="t-main block-title">YAC&nbsp;WORLD</span>
+      <span class="t-main block-title">YAC WORLD</span>
     </div>
     <p class="hero-tag">Spezza le catene. <b>Break the Mold.</b></p>
     <p class="hero-sub">Le multinazionali della bellezza di massa hanno occupato i saloni e vogliono tutti
@@ -502,9 +529,66 @@ footer img{height:22px;margin:0 auto 14px;opacity:.9}
   </div>
 </footer>
 
+<!-- Pulsante musica chiptune (spento di default) -->
+<button id="musicbtn" aria-label="Attiva musica" title="Musica di gioco">🎵 <span id="musiclbl">Musica</span></button>
+
 <script>
 // anno
 document.getElementById('yr').textContent = new Date().getFullYear();
+
+// ===== Chiptune di sottofondo (Web Audio, generata: nessun file) =====
+const Music = (() => {
+  let ctx, master, filter, timer, playing = false, step = 0, nextTime = 0;
+  const bpm = 132, stepDur = 60 / bpm / 2; // crome
+  const N = { C3:130.81,D3:146.83,E3:164.81,F3:174.61,G3:196.00,A3:220.00,B3:246.94,
+              C4:261.63,D4:293.66,E4:329.63,F4:349.23,G4:392.00,A4:440.00,B4:493.88,
+              C5:523.25,D5:587.33,E5:659.25,F5:698.46,G5:783.99,A5:880.00 };
+  // melodia su giro I–V–vi–IV (C–G–Am–F), 8 step per accordo
+  const lead = ['C5','E5','G5','E5','C5','E5','G5',0,
+                'B4','D5','G5','D5','B4','D5','G5',0,
+                'A4','C5','E5','C5','A4','C5','E5',0,
+                'A4','C5','F5','C5','A4','C5','F5',0];
+  const chords = ['C3','G3','A3','F3'];
+  const fifth  = { C3:'G3', G3:'D4', A3:'E4', F3:'C4' };
+  function note(freq, t, dur, type, vol) {
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = type; o.frequency.value = freq;
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.linearRampToValueAtTime(vol, t + 0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g).connect(filter); o.start(t); o.stop(t + dur + 0.03);
+  }
+  function tick() {
+    while (nextTime < ctx.currentTime + 0.12) {
+      const lf = lead[step % 32];
+      const root = chords[Math.floor(step / 8) % 4];
+      if (lf) note(N[lf], nextTime, stepDur * 0.9, 'square', 0.05);      // lead
+      if (step % 4 === 0) note(N[root], nextTime, stepDur * 1.7, 'triangle', 0.13); // basso
+      if (step % 8 === 4) note(N[fifth[root]], nextTime, stepDur * 1.2, 'triangle', 0.08); // quinta
+      step++; nextTime += stepDur;
+    }
+    timer = setTimeout(tick, 25);
+  }
+  return {
+    toggle() {
+      if (playing) { playing = false; clearTimeout(timer); if (master) master.gain.value = 0; return false; }
+      if (!ctx) {
+        ctx = new (window.AudioContext || window.webkitAudioContext)();
+        filter = ctx.createBiquadFilter(); filter.type = 'lowpass'; filter.frequency.value = 2200;
+        master = ctx.createGain(); filter.connect(master); master.connect(ctx.destination);
+      }
+      ctx.resume(); master.gain.value = 0.5; playing = true;
+      nextTime = ctx.currentTime + 0.08; tick(); return true;
+    }
+  };
+})();
+const musicbtn = document.getElementById('musicbtn');
+musicbtn.addEventListener('click', () => {
+  const on = Music.toggle();
+  musicbtn.classList.toggle('on', on);
+  document.getElementById('musiclbl').textContent = on ? 'Musica ON' : 'Musica';
+  musicbtn.firstChild.textContent = on ? '🔊 ' : '🎵 ';
+});
 
 // nav solid on scroll
 const nav = document.getElementById('nav');
