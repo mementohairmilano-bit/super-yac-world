@@ -14,11 +14,11 @@ export class GameScene extends Phaser.Scene {
 
   preload() {
     const L = this.level, S = L.sprites;
-    this.load.image('yaclogo', './assets/logo_yac.png');
+    this.load.image('yaclogo', './assets/logo_yac.webp');
     // Sfondi del mondo corrente (già attenuati: luminosità/saturazione -20/22% + micro-blur)
     this.load.image('bg_surface', L.bg.surface);
     if (L.bg.under) this.load.image('bg_under', L.bg.under);
-    this.load.image('groundtile', './assets/ground_tile.png'); // pavimento ripetibile
+    this.load.image('groundtile', './assets/ground_tile.webp'); // pavimento ripetibile
     // Sprite del mondo (sfondo già reso trasparente)
     this.load.image('enemy', S.enemy);            // nemico base (goomba)
     this.load.image('koopa', S.koopa);            // nemico a guscio (koopa)
@@ -38,7 +38,7 @@ export class GameScene extends Phaser.Scene {
     this.load.image('coin', S.coin);              // Goccia d'Oro (moneta)
     this.load.image('pipe', S.pipe);              // tubo entrabile
     this.load.image('flagpole', S.flagpole);      // pennone fine livello
-    this.load.image('gateimg', './assets/gate.png');   // saracinesca del boss
+    this.load.image('gateimg', './assets/gate.webp');   // saracinesca del boss
     if (L.boss) {
       this.load.image('glossshot', L.boss.shot);  // proiettile del boss
       this.load.image('bossmain', L.boss.sprite); // sprite del boss del mondo
@@ -48,10 +48,10 @@ export class GameScene extends Phaser.Scene {
       this.load.image('salon_yac', L.salone.yac);   // salone liberato (dopo)
     }
     // Eroi in VISTA LATERALE (sprite del giocatore)
-    this.load.image('hero_memento', './assets/char_memento.png');
-    this.load.image('hero_yuri', './assets/char_yuri.png');
-    this.load.image('hero_carmine', './assets/char_carmine.png');
-    this.load.image('hero_andrea', './assets/char_andrea.png');
+    this.load.image('hero_memento', './assets/char_memento.webp');
+    this.load.image('hero_yuri', './assets/char_yuri.webp');
+    this.load.image('hero_carmine', './assets/char_carmine.webp');
+    this.load.image('hero_andrea', './assets/char_andrea.webp');
   }
 
   create() {
@@ -98,7 +98,7 @@ export class GameScene extends Phaser.Scene {
 
     g = G(); g.fillStyle(0xffffff, 1).fillRect(0, 0, 16, 16);
     g.generateTexture('px', 16, 16); g.destroy();
-    // 'groundtile' = immagine reale (assets/ground_tile.png) caricata in preload()
+    // 'groundtile' = immagine reale (assets/ground_tile.webp) caricata in preload()
 
     // --- Nastro trasportatore (tile ripetibile con galloni vivaci) ---
     g = G();
@@ -1935,7 +1935,9 @@ export class GameScene extends Phaser.Scene {
     const cols = [PAL.yellow, PAL.peach, PAL.rose, PAL.magenta, 0x6cf24a, 0x2bd6ff];
     const col = cols[Phaser.Math.Between(0, cols.length - 1)];
     const col2 = cols[Phaser.Math.Between(0, cols.length - 1)];
-    const n = 28, r = Phaser.Math.Between(80, 120);
+    // scintille: meno di prima (28) e ADATTIVE — se gli fps calano (telefoni più lenti) ne disegno
+    // ancora meno, così la salva di fuochi a fine livello non causa scatti.
+    const n = (this.game.loop.actualFps < 50 ? 10 : 18), r = Phaser.Math.Between(80, 120);
     // flash centrale grande
     const flash = this.add.circle(x, y, 16, 0xffffff, 0.95).setDepth(9);
     this.tweens.add({ targets: flash, alpha: 0, scale: 3.2, duration: 320, onComplete: () => flash.destroy() });

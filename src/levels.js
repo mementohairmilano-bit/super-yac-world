@@ -9,16 +9,16 @@ const A = './assets/';
 
 // Set di sprite di default (Mondo 1). I mondi successivi sovrascrivono solo ciò che cambia.
 const SPRITES_DEFAULT = {
-  enemy:      A + 'soldato.png',      // nemico base (goomba)
-  koopa:      A + 'koopa.png',        // nemico a guscio (koopa)
-  shell:      A + 'gusciokoopa.png',  // guscio dopo lo stomp
-  brick:      A + 'blocco.png',       // mattone/solido
-  qblock:     A + 'puntodomanda.png', // blocco "?"
-  blockempty: A + 'block_empty.png',  // blocco "?" esaurito
-  mush:       A + 'yes.png',          // Boccetta YAC (power-up)
-  coin:       A + 'coin_goccia.png',  // Goccia d'Oro
-  pipe:       A + 'pipe.png',         // tubo entrabile
-  flagpole:   A + 'flagpole.png',     // pennone di fine livello
+  enemy:      A + 'soldato.webp',      // nemico base (goomba)
+  koopa:      A + 'koopa.webp',        // nemico a guscio (koopa)
+  shell:      A + 'gusciokoopa.webp',  // guscio dopo lo stomp
+  brick:      A + 'blocco.webp',       // mattone/solido
+  qblock:     A + 'puntodomanda.webp', // blocco "?"
+  blockempty: A + 'block_empty.webp',  // blocco "?" esaurito
+  mush:       A + 'yes.webp',          // Boccetta YAC (power-up)
+  coin:       A + 'coin_goccia.webp',  // Goccia d'Oro
+  pipe:       A + 'pipe.webp',         // tubo entrabile
+  flagpole:   A + 'flagpole.webp',     // pennone di fine livello
 };
 
 // ====================== MONDO 1 — La Catena di Montaggio ======================
@@ -30,7 +30,7 @@ const MONDO1 = {
   width: 8000,
   next: 2,
 
-  bg: { surface: A + 'sfondomondo1.png', under: A + 'sotterraneo_dim.png' },
+  bg: { surface: A + 'sfondomondo1.webp', under: A + 'sotterraneo_dim.webp' },
   // immagine del sotterraneo: posizione/visibilità
   bgUnder: { x: 7400, showAfterX: 6900, w: 1100, h: 536 },
 
@@ -113,7 +113,7 @@ const MONDO1 = {
 
   boss: {
     type: 'megagloss', label: 'MEGAGLOSS',
-    sprite: A + 'boss.png', shot: A + 'boss_shot.png',
+    sprite: A + 'boss.webp', shot: A + 'boss_shot.webp',
     hp: 3, scaleH: 80,
     arena: { minX: 5860, maxX: 6005, spawnX: 5935 },
     gate: { x: 6030, h: 330 },
@@ -123,7 +123,7 @@ const MONDO1 = {
   flagpole: { x: 6300 },
 
   salone: {
-    x: 6620, corp: A + 'salon_corp.png', yac: A + 'salon_yac.png', label: 'SALONE YAC',
+    x: 6620, corp: A + 'salon_corp.webp', yac: A + 'salon_yac.webp', label: 'SALONE YAC',
   },
 
   win: {
@@ -142,17 +142,17 @@ const MONDO2 = {
   width: 6900,
   next: 3,
 
-  bg: { surface: A + 'sfondomondo2.png', under: null },
+  bg: { surface: A + 'sfondomondo2.webp', under: null },
   bgUnder: null,
 
   music: { surface: 'mondo2_loop', under: 'underground_loop', boss: 'mondo2_boss_loop' },
 
   sprites: {
     ...SPRITES_DEFAULT,
-    enemy: A + 'enemy_scatolotto.png',     // Scatolotto (cassa-goomba)
-    koopa: A + 'enemy_tubetto_alato.png',  // Tubetto Alato (volante)
-    koopawalk: A + 'enemy_tubetto_walk.png', // Tubetto senza ali (a terra dopo lo stomp)
-    shell: A + 'enemy_tubetto_shell.png',    // guscio tubo (Mondo 2)
+    enemy: A + 'enemy_scatolotto.webp',     // Scatolotto (cassa-goomba)
+    koopa: A + 'enemy_tubetto_alato.webp',  // Tubetto Alato (volante)
+    koopawalk: A + 'enemy_tubetto_walk.webp', // Tubetto senza ali (a terra dopo lo stomp)
+    shell: A + 'enemy_tubetto_shell.webp',    // guscio tubo (Mondo 2)
   },
 
   ground: [
@@ -249,15 +249,15 @@ const MONDO2_2 = {
   water: true,
   spawn: { x: 110, y: 150 },   // si parte nuotando a mezz'acqua
 
-  bg: { surface: A + 'bg_m2_water.png', under: null },
+  bg: { surface: A + 'bg_m2_water.webp', under: null },
   bgUnder: null,
 
   music: { surface: 'mondo2_water_loop', under: 'mondo2_water_loop', boss: 'mondo2_boss_loop' },
 
   sprites: {
     ...SPRITES_DEFAULT,
-    flacone: A + 'enemy_flacone_float.png',     // Flacone galleggiante (cheep-cheep)
-    spugnotto: A + 'enemy_spugnotto.png',       // Spugnotto inseguitore (blooper)
+    flacone: A + 'enemy_flacone_float.webp',     // Flacone galleggiante (cheep-cheep)
+    spugnotto: A + 'enemy_spugnotto.webp',       // Spugnotto inseguitore (blooper)
   },
 
   // pavimento continuo (fondale): si può toccare, non uccide. Morte solo sotto il mondo.
@@ -333,17 +333,17 @@ const MONDO2_3 = {
   width: 5500,
   next: 5,   // → Mondo 3 dopo la liberazione
 
-  bg: { surface: A + 'bg_m2_tower.png', under: null },
+  bg: { surface: A + 'bg_m2_tower.webp', under: null },
   bgUnder: null,
 
   music: { surface: 'mondo2_tower_loop', under: 'mondo2_tower_loop', boss: 'mondo2_boss_loop' },
 
   sprites: {
     ...SPRITES_DEFAULT,
-    enemy: A + 'enemy_scatolotto.png',
-    koopa: A + 'enemy_tubetto_alato.png',
-    koopawalk: A + 'enemy_tubetto_walk.png',
-    shell: A + 'enemy_tubetto_shell.png',
+    enemy: A + 'enemy_scatolotto.webp',
+    koopa: A + 'enemy_tubetto_alato.webp',
+    koopawalk: A + 'enemy_tubetto_walk.webp',
+    shell: A + 'enemy_tubetto_shell.webp',
   },
 
   // terreno a sezioni con baratri (caduta = morte) attraversabili con lift/piattaforme
@@ -417,7 +417,7 @@ const MONDO2_3 = {
 
   boss: {
     type: 'boxking', label: 'BOXKING',
-    sprite: A + 'boss_boxking.png', shot: A + 'boss_shot.png',
+    sprite: A + 'boss_boxking.webp', shot: A + 'boss_shot.webp',
     hp: 3, scaleH: 104,
     arena: { minX: 4250, maxX: 4490, spawnX: 4370 },
     gate: { x: 4580, h: 330 },
@@ -427,7 +427,7 @@ const MONDO2_3 = {
   flagpole: { x: 4900 },
 
   salone: {
-    x: 5180, corp: A + 'salon_corp.png', yac: A + 'salon_yac.png', label: 'SALONE YAC',
+    x: 5180, corp: A + 'salon_corp.webp', yac: A + 'salon_yac.webp', label: 'SALONE YAC',
   },
 
   win: {
@@ -448,16 +448,16 @@ const MONDO3_1 = {
   next: 6,
   night: true,
 
-  bg: { surface: A + 'bg_m3_surface.png', under: null },
+  bg: { surface: A + 'bg_m3_surface.webp', under: null },
   bgUnder: null,
 
   music: { surface: 'mondo3_loop', under: 'mondo3_loop', boss: 'mondo3_boss_loop' },
 
   sprites: {
     ...SPRITES_DEFAULT,
-    promoter: A + 'enemy_promoter.png',     // Promoter / Hammer Bro
-    spraybill: A + 'enemy_spraybill.png',   // Spray-Bill / Bullet Bill
-    spam: A + 'enemy_etichetta_spam.png',   // Etichetta-Spam volante
+    promoter: A + 'enemy_promoter.webp',     // Promoter / Hammer Bro
+    spraybill: A + 'enemy_spraybill.webp',   // Spray-Bill / Bullet Bill
+    spam: A + 'enemy_etichetta_spam.webp',   // Etichetta-Spam volante
   },
 
   ground: [
@@ -536,16 +536,16 @@ const MONDO3_2 = {
   next: 7,
   dark: true,
 
-  bg: { surface: A + 'bg_m3_net.png', under: null },
+  bg: { surface: A + 'bg_m3_net.webp', under: null },
   bgUnder: null,
 
   music: { surface: 'mondo3_net_loop', under: 'mondo3_net_loop', boss: 'mondo3_boss_loop' },
 
   sprites: {
     ...SPRITES_DEFAULT,
-    promoter: A + 'enemy_promoter.png',
-    spraybill: A + 'enemy_spraybill.png',
-    spam: A + 'enemy_etichetta_spam.png',
+    promoter: A + 'enemy_promoter.webp',
+    spraybill: A + 'enemy_spraybill.webp',
+    spam: A + 'enemy_etichetta_spam.webp',
   },
 
   // pavimento continuo (al buio niente baratri mortali ciechi: sarebbe ingiusto)
@@ -609,16 +609,16 @@ const MONDO3_3 = {
   next: 8,   // → Mondo 4 dopo la liberazione
   night: true,
 
-  bg: { surface: A + 'bg_m3_heights.png', under: null },
+  bg: { surface: A + 'bg_m3_heights.webp', under: null },
   bgUnder: null,
 
   music: { surface: 'mondo3_heights_loop', under: 'mondo3_heights_loop', boss: 'mondo3_boss_loop' },
 
   sprites: {
     ...SPRITES_DEFAULT,
-    promoter: A + 'enemy_promoter.png',
-    spraybill: A + 'enemy_spraybill.png',
-    spam: A + 'enemy_etichetta_spam.png',
+    promoter: A + 'enemy_promoter.webp',
+    spraybill: A + 'enemy_spraybill.webp',
+    spam: A + 'enemy_etichetta_spam.webp',
   },
 
   // solo terra a inizio e all'arena: in mezzo è il VUOTO (caduta = morte), si attraversa sulle piattaforme
@@ -667,7 +667,7 @@ const MONDO3_3 = {
 
   boss: {
     type: 'viralcorp', label: 'VIRALCORP',
-    sprite: A + 'boss_viralcorp.png', shot: A + 'boss_shot.png',
+    sprite: A + 'boss_viralcorp.webp', shot: A + 'boss_shot.webp',
     hp: 5, scaleH: 120,
     arena: { minX: 4080, maxX: 4380, spawnX: 4230 },
     gate: { x: 4560, h: 360 },
@@ -677,7 +677,7 @@ const MONDO3_3 = {
   flagpole: { x: 4800 },
 
   salone: {
-    x: 5050, corp: A + 'salon_corp.png', yac: A + 'salon_yac.png', label: 'SALONE YAC',
+    x: 5050, corp: A + 'salon_corp.webp', yac: A + 'salon_yac.webp', label: 'SALONE YAC',
   },
 
   win: {
@@ -697,15 +697,15 @@ const MONDO4_1 = {
   width: 5800,
   next: 9,
 
-  bg: { surface: A + 'bg_m4_surface.png', under: null },
+  bg: { surface: A + 'bg_m4_surface.webp', under: null },
   bgUnder: null,
 
   music: { surface: 'mondo4_loop', under: 'mondo4_loop', boss: 'mondo4_boss_loop' },
 
   sprites: {
     ...SPRITES_DEFAULT,
-    lakitu: A + 'enemy_spruzzabot.png',       // Spruzzabot (Lakitu)
-    spiny: A + 'enemy_goccia_corrosiva.png',  // Goccia Corrosiva (Spiny)
+    lakitu: A + 'enemy_spruzzabot.webp',       // Spruzzabot (Lakitu)
+    spiny: A + 'enemy_goccia_corrosiva.webp',  // Goccia Corrosiva (Spiny)
   },
 
   // terra a sezioni; in mezzo le VASCHE tossiche (si attraversano sulle piattaforme)
@@ -782,15 +782,15 @@ const MONDO4_2 = {
   next: 10,            // → 4-3 (Il Reattore) ancora da costruire: "prossimo" nascosto finché manca
   dark: true,          // buio col solo alone di luce attorno al player + bagliore dell'ooze
 
-  bg: { surface: A + 'bg_m4_basement.png', under: null },
+  bg: { surface: A + 'bg_m4_basement.webp', under: null },
   bgUnder: null,
 
   music: { surface: 'mondo4_basement_loop', under: 'mondo4_basement_loop', boss: 'mondo4_boss_loop' },
 
   sprites: {
     ...SPRITES_DEFAULT,
-    lakitu: A + 'enemy_spruzzabot.png',       // Spruzzabot (Lakitu): pressione aerea sopra le pozze
-    spiny: A + 'enemy_goccia_corrosiva.png',  // Goccia Corrosiva (Spiny): striscia sulle isole sicure
+    lakitu: A + 'enemy_spruzzabot.webp',       // Spruzzabot (Lakitu): pressione aerea sopra le pozze
+    spiny: A + 'enemy_goccia_corrosiva.webp',  // Goccia Corrosiva (Spiny): striscia sulle isole sicure
   },
 
   // terra solida SOLO sulle isole: inizio, isola centrale (checkpoint), fine (pennone).
@@ -879,15 +879,15 @@ const MONDO4_3 = {
   width: 5500,
   next: 11,   // → Mondo 5 (non esiste): "prossimo" nascosto, è il finale del Mondo 4
 
-  bg: { surface: A + 'bg_m4_reactor.png', under: null },
+  bg: { surface: A + 'bg_m4_reactor.webp', under: null },
   bgUnder: null,
 
   music: { surface: 'mondo4_reactor_loop', under: 'mondo4_reactor_loop', boss: 'mondo4_boss_loop' },
 
   sprites: {
     ...SPRITES_DEFAULT,
-    lakitu: A + 'enemy_spruzzabot.png',
-    spiny: A + 'enemy_goccia_corrosiva.png',
+    lakitu: A + 'enemy_spruzzabot.webp',
+    spiny: A + 'enemy_goccia_corrosiva.webp',
   },
 
   // isole di terra separate da VASCHE D'ACIDO (contatto = morte)
@@ -967,7 +967,7 @@ const MONDO4_3 = {
 
   boss: {
     type: 'toxilab', label: 'TOXILAB',
-    sprite: A + 'boss_toxilab.png', shot: A + 'boss_shot.png',
+    sprite: A + 'boss_toxilab.webp', shot: A + 'boss_shot.webp',
     hp: 6, scaleH: 130,
     arena: { minX: 4600, maxX: 4880, spawnX: 4740 },
     gate: { x: 4960, h: 360 },
@@ -977,7 +977,7 @@ const MONDO4_3 = {
   flagpole: { x: 5100 },
 
   salone: {
-    x: 5340, corp: A + 'salon_corp.png', yac: A + 'salon_yac.png', label: 'SALONE YAC',
+    x: 5340, corp: A + 'salon_corp.webp', yac: A + 'salon_yac.webp', label: 'SALONE YAC',
   },
 
   win: {
@@ -991,8 +991,8 @@ const MONDO4_3 = {
 // + Bolletta Bill (la nostra Pallottola Bill) sparata dai cannoni-ticker (override di 'spraybill').
 const SPRITES_M5 = {
   ...SPRITES_DEFAULT,
-  spam: A + 'enemy_etichetta_spam.png',      // Etichetta-Spam (ritorno Mondo 3)
-  spraybill: A + 'enemy_bolletta_bill.png',  // Bolletta Bill (proiettile dei cannoni-ticker)
+  spam: A + 'enemy_etichetta_spam.webp',      // Etichetta-Spam (ritorno Mondo 3)
+  spraybill: A + 'enemy_bolletta_bill.webp',  // Bolletta Bill (proiettile dei cannoni-ticker)
 };
 
 // ====================== MONDO 5-1 — La Sala Trading (superficie, luminoso/freddo) ======================
@@ -1006,7 +1006,7 @@ const MONDO5_1 = {
   next: 12,
   timeLimit: 240,   // Mondo 5: la pressione sale
 
-  bg: { surface: A + 'bg_m5_surface.png', under: null },
+  bg: { surface: A + 'bg_m5_surface.webp', under: null },
   bgUnder: null,
 
   music: { surface: 'mondo5_loop', under: 'mondo5_loop', boss: 'mondo5_boss_loop' },
@@ -1093,7 +1093,7 @@ const MONDO5_2 = {
   dark: true,
   timeLimit: 230,
 
-  bg: { surface: A + 'bg_m5_vault.png', under: null },
+  bg: { surface: A + 'bg_m5_vault.webp', under: null },
   bgUnder: null,
 
   music: { surface: 'mondo5_vault_loop', under: 'mondo5_vault_loop', boss: 'mondo5_boss_loop' },
@@ -1173,7 +1173,7 @@ const MONDO5_3 = {
   next: 14,   // → Mondo 6 (non esiste): "prossimo" nascosto, finale del Mondo 5
   timeLimit: 280,
 
-  bg: { surface: A + 'bg_m5_penthouse.png', under: null },
+  bg: { surface: A + 'bg_m5_penthouse.webp', under: null },
   bgUnder: null,
 
   music: { surface: 'mondo5_penthouse_loop', under: 'mondo5_penthouse_loop', boss: 'mondo5_boss_loop' },
@@ -1249,7 +1249,7 @@ const MONDO5_3 = {
 
   boss: {
     type: 'unibeauty', label: 'UNIBEAUTY',
-    sprite: A + 'boss_unibeauty.png', shot: A + 'boss_shot.png',
+    sprite: A + 'boss_unibeauty.webp', shot: A + 'boss_shot.webp',
     hp: 7, scaleH: 135,
     arena: { minX: 4620, maxX: 4900, spawnX: 4760 },
     gate: { x: 4980, h: 360 },
@@ -1259,7 +1259,7 @@ const MONDO5_3 = {
   flagpole: { x: 5160 },
 
   salone: {
-    x: 5400, corp: A + 'salon_corp.png', yac: A + 'salon_yac.png', label: 'SALONE YAC',
+    x: 5400, corp: A + 'salon_corp.webp', yac: A + 'salon_yac.webp', label: 'SALONE YAC',
   },
 
   win: {
@@ -1272,11 +1272,11 @@ const MONDO5_3 = {
 // Set sprite condiviso: RICOMBINAZIONE totale — tornano tutti i nemici dei mondi 1-5.
 const SPRITES_M6 = {
   ...SPRITES_DEFAULT,
-  spam: A + 'enemy_etichetta_spam.png',       // Etichetta-Spam (M3)
-  spraybill: A + 'enemy_bolletta_bill.png',   // Bolletta Bill (M5) — proiettile dei cannoni
-  lakitu: A + 'enemy_spruzzabot.png',         // Spruzzabot (M4)
-  spiny: A + 'enemy_goccia_corrosiva.png',    // Goccia Corrosiva (M4)
-  promoter: A + 'enemy_promoter.png',         // Promoter / Hammer Bro (M3)
+  spam: A + 'enemy_etichetta_spam.webp',       // Etichetta-Spam (M3)
+  spraybill: A + 'enemy_bolletta_bill.webp',   // Bolletta Bill (M5) — proiettile dei cannoni
+  lakitu: A + 'enemy_spruzzabot.webp',         // Spruzzabot (M4)
+  spiny: A + 'enemy_goccia_corrosiva.webp',    // Goccia Corrosiva (M4)
+  promoter: A + 'enemy_promoter.webp',         // Promoter / Hammer Bro (M3)
 };
 
 // ====================== MONDO 6-1 — Il Piazzale (esterno, notte) ======================
@@ -1291,7 +1291,7 @@ const MONDO6_1 = {
   night: true,
   timeLimit: 230,
 
-  bg: { surface: A + 'bg_m6_plaza.png', under: null },
+  bg: { surface: A + 'bg_m6_plaza.webp', under: null },
   bgUnder: null,
 
   music: { surface: 'mondo6_plaza_loop', under: 'mondo6_plaza_loop', boss: 'mondo6_boss_loop' },
@@ -1373,7 +1373,7 @@ const MONDO6_2 = {
   dark: true,
   timeLimit: 220,
 
-  bg: { surface: A + 'bg_m6_foundations.png', under: null },
+  bg: { surface: A + 'bg_m6_foundations.webp', under: null },
   bgUnder: null,
 
   music: { surface: 'mondo6_foundations_loop', under: 'mondo6_foundations_loop', boss: 'mondo6_boss_loop' },
@@ -1453,7 +1453,7 @@ const MONDO6_3 = {
   night: true,
   timeLimit: 320,
 
-  bg: { surface: A + 'bg_m6_ascent.png', under: null },
+  bg: { surface: A + 'bg_m6_ascent.webp', under: null },
   bgUnder: null,
 
   music: { surface: 'mondo6_ascent_loop', under: 'mondo6_ascent_loop', boss: 'mondo6_boss_loop' },
@@ -1520,7 +1520,7 @@ const MONDO6_3 = {
 
   boss: {
     type: 'conglomerate', label: 'THE CONGLOMERATE',
-    sprite: A + 'boss_conglomerate.png', shot: A + 'boss_shot.png',
+    sprite: A + 'boss_conglomerate.webp', shot: A + 'boss_shot.webp',
     hp: 9, scaleH: 150,
     arena: { minX: 4720, maxX: 5040, spawnX: 4880 },
     gate: { x: 5120, h: 380 },
@@ -1530,7 +1530,7 @@ const MONDO6_3 = {
   flagpole: { x: 5320 },
 
   salone: {
-    x: 5560, corp: A + 'salon_corp.png', yac: A + 'salon_yac.png', label: 'SALONE YAC',
+    x: 5560, corp: A + 'salon_corp.webp', yac: A + 'salon_yac.webp', label: 'SALONE YAC',
   },
 
   win: {
@@ -1552,7 +1552,7 @@ const OFFICINA = {
   officina: true,   // attiva il rendering/flusso speciale nella GameScene
   noTimer: true,    // niente conto alla rovescia (livello contemplativo)
 
-  bg: { surface: A + 'sfondomondo1.png', under: null },   // sostituito da un fondo caldo disegnato (vedi buildBackdrop)
+  bg: { surface: A + 'sfondomondo1.webp', under: null },   // sostituito da un fondo caldo disegnato (vedi buildBackdrop)
   music: { surface: 'finale_theme', under: 'finale_theme', boss: 'finale_theme' },   // ripresa calda
 
   sprites: SPRITES_DEFAULT,
