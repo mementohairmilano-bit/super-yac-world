@@ -153,6 +153,20 @@ section{position:relative}
 .feat .ic{font-size:30px;margin-bottom:10px}
 .feat h3{font-family:'Syne',sans-serif;font-weight:800;font-size:18px;margin-bottom:5px}
 .feat p{font-size:14px;color:#c9bdcc}
+/* Power-up YES in evidenza */
+.powerup{display:flex;align-items:center;gap:clamp(18px,3vw,40px);margin-top:18px;width:100%;
+  text-align:left;border-radius:20px;padding:clamp(20px,3vw,34px);
+  background:linear-gradient(110deg,#3B1E33,#241326);border:2px solid #C9A22755;
+  box-shadow:0 20px 50px #0009, inset 0 0 60px #00000040}
+.powerup img{width:clamp(86px,12vw,132px);flex:none;filter:drop-shadow(0 0 22px #F2C53D66)}
+.powerup .pu-tag{font-family:'Syne',sans-serif;font-weight:800;letter-spacing:2px;font-size:11px;
+  text-transform:uppercase;color:var(--yellow)}
+.powerup h3{font-family:'Syne',sans-serif;font-weight:800;font-size:clamp(22px,3.2vw,32px);margin:5px 0 8px;color:#fff}
+.powerup .pu-name{background:linear-gradient(90deg,#FFE07A,#F2994A);-webkit-background-clip:text;
+  background-clip:text;-webkit-text-fill-color:transparent}
+.powerup p{font-size:clamp(14px,1.7vw,16px);color:#e7dcea;max-width:640px}
+.powerup b{color:var(--yellow)}
+@media(max-width:560px){.powerup{flex-direction:column;text-align:center}.powerup p{text-align:center}}
 
 /* DEMO / VIDEO */
 #demo{background:linear-gradient(180deg,#1a1322,#150e1c)}
@@ -373,6 +387,17 @@ footer img{height:22px;margin:0 auto 14px;opacity:.9}
       <div class="feat rv" style="--c:var(--rose)"><div class="ic">🎮</div><h3>Ovunque</h3><p>Tastiera, touch su mobile, gamepad PlayStation/Xbox e anche su TV a schermo intero.</p></div>
       <div class="feat rv d1" style="--c:var(--green)"><div class="ic">🏆</div><h3>Classifica</h3><p>Scala la classifica globale e sfida tutta la community.</p></div>
     </div>
+
+    <div class="powerup rv d2">
+      <img src="img/yes.png" alt="YES — la Boccetta YAC">
+      <div class="pu-txt">
+        <span class="pu-tag">Power-up · diventa GRANDE</span>
+        <h3>Trova la <span class="pu-name">YES</span></h3>
+        <p>Colpisci i blocchi <b>?</b> e prendi la <b>YES</b> (la Boccetta YAC): diventi <b>grande e potente</b> e
+          sblocchi il <b>potere speciale</b> del tuo eroe. Da piccolo non puoi usarlo — e un colpo da grande ti
+          riporta piccolo, quindi tieni stretta la tua YES!</p>
+      </div>
+    </div>
   </div>
 </section>
 
@@ -415,26 +440,26 @@ footer img{height:22px;margin:0 auto 14px;opacity:.9}
       <div class="hcard rv" style="--c:var(--magenta)">
         <img class="av" src="img/Memento_card.png" alt="Memento">
         <div class="nm">Memento</div><div class="rl">La voce</div>
-        <span class="pw">Colpo Viral</span>
-        <p class="ab">"Quando parla, il mondo ascolta." Stordisce più nemici ad area.</p>
+        <span class="pw">Spara</span>
+        <p class="ab">"Quando parla, il mondo ascolta." Da GRANDE spara una raffica di colpi che elimina i nemici.</p>
       </div>
       <div class="hcard rv d1" style="--c:var(--green)">
         <img class="av" src="img/Yuri_card.png" alt="Yuri">
         <div class="nm">Yuri</div><div class="rl">La creatività</div>
-        <span class="pw">Doppio salto + Dash</span>
-        <p class="ab">"Dove gli altri vedono un muro, vede una tela." Il più agile, lascia una scia di colore.</p>
+        <span class="pw">Invincibile + Doppio salto</span>
+        <p class="ab">"Dove gli altri vedono un muro, vede una tela." Doppio salto sempre attivo; da GRANDE diventa invincibile per qualche secondo.</p>
       </div>
       <div class="hcard rv d2" style="--c:var(--cold)">
         <img class="av" src="img/carmine_card.png" alt="Carmine">
         <div class="nm">Carmine</div><div class="rl">La solidità</div>
-        <span class="pw">Scudo</span>
-        <p class="ab">"Regge i colpi perché ci tiene." Para i danni e sfonda gli ostacoli.</p>
+        <span class="pw">Ground Pound</span>
+        <p class="ab">"Regge i colpi perché ci tiene." Da GRANDE: schianto a terra con onda d'urto che spazza i nemici.</p>
       </div>
       <div class="hcard rv d3" style="--c:var(--peach)">
         <img class="av" src="img/andrea_card.png" alt="Andrea">
         <div class="nm">Andrea</div><div class="rl">Il tempo</div>
         <span class="pw">Regia</span>
-        <p class="ab">"Quando serve, ferma tutto e detta il ritmo." Rallenta il tempo.</p>
+        <p class="ab">"Quando serve, ferma tutto e detta il ritmo." Da GRANDE: rallenta o ferma il tempo.</p>
       </div>
     </div>
   </div>
