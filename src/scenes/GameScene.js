@@ -2055,6 +2055,18 @@ export class GameScene extends Phaser.Scene {
     s.destroy();
   }
 
+  // Culling: Phaser disegna TUTTI gli oggetti del livello a ogni frame, anche quelli fuori dalla
+  // vista. Nascondo (solo .visible) nemici/monete/blocchi fuori dallo schermo: meno draw call =
+  // più fluido sui livelli pieni di oggetti (es. Mondo 2). La FISICA/logica resta attiva: gli
+  // oggetti collidono e si muovono comunque, semplicemente non vengono disegnati quando lontani.
+  cullView() {
+    const cam = this.cameras.main, L = cam.scrollX, R = cam.scrollX + cam.width;
+    const cull = (o) => { if (o) { const hw = (o.displayWidth || 32) / 2 + 24; o.visible = (o.x + hw > L && o.x - hw < R); } };
+    if (this.blocks) this.blocks.children.iterate(cull);
+    if (this.coins) this.coins.children.iterate(cull);
+    if (this.enemies) this.enemies.children.iterate(o => { if (o && !o.dead) cull(o); });
+  }
+
   bindInput() {
     this.cur = this.input.keyboard.createCursorKeys();
     this.k = this.input.keyboard.addKeys('W,A,S,D,SPACE,Z,ESC,P,R');
@@ -2136,6 +2148,7 @@ export class GameScene extends Phaser.Scene {
     if (this.paused) return;
 
     if (this.state !== 'play') return;
+    this.cullView();   // non disegnare nemici/monete/blocchi fuori schermo → più fluido
     if (this.bgSurface) this.bgSurface.tilePositionX = this.cameras.main.scrollX * 0.5;  // parallasse sfondo
     if (this.bgUnder) this.bgUnder.setVisible(this.player.x > 6900);  // sfondo sotterraneo solo se sei laggiù (non sbordare nel salone)
     if (this.darkImg) {   // l'alone di luce segue il player (spazio schermo)
