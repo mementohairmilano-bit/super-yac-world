@@ -664,6 +664,9 @@ export class GameScene extends Phaser.Scene {
     if (this.fallers) this.physics.add.overlap(this.player, this.fallers, this.hitFaller, null, this);
     if (this.shots) this.physics.add.overlap(this.player, this.shots, this.hitByShot, null, this);
     this.cameras.main.startFollow(this.player, true, 0.12, 0.12);
+    // L'inquadratura è più bassa del mondo (zoom): zona morta verticale ampia così la camera NON
+    // ondeggia su/giù a ogni salto. Si sposta in verticale solo nei salti/arrampicate alti.
+    this.cameras.main.setDeadzone(30, 300);
     this.cameras.main.setFollowOffset(0, 55);
     this.physics.add.collider(this.player, this.platforms);
     this.physics.add.collider(this.enemies, this.platforms);

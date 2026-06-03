@@ -35,8 +35,8 @@ function isTouch() {
 // restano della stessa dimensione. Limiti per non zoomare troppo dentro/fuori.
 function gameSize() {
   const w = window.innerWidth || 1, h = window.innerHeight || 1;
-  const H = 506;
-  const W = Math.max(560, Math.min(1280, Math.round(H * (w / h))));
+  const H = 450;   // altezza di inquadratura più bassa del mondo (506) = leggero ZOOM: sprite più grandi
+  const W = Math.max(540, Math.min(1180, Math.round(H * (w / h))));
   return { width: W, height: H };
 }
 
