@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { PAL } from '../config.js';
-import { state, collectLetter, hasAllLetters, hasLetter, SECRET_WORD, saveRun, clearRun, setBest } from '../state.js';
+import { state, collectLetter, hasAllLetters, hasLetter, SECRET_WORD, saveRun, clearRun, setBest, getBest } from '../state.js';
 import { AUDIO } from '../audio.js';
 import { LEVELS, OFFICINA_ID } from '../levels.js';
 
@@ -1759,7 +1759,7 @@ export class GameScene extends Phaser.Scene {
     // flusso multi-mondo: se c'è un livello successivo, mostra il pulsante "prossimo"
     if (window._gameShowWin) window._gameShowWin(nextId, opts.cta || L.win.cta);
     // pulsante "Classifica" solo sulla card del FINALE (non a ogni livello)
-    if (opts.leaderboard) window._runResult = { score: this.score, world: state.worldId };
+    if (opts.leaderboard) window._runResult = { score: getBest(), world: state.worldId };
     if (window._gameShowBoardBtn) window._gameShowBoardBtn(!!opts.leaderboard);
     document.getElementById('win').classList.remove('hidden');
   }
@@ -1941,7 +1941,8 @@ export class GameScene extends Phaser.Scene {
     this.state = 'over';
     if (this.timerEv) this.timerEv.paused = true;
     setBest(this.score); clearRun();   // la partita finisce: salva il record, chiudi la run in corso
-    window._runResult = { score: this.score, world: state.worldId };   // per l'invio in classifica
+    // in classifica va il record personale (lo stesso valore mostrato nella home), non solo l'ultima run
+    window._runResult = { score: getBest(), world: state.worldId };
     const os = document.getElementById('overscore'); if (os) os.textContent = 'Punteggio: ' + this.score + ' pt';
     AUDIO.playMusic('game_over');   // one-shot (non in loop)
     this.scene.pause();

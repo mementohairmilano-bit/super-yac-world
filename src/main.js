@@ -190,6 +190,8 @@ function openBoard(submit) {
     boardMyScore.textContent = window._runResult.score + ' pt';
     boardNick.value = getNick();
     boardSend.disabled = false; boardSend.textContent = 'Invia in classifica';
+    // porta subito il giocatore sul campo nome: così "salva il punteggio" è un gesto solo
+    setTimeout(() => { try { boardNick.focus(); if (!boardNick.value) boardNick.select(); } catch (e) {} }, 60);
   } else {
     boardSubmit.classList.add('hidden');
   }
