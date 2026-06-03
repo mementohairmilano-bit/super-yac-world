@@ -1478,7 +1478,8 @@ export class GameScene extends Phaser.Scene {
   // Cambio fase: più veloce, l'arena si attiva (fase 2+), il nucleo si espone (fase 3).
   enterBossPhase(n) {
     const b = this.boss; if (!b) return; b.phase = n;
-    this.tweens.killTweensOf(b); b.setAlpha(1);   // chiude eventuali lampeggi in corso (niente boss "fantasma")
+    this.tweens.killTweensOf(b); b.setAlpha(1); b.clearTint();   // chiude lampeggi in corso (niente boss "fantasma")
+    if (this.bossHitEv) { this.bossHitEv.remove(); this.bossHitEv = null; }
     this.popText(b.x, this.H - 188, n === 2 ? 'FASE 2 — IL SISTEMA' : 'FASE 3 — IL COLLASSO');
     this.cameras.main.flash(300, 140, 60, 200); this.cameras.main.shake(220, 0.008);
     AUDIO.sfx('phase_shift');
@@ -1613,17 +1614,22 @@ export class GameScene extends Phaser.Scene {
     AUDIO.sfx('boss_hit');                                   // colpo a segno (boss ancora vivo)
     this.bossInvuln = true;                                   // ~0.8s di invulnerabilità → 1 HP per colpo
     this.cameras.main.shake(120, 0.006);
-    // lampeggio di danno. PRIMA azzero eventuali tween di alpha ancora in corso e riporto l'alpha a 1:
-    // sui boss con più HP (5/6/7/9) i colpi ravvicinati impilavano più tween di alpha e potevano
-    // lasciare il boss semitrasparente o INVISIBILE (vivo ma non si vedeva → impossibile finirlo).
+    // LAMPO DI DANNO via TINT (colore), NON via alpha (trasparenza): così il boss non può MAI
+    // diventare invisibile, qualunque cosa accada ai tween. Lampeggia rosso/normale per ~0,6s.
     this.tweens.killTweensOf(b); b.setAlpha(1);
-    this.tweens.add({ targets: b, alpha: 0.3, yoyo: true, repeat: 5, duration: 70, onComplete: () => { if (b.active) b.setAlpha(1); } });
+    if (this.bossHitEv) this.bossHitEv.remove();
+    let blink = 0;
+    this.bossHitEv = this.time.addEvent({ delay: 70, repeat: 7, callback: () => {
+      if (b.active) (blink++ % 2 === 0) ? b.setTint(0xff5a6e) : b.clearTint();
+    } });
+    this.time.delayedCall(640, () => { if (b.active) b.clearTint(); });
     this.time.delayedCall(800, () => { this.bossInvuln = false; });
   }
 
   defeatBoss() {
     const b = this.boss;
     this.bossDefeated = true; this.bossActive = false;
+    if (this.bossHitEv) { this.bossHitEv.remove(); this.bossHitEv = null; }   // ferma il lampeggio-danno
     if (this.bossShotEv) { this.bossShotEv.remove(); this.bossShotEv = null; }
     if (this.bossArenaEv) { this.bossArenaEv.remove(); this.bossArenaEv = null; }   // stop arena-crash (Conglomerate)
     if (this.bossShots) this.bossShots.clear(true, true);
@@ -1638,7 +1644,7 @@ export class GameScene extends Phaser.Scene {
     this.tweens.add({ targets: txt, y: 80, alpha: 0, delay: 1500, duration: 600, onComplete: () => txt.destroy() });
     if (b) {
       b.setVelocity(0, 0); if (b.body) b.body.checkCollision.none = true;
-      this.tweens.killTweensOf(b); b.setAlpha(1);   // niente lampeggio residuo che combatta col "si sbriciola"
+      this.tweens.killTweensOf(b); b.setAlpha(1); b.clearTint();   // niente lampeggio residuo che combatta col "si sbriciola"
       this.tweens.add({ targets: b, x: '+=4', yoyo: true, repeat: 9, duration: 38 });       // trema
       this.tweens.add({ targets: b, scaleY: 0.1, alpha: 0, angle: -8, delay: 400, duration: 440, onComplete: () => b.destroy() }); // si sbriciola
     }
