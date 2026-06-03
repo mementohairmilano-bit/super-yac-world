@@ -90,6 +90,9 @@ export class GameScene extends Phaser.Scene {
   }
 
   makeTextures() {
+    // texture procedurali uguali per ogni mondo: se ci sono già (riavvio scena = riuso del motore)
+    // NON le rigenero, così evito conflitti di chiave/errori che bloccherebbero il restart.
+    if (this.textures.exists('px')) return;
     const G = () => this.make.graphics({ add: false });
     let g;
 
@@ -2047,32 +2050,42 @@ export class GameScene extends Phaser.Scene {
   bindInput() {
     this.cur = this.input.keyboard.createCursorKeys();
     this.k = this.input.keyboard.addKeys('W,A,S,D,SPACE,Z,ESC,P,R');
-    this.t = { left: false, right: false, jump: false, special: false, down: false };
     this.jumpHeld = false; this.spHeld = false; this.downHeld = false;
     this.pauseHeld = false; this.rHeld = false;
 
     // Pulsanti DOM pausa/ripresa (onclick = sovrascrive, sicuro ai restart)
     const pb = document.getElementById('pausebtn'); if (pb) pb.onclick = () => this.togglePause();
     const rb = document.getElementById('btn-resume'); if (rb) rb.onclick = () => this.resumeGame();
-    document.querySelectorAll('.tb').forEach(b => {
-      const k = b.dataset.k;
-      const off = () => { this.t[k] = false; };
-      // Pointer Events + setPointerCapture: il tasto "cattura" il dito finché non lo rilasci,
-      // così iOS non annulla il tocco interpretandolo come scroll/gesto (causa del non-rispondere).
-      b.addEventListener('pointerdown', e => {
-        e.preventDefault();
-        try { b.setPointerCapture(e.pointerId); } catch (_) {}
-        this.t[k] = true;
-      }, { passive: false });
-      b.addEventListener('pointerup', off);
-      b.addEventListener('pointercancel', off);
-      b.addEventListener('lostpointercapture', off);
-      // fallback per browser senza Pointer Events (Android vecchi)
-      if (!window.PointerEvent) {
-        b.addEventListener('touchstart', e => { e.preventDefault(); this.t[k] = true; }, { passive: false });
-        b.addEventListener('touchend', off); b.addEventListener('touchcancel', off);
-      }
-    });
+
+    // Stato touch CONDIVISO + listener montati UNA SOLA VOLTA: i pulsanti .tb sono DOM persistenti,
+    // quindi ri-registrare i listener a ogni (ri)avvio scena li accumulava (il tocco diventava sempre
+    // più lento → contributo ai freeze). Ora i listener vivono sul DOM e scrivono su window._touch,
+    // che la scena legge tramite this.t.
+    if (!window._touch) {
+      const t = window._touch = { left: false, right: false, jump: false, special: false, down: false };
+      document.querySelectorAll('.tb').forEach(b => {
+        const k = b.dataset.k;
+        const off = () => { t[k] = false; };
+        // Pointer Events + setPointerCapture: il tasto "cattura" il dito finché non lo rilasci,
+        // così iOS non annulla il tocco interpretandolo come scroll/gesto (causa del non-rispondere).
+        b.addEventListener('pointerdown', e => {
+          e.preventDefault();
+          try { b.setPointerCapture(e.pointerId); } catch (_) {}
+          t[k] = true;
+        }, { passive: false });
+        b.addEventListener('pointerup', off);
+        b.addEventListener('pointercancel', off);
+        b.addEventListener('lostpointercapture', off);
+        // fallback per browser senza Pointer Events (Android vecchi)
+        if (!window.PointerEvent) {
+          b.addEventListener('touchstart', e => { e.preventDefault(); t[k] = true; }, { passive: false });
+          b.addEventListener('touchend', off); b.addEventListener('touchcancel', off);
+        }
+      });
+    }
+    this.t = window._touch;
+    // reset a ogni (ri)avvio così non resta un tasto "premuto" dopo un restart
+    Object.keys(this.t).forEach(k => { this.t[k] = false; });
   }
 
   // Legge il gamepad 0 (PS/Xbox/generico) e mappa ai comandi. null se nessun pad collegato.

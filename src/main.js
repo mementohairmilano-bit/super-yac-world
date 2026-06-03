@@ -52,6 +52,14 @@ function startGame(key, worldId = 1, opts = {}) {
   if (isTouch()) document.getElementById('touch').classList.remove('hidden');
   document.body.classList.add('in-game');   // attiva l'invito "ruota il telefono" in portrait
 
+  // RIUSO DEL MOTORE: ricreare l'intero Phaser.Game a ogni morte/restart su iPhone esauriva i
+  // contesti WebGL (limite ~16) → il gioco si CONGELAVA e serviva ricaricare. Se il gioco è già
+  // attivo sullo STESSO mondo (es. "Continua"/"Ricomincia" dopo la morte), riavvio solo la scena:
+  // stessi asset già in cache, nessun nuovo contesto WebGL. Cambio mondo → ricreo (raro).
+  if (GAME && GAME._worldId === WORLD_ID) {
+    const sc = GAME.scene.getScene('Game');
+    if (sc) { sc.scene.restart(); return; }
+  }
   if (GAME) { GAME.destroy(true); GAME = null; }
 
   GAME = window._GAME = new Phaser.Game({
@@ -73,6 +81,7 @@ function startGame(key, worldId = 1, opts = {}) {
     input: { gamepad: true },   // controller PS/Xbox/generici (Gamepad API)
     scene: [GameScene],
   });
+  GAME._worldId = WORLD_ID;
 }
 
 function restart() { startGame(SELECTED, WORLD_ID); }

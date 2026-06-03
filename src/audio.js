@@ -76,19 +76,16 @@ class AudioManager {
   unlock() {
     if (this.unlocked) return;
     this.unlocked = true;
-    // iOS/Safari: gli HTML5 Audio vanno "toccati" durante un gesto utente, altrimenti gli effetti
-    // avviati dalla LOGICA di gioco (suono di MORTE, fine livello, fuochi…) restano MUTI — solo
-    // quelli legati a un tocco diretto (salto) si sbloccavano. Qui, al primo gesto, preparo tutti
-    // i pool e li sblocco con un play silenzioso, così ogni effetto suonerà poi quando serve.
+    // iOS: un breve play silenzioso durante il gesto utente sblocca l'audio HTML5 anche per gli
+    // effetti avviati poi dalla LOGICA di gioco (morte, fine livello). NB: NON pre-creo tutti i pool:
+    // crearne ~160 elementi audio causava forte pressione di memoria su iPhone (= freeze). I pool
+    // restano creati pigramente al primo uso di ciascun effetto.
     try {
-      SFX.forEach(k => {
-        this._pool(k).els.forEach(a => {
-          const v = a.volume; a.muted = true;
-          const reset = () => { try { a.pause(); a.currentTime = 0; } catch (e) {} a.muted = false; a.volume = v; };
-          const pr = a.play();
-          if (pr && pr.then) pr.then(reset).catch(reset); else reset();
-        });
-      });
+      const a = this._pool('coin').els[0];
+      const v = a.volume; a.muted = true;
+      const reset = () => { try { a.pause(); a.currentTime = 0; } catch (e) {} a.muted = false; a.volume = v; };
+      const pr = a.play();
+      if (pr && pr.then) pr.then(reset).catch(reset); else reset();
     } catch (e) {}
     if (this.pending) { const k = this.pending; this.pending = null; this._start(k); }
   }
