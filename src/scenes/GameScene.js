@@ -221,16 +221,15 @@ export class GameScene extends Phaser.Scene {
 
   buildBackdrop() {
     if (this.officina) { this.buildOfficinaBackdrop(); return; }   // Mondo 0: fondo caldo, niente industriale
-    // sfondo Mondo 1 (catena di montaggio) a tutto schermo con parallasse.
-    // VW: larghezza di copertura generosa (≥ max larghezza di gioco) così il fondo riempie sempre
-    // la vista anche quando lo schermo è molto largo (niente bande/buchi ai lati).
+    // Sfondo come UNA sola immagine "cover" (riempie tutta la vista) e FISSA alla camera: niente
+    // ripetizione → niente cucitura/banda (né verticale né orizzontale). L'immagine di fabbrica NON
+    // è seamless, quindi il tiling mostrava la cucitura: meglio una copia che copre tutto.
     const VW = Math.max(this.scale.width, 1280), VH = this.scale.height;
-    this.bgSurface = this.add.tileSprite(0, 0, VW, VH, 'bg_surface')
-      .setOrigin(0).setScrollFactor(0).setDepth(-10);
-    // riempi l'ALTEZZA con UNA sola copia dell'immagine (niente ripetizione verticale = niente
-    // banda/scalino a metà schermo). Scala uguale su X e Y per non deformare il fondo.
-    const bgH = (this.textures.get('bg_surface').getSourceImage() || {}).height || 768;
-    this.bgSurface.tileScaleX = this.bgSurface.tileScaleY = VH / bgH;
+    const src = this.textures.get('bg_surface').getSourceImage() || { width: 1100, height: 614 };
+    const cover = Math.max(VW / src.width, VH / src.height);
+    this.bgSurface = this.add.image(this.scale.width / 2, VH / 2, 'bg_surface')
+      .setOrigin(0.5).setScrollFactor(0).setDepth(-10)
+      .setDisplaySize(src.width * cover, src.height * cover);
     // dim/desaturazione/blur sono già "bakati" nell'immagine; qui aggiungo la vignette
     this.addVignette();              // bordi schermo scuri (solo sul fondo, non sul gameplay)
     // livello acqua: velo bluverde sopra tutto il gameplay per l'atmosfera sommersa
@@ -722,6 +721,7 @@ export class GameScene extends Phaser.Scene {
 
   onResize() {
     const W = this.scale.width;
+    if (this.bgSurface && this.bgSurface.originX === 0.5) this.bgSurface.x = W / 2;   // ricentra lo sfondo "cover" (non l'Officina, origine 0)
     if (this.timeTxt) this.timeTxt.x = W / 2;
     if (this.hudLogo) this.hudLogo.x = W - 10;
     if (this.hudStats) this.hudStats.x = W - 10;
@@ -2185,7 +2185,7 @@ export class GameScene extends Phaser.Scene {
 
     if (this.state !== 'play') return;
     this.cullView();   // non disegnare nemici/monete/blocchi fuori schermo → più fluido
-    if (this.bgSurface) this.bgSurface.tilePositionX = this.cameras.main.scrollX * 0.5;  // parallasse sfondo
+    // (lo sfondo ora è un'immagine fissa "cover": niente parallasse/tiling → niente cucitura)
     if (this.bgUnder) this.bgUnder.setVisible(this.player.x > 6900);  // sfondo sotterraneo solo se sei laggiù (non sbordare nel salone)
     if (this.darkImg) {   // l'alone di luce segue il player (spazio schermo)
       const cam = this.cameras.main;
