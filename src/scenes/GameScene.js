@@ -1124,7 +1124,11 @@ export class GameScene extends Phaser.Scene {
     }
     // Goccia Corrosiva (Spiny): NON si schiaccia → qualsiasi contatto ferisce (eliminabile solo con speciale/dash/pound)
     if (e.kind === 'spiny') { this.hurtPlayer(); return; }
-    const stomp = p.body.velocity.y > 40 && p.body.bottom <= e.body.top + 14;
+    // Stomp robusto anche sui nemici VOLANTI (senza collisione solida: il player "affonda" e
+    // superava i 14px del controllo, venendo contato come contatto laterale → danno ingiusto).
+    // Ora è stomp se stai SCENDENDO e arrivi DALL'ALTO (atterraggio preciso a terra OPPURE centro
+    // del player sopra il centro del nemico).
+    const stomp = p.body.velocity.y > 40 && (p.body.bottom <= e.body.top + 14 || p.body.center.y < e.body.center.y);
     if (stomp) {
       p.setVelocityY(-330); AUDIO.sfx('stomp');
       if (e.kind === 'flyer') {            // Tubetto Alato: 1° stomp → perde le ali, cade come tubo a terra
