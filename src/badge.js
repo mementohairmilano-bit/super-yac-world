@@ -54,13 +54,17 @@ function roundRect(ctx, x, y, w, h, r) {
 //   nickname, score: dati del giocatore
 //   charName: nome del personaggio scelto (es. "Memento")
 //   accent: colore accento (#hex), tipicamente il colore della card del personaggio
-export async function generateBadge({ nickname, score, charName, accent }) {
+//   heroArt: mappa { key: url } degli artwork a figura intera dei 4 eroi
+//   selectedKey: chiave dell'eroe scelto (viene evidenziato)
+//   crew: [{ key, name, accent }] in ordine → la "squadra" disegnata in basso
+export async function generateBadge({ nickname, score, charName, accent, heroArt, selectedKey, crew }) {
   await fontsReady();
   const tier = tierFor(score);
   const acc = accent || '#F2C53D';
   const canvas = document.createElement('canvas');
   canvas.width = W; canvas.height = H;
   const ctx = canvas.getContext('2d');
+  ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
 
   // sfondo brand (gradiente + alone)
   const bg = ctx.createLinearGradient(0, 0, 0, H);
@@ -82,45 +86,108 @@ export async function generateBadge({ nickname, score, charName, accent }) {
   // logo YAC
   const logo = await loadImage(LOGO_URL);
   if (logo) {
-    const lw = 220, lh = lw * (logo.height / logo.width || 1);
-    ctx.drawImage(logo, (W - lw) / 2, 110, lw, lh);
+    const lw = 180, lh = lw * (logo.height / logo.width || 1);
+    ctx.drawImage(logo, (W - lw) / 2, 70, lw, lh);
   }
 
   // titolo "YAC HERO"
   ctx.fillStyle = '#fff';
-  ctx.font = '800 138px Syne, sans-serif';
-  ctx.fillText('YAC HERO', W / 2, 470);
+  ctx.font = '800 124px Syne, sans-serif';
+  ctx.fillText('YAC HERO', W / 2, 295);
 
   // chip rango
-  ctx.font = '800 40px Syne, sans-serif';
+  ctx.font = '800 38px Syne, sans-serif';
   const rankText = tier.title;
   const tw = ctx.measureText(rankText).width;
-  const chipW = tw + 80, chipH = 78, chipX = (W - chipW) / 2, chipY = 510;
+  const chipW = tw + 76, chipH = 74, chipX = (W - chipW) / 2, chipY = 330;
   ctx.fillStyle = acc;
   roundRect(ctx, chipX, chipY, chipW, chipH, chipH / 2); ctx.fill();
   ctx.fillStyle = '#1a1020';
-  ctx.fillText(rankText, W / 2, chipY + 53);
+  ctx.fillText(rankText, W / 2, chipY + 50);
 
   // nickname
   ctx.fillStyle = acc;
   ctx.font = '800 30px Syne, sans-serif';
-  ctx.fillText('GIOCATORE', W / 2, 700);
+  ctx.fillText('GIOCATORE', W / 2, 505);
   ctx.fillStyle = '#fff';
   let nick = (nickname || 'Anonimo');
-  ctx.font = '800 92px Syne, sans-serif';
+  ctx.font = '800 88px Syne, sans-serif';
   while (ctx.measureText(nick).width > W - 160 && nick.length > 1) nick = nick.slice(0, -1);
-  ctx.fillText(nick, W / 2, 790);
+  ctx.fillText(nick, W / 2, 590);
 
   // punteggio
   ctx.fillStyle = acc;
   ctx.font = '800 30px Syne, sans-serif';
-  ctx.fillText('PUNTEGGIO', W / 2, 940);
+  ctx.fillText('PUNTEGGIO', W / 2, 690);
   ctx.fillStyle = '#F2C53D';
-  ctx.font = '800 120px Syne, sans-serif';
-  ctx.fillText(String(Math.max(0, Math.floor(score || 0))), W / 2, 1050);
+  ctx.font = '800 112px Syne, sans-serif';
+  ctx.fillText(String(Math.max(0, Math.floor(score || 0))), W / 2, 795);
 
-  // personaggio
-  if (charName) {
+  // ---- crew: i 4 eroi in basso, con quello scelto in evidenza ----
+  const list = (Array.isArray(crew) && crew.length)
+    ? crew
+    : (charName ? [{ key: selectedKey, name: charName, accent: acc }] : []);
+  if (heroArt && list.length) {
+    const imgs = await Promise.all(list.map((c) => loadImage(heroArt[c.key])));
+    const yBase = 1255;               // linea dei "piedi" comune
+    const CH = 335, OH = 220;         // altezza eroe scelto / altri
+    const gap = 26, maxW = W - 150;   // spaziatura e larghezza massima della striscia
+
+    // tieni solo gli eroi caricati correttamente (fallback: salta i mancanti)
+    const ents = [];
+    list.forEach((c, i) => {
+      const img = imgs[i]; if (!img) return;
+      const ratio = (img.width && img.height) ? img.width / img.height : 0.62;
+      ents.push({ c, img, sel: c.key === selectedKey, ratio, h: c.key === selectedKey ? CH : OH });
+    });
+
+    // se la fila non ci sta in larghezza, riscala tutto in proporzione
+    let total = ents.reduce((s, e) => s + e.h * e.ratio, 0) + gap * Math.max(0, ents.length - 1);
+    if (total > maxW && total > 0) { const k = maxW / total; ents.forEach((e) => { e.h *= k; }); total = maxW; }
+
+    // posiziona (fila centrata, allineata in basso)
+    let x = (W - total) / 2;
+    ents.forEach((e) => { e.w = e.h * e.ratio; e.x = x; e.cx = x + e.w / 2; x += e.w + gap; });
+
+    const selEnt = ents.find((e) => e.sel);
+
+    // alone d'accento dietro l'eroe scelto → lo fa risaltare
+    if (selEnt) {
+      const gy = yBase - selEnt.h * 0.55;
+      const g = ctx.createRadialGradient(selEnt.cx, gy, 30, selEnt.cx, gy, selEnt.h * 0.9);
+      g.addColorStop(0, acc + '66'); g.addColorStop(1, '#0000');
+      ctx.fillStyle = g; ctx.fillRect(0, yBase - selEnt.h - 80, W, selEnt.h + 140);
+    }
+
+    // ombre a terra (radicano le figure)
+    ents.forEach((e) => {
+      ctx.save();
+      ctx.globalAlpha = e.sel ? 0.32 : 0.18;
+      ctx.fillStyle = '#000';
+      ctx.beginPath(); ctx.ellipse(e.cx, yBase + 6, e.w * 0.42, 13, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+    });
+
+    // prima gli altri (attenuati), poi l'eroe scelto (pieno) sopra
+    ents.filter((e) => !e.sel).forEach((e) => {
+      ctx.save(); ctx.globalAlpha = 0.5;
+      ctx.drawImage(e.img, e.x, yBase - e.h, e.w, e.h);
+      ctx.restore();
+    });
+    if (selEnt) ctx.drawImage(selEnt.img, selEnt.x, yBase - selEnt.h, selEnt.w, selEnt.h);
+
+    // targhetta col nome dell'eroe scelto
+    const selName = (selEnt && selEnt.c.name) || charName;
+    if (selName) {
+      ctx.font = '800 34px Syne, sans-serif';
+      const t = 'CON ' + selName.toUpperCase();
+      const ptw = ctx.measureText(t).width;
+      const pw = ptw + 64, ph = 64, px = (W - pw) / 2, py = 843;
+      ctx.fillStyle = acc; roundRect(ctx, px, py, pw, ph, ph / 2); ctx.fill();
+      ctx.fillStyle = '#1a1020'; ctx.fillText(t, W / 2, py + 44);
+    }
+  } else if (charName) {
+    // fallback testuale (vecchio comportamento) se gli artwork non sono disponibili
     ctx.fillStyle = '#c4b8c2';
     ctx.font = '700 34px "DM Sans", sans-serif';
     ctx.fillText('con ' + charName, W / 2, 1130);
@@ -128,13 +195,10 @@ export async function generateBadge({ nickname, score, charName, accent }) {
 
   // footer
   ctx.fillStyle = '#fff';
-  ctx.font = '800 34px Syne, sans-serif';
-  ctx.fillText('SUPER YAC WORLD', W / 2, H - 130);
-  ctx.fillStyle = '#9a8fa6';
-  ctx.font = '700 26px "DM Sans", sans-serif';
+  ctx.font = '800 30px Syne, sans-serif';
   const d = new Date();
   const date = d.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' });
-  ctx.fillText('Break the Mold · ' + date, W / 2, H - 90);
+  ctx.fillText('SUPER YAC WORLD · ' + date, W / 2, 1300);
 
   return { dataUrl: canvas.toDataURL('image/png'), canvas };
 }
