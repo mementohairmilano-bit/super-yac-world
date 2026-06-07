@@ -1,8 +1,9 @@
 import Phaser from 'phaser';
 import { CHARACTERS } from './config.js';
-import { state, loadRun, clearRun, getBest, getNick, setNick, resetLetters } from './state.js';
+import { state, loadRun, clearRun, getBest, getNick, setNick, getEmail, setEmail, resetLetters } from './state.js';
 import { LEVELS } from './levels.js';
-import { submitScore, topScores, sanitizeNick } from './leaderboard.js';
+import { submitScore, topScores, sanitizeNick, submitLead, validateEmail } from './leaderboard.js';
+import { generateBadge, tierFor, downloadBadge, shareBadge } from './badge.js';
 import { GameScene } from './scenes/GameScene.js';
 import { AUDIO } from './audio.js';
 // portrait con margine (NON ritagliati) così il volto si può centrare nel riquadro della card
@@ -185,6 +186,14 @@ const boardNick = document.getElementById('board-nick');
 const boardSend = document.getElementById('board-send');
 const boardMyScore = document.getElementById('board-myscore');
 const boardEmpty = document.getElementById('board-empty');
+// Badge YAC Hero (lead gen)
+const boardEmail = document.getElementById('board-email');
+const boardConsent = document.getElementById('board-consent');
+const boardBadgeBtn = document.getElementById('board-badge-btn');
+const boardBadgeMsg = document.getElementById('board-badge-msg');
+const badgeResult = document.getElementById('badge-result');
+const badgeImg = document.getElementById('badge-img');
+let lastBadgeUrl = null;
 
 async function loadBoard() {
   boardList.innerHTML = '<li style="opacity:.6;padding:8px">Carico…</li>';
@@ -219,6 +228,12 @@ function openBoard(submit) {
     boardMyScore.textContent = target.score + ' pt';
     boardNick.value = getNick();
     boardSend.disabled = false; boardSend.textContent = 'Invia in classifica';
+    // reset area badge (l'email viene ricordata; il badge si ri-sblocca a ogni partita)
+    if (boardEmail) boardEmail.value = getEmail();
+    if (boardBadgeMsg) boardBadgeMsg.textContent = '';
+    if (badgeResult) badgeResult.classList.add('hidden');
+    if (boardBadgeBtn) { boardBadgeBtn.disabled = false; boardBadgeBtn.textContent = '🏅 Sblocca il Badge'; }
+    lastBadgeUrl = null;
     // a fine partita (submit=true) porto subito il dito sul campo nome
     if (submit) setTimeout(() => { try { boardNick.focus(); if (!boardNick.value) boardNick.select(); } catch (e) {} }, 60);
   } else {
@@ -240,6 +255,44 @@ if (boardSend) boardSend.onclick = async () => {
   boardSend.disabled = !ok;
   if (ok) loadBoard();
 };
+
+// Badge YAC Hero: email opzionale → salva il lead (Supabase `leads`, privato) e genera il
+// badge personalizzato da scaricare/condividere. Lo riceve chiunque lascia l'email → niente
+// premio in palio, niente concorso a premi.
+if (boardBadgeBtn) boardBadgeBtn.onclick = async () => {
+  const target = window._boardTarget;
+  if (!target) return;
+  const email = validateEmail(boardEmail.value);
+  if (!email) { boardBadgeMsg.style.color = '#ff9a9a'; boardBadgeMsg.textContent = 'Inserisci un\'email valida.'; return; }
+  if (!boardConsent.checked) { boardBadgeMsg.style.color = '#ff9a9a'; boardBadgeMsg.textContent = 'Spunta il consenso per continuare.'; return; }
+
+  const nick = sanitizeNick(boardNick.value);
+  setNick(nick); setEmail(email);
+  const char = CHARACTERS[state.selectedKey] || {};
+  const tier = tierFor(target.score);
+
+  boardBadgeBtn.disabled = true; boardBadgeBtn.textContent = 'Genero il badge…';
+  boardBadgeMsg.style.color = '#c4b8c2'; boardBadgeMsg.textContent = '';
+  // il salvataggio del lead non deve bloccare il badge: lo facciamo "in parallelo"
+  submitLead({ nickname: nick, email, score: target.score, world: target.world, tier: tier.title });
+  try {
+    const { dataUrl } = await generateBadge({ nickname: nick, score: target.score, charName: char.name, accent: char.card });
+    lastBadgeUrl = dataUrl;
+    badgeImg.src = dataUrl;
+    badgeResult.classList.remove('hidden');
+    boardBadgeBtn.textContent = 'Badge sbloccato 🏅';
+    boardBadgeMsg.style.color = 'var(--yellow)';
+    boardBadgeMsg.textContent = 'Ecco il tuo badge! Scaricalo o condividilo.';
+  } catch (e) {
+    boardBadgeBtn.disabled = false; boardBadgeBtn.textContent = '🏅 Sblocca il Badge';
+    boardBadgeMsg.style.color = '#ff9a9a'; boardBadgeMsg.textContent = 'Errore nella generazione — riprova.';
+  }
+};
+const badgeDownloadBtn = document.getElementById('badge-download');
+const badgeShareBtn = document.getElementById('badge-share');
+if (badgeDownloadBtn) badgeDownloadBtn.onclick = () => { if (lastBadgeUrl) downloadBadge(lastBadgeUrl); };
+if (badgeShareBtn) badgeShareBtn.onclick = () => { if (lastBadgeUrl) shareBadge(lastBadgeUrl); };
+
 document.getElementById('btn-board-menu').addEventListener('click', () => openBoard(false));
 document.getElementById('btn-board-over').addEventListener('click', () => openBoard(true));
 document.getElementById('btn-board-win').addEventListener('click', () => openBoard(true));

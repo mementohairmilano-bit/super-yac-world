@@ -36,7 +36,7 @@ export function resetLetters() { state.letters = []; saveLetters(); }
 // Una partita in corso = { world, char, runScore }. Scritta a fine di ogni mondo con un
 // "prossimo"; cancellata a game over / fine gioco / nuova partita. Il record è il punteggio
 // più alto mai raggiunto (per la classifica useremo lo stesso valore di run, vedi Fase 2).
-const SKEY = 'syw_save', BKEY = 'syw_best', NKEY = 'syw_nick';
+const SKEY = 'syw_save', BKEY = 'syw_best', NKEY = 'syw_nick', EKEY = 'syw_email';
 
 export function loadRun() {
   try { const v = JSON.parse(localStorage.getItem(SKEY)); return (v && v.world) ? v : null; }
@@ -51,3 +51,7 @@ export function setBest(n) { try { if (n > getBest()) localStorage.setItem(BKEY,
 // nickname per la classifica (Fase 2): ricordato così lo si chiede una volta sola
 export function getNick() { try { return localStorage.getItem(NKEY) || ''; } catch (e) { return ''; } }
 export function setNick(s) { try { localStorage.setItem(NKEY, s); } catch (e) {} }
+
+// email per il Badge YAC Hero (lead gen): ricordata così non la si reinserisce ogni volta
+export function getEmail() { try { return localStorage.getItem(EKEY) || ''; } catch (e) { return ''; } }
+export function setEmail(s) { try { localStorage.setItem(EKEY, s); } catch (e) {} }
