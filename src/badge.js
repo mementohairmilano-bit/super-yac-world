@@ -86,8 +86,8 @@ export async function generateBadge({ nickname, score, charName, accent, heroArt
   // logo YAC
   const logo = await loadImage(LOGO_URL);
   if (logo) {
-    const lw = 180, lh = lw * (logo.height / logo.width || 1);
-    ctx.drawImage(logo, (W - lw) / 2, 70, lw, lh);
+    const lw = 110, lh = lw * (logo.height / logo.width || 1);   // più piccolo e in alto: NON copre "YAC HERO"
+    ctx.drawImage(logo, (W - lw) / 2, 36, lw, lh);
   }
 
   // titolo "YAC HERO"

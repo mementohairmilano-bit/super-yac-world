@@ -2115,6 +2115,10 @@ export class GameScene extends Phaser.Scene {
   bindInput() {
     this.cur = this.input.keyboard.createCursorKeys();
     this.k = this.input.keyboard.addKeys('W,A,S,D,SPACE,Z,ESC,P,R');
+    // NON catturare i tasti (niente preventDefault globale): altrimenti A/S/D/W/Z/Spazio non si
+    // possono digitare nei campi di testo del DOM (es. l'email del badge). I tasti restano validi
+    // per il gioco (isDown), semplicemente non bloccano più gli input HTML.
+    this.input.keyboard.clearCaptures();
     this.jumpHeld = false; this.spHeld = false; this.downHeld = false;
     this.pauseHeld = false; this.rHeld = false;
 
