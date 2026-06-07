@@ -11,11 +11,11 @@ import mementoImg from '../assets/Memento_card.webp';
 import yuriImg from '../assets/Yuri_card.webp';
 import carmineImg from '../assets/carmine_card.webp';
 import andreaImg from '../assets/andrea_card.webp';
-// artwork a figura intera (oggi non usati nel gioco): servono per disegnare la crew sul badge
-import mementoArt from '../assets/Memento.webp';
-import yuriArt from '../assets/Yuri.webp';
-import carmineArt from '../assets/carmine.webp';
-import andreaArt from '../assets/andrea.webp';
+// sprite chibi (gli stessi del gioco): stile coerente con il gameplay, usati per la crew sul badge
+import mementoArt from '../assets/char_memento.webp';
+import yuriArt from '../assets/char_yuri.webp';
+import carmineArt from '../assets/char_carmine.webp';
+import andreaArt from '../assets/char_andrea.webp';
 
 const CARD_IMG = { memento: mementoImg, yuri: yuriImg, carmine: carmineImg, andrea: andreaImg };
 const HERO_ART = { memento: mementoArt, yuri: yuriArt, carmine: carmineArt, andrea: andreaArt };
