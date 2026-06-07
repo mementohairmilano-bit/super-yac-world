@@ -11,8 +11,14 @@ import mementoImg from '../assets/Memento_card.webp';
 import yuriImg from '../assets/Yuri_card.webp';
 import carmineImg from '../assets/carmine_card.webp';
 import andreaImg from '../assets/andrea_card.webp';
+// artwork a figura intera (oggi non usati nel gioco): servono per disegnare la crew sul badge
+import mementoArt from '../assets/Memento.webp';
+import yuriArt from '../assets/Yuri.webp';
+import carmineArt from '../assets/carmine.webp';
+import andreaArt from '../assets/andrea.webp';
 
 const CARD_IMG = { memento: mementoImg, yuri: yuriImg, carmine: carmineImg, andrea: andreaImg };
+const HERO_ART = { memento: mementoArt, yuri: yuriArt, carmine: carmineArt, andrea: andreaArt };
 // Inquadratura del volto nella card: zoom (background-size) + posizione verticale (Y%).
 // Y% più basso = mostra parte più alta dell'immagine (volto più in basso nella cornice).
 // Ritratti chibi (testa intera, quadrato centrato) → 'contain' center: volto SEMPRE intero, mai tagliato
@@ -276,7 +282,12 @@ if (boardBadgeBtn) boardBadgeBtn.onclick = async () => {
   // il salvataggio del lead non deve bloccare il badge: lo facciamo "in parallelo"
   submitLead({ nickname: nick, email, score: target.score, world: target.world, tier: tier.title });
   try {
-    const { dataUrl } = await generateBadge({ nickname: nick, score: target.score, charName: char.name, accent: char.card });
+    // la crew completa (in ordine), così il badge disegna tutti e 4 gli eroi evidenziando il tuo
+    const crew = Object.keys(CHARACTERS).map((k) => ({ key: k, name: CHARACTERS[k].name, accent: CHARACTERS[k].card }));
+    const { dataUrl } = await generateBadge({
+      nickname: nick, score: target.score, charName: char.name, accent: char.card,
+      heroArt: HERO_ART, selectedKey: state.selectedKey, crew,
+    });
     lastBadgeUrl = dataUrl;
     badgeImg.src = dataUrl;
     badgeResult.classList.remove('hidden');
