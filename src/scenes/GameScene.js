@@ -818,7 +818,13 @@ export class GameScene extends Phaser.Scene {
     for (const o of this.oozePits) {
       if (!o.armed && p.x > o.x1 - 70) { o.armed = true; o.t0 = this.time.now; }
       if (o.armed) {
-        o.surf = Phaser.Math.Clamp(o.startY - (this.time.now - o.t0) * o.speed / 1000, o.minY, o.startY);
+        // La melma SALE fino al picco (minY) poi RIDISCENDE e risale, ciclicamente: così il livello
+        // è sempre attraversabile — sali all'apice (sopra il picco, al sicuro), aspetti che cali e
+        // scendi. Prima invece restava al picco per sempre e bloccava la discesa = livello impossibile.
+        const range = o.startY - o.minY;
+        const riseT = Math.max(0.1, range / o.speed);   // secondi per arrivare al picco
+        const k = (1 - Math.cos((this.time.now - o.t0) / 1000 / riseT * Math.PI)) / 2;   // 0→1→0 (basso↔picco)
+        o.surf = o.startY - range * k;
         // pulsazione del bagliore (vivo/respirante)
         o.glow.setAlpha(0.22 + Math.sin(this.time.now / 260) * 0.08);
       }

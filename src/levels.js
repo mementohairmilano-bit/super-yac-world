@@ -806,8 +806,8 @@ const MONDO4_2 = {
   // e il liquido monta da startY verso minY a "speed" px/s; il contatto coi piedi uccide.
   // {x1, x2, startY, minY, speed}
   oozePits: [
-    { x1: 540,  x2: 1580, startY: 520, minY: 300, speed: 30 },
-    { x1: 2120, x2: 3000, startY: 520, minY: 290, speed: 34 },
+    { x1: 540,  x2: 1580, startY: 520, minY: 300, speed: 24 },
+    { x1: 2120, x2: 3000, startY: 520, minY: 290, speed: 26 },
   ],
 
   blocks: [
