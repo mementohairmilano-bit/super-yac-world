@@ -22,6 +22,10 @@
       --aubergine: #3B1E33; --ink: #120E16; --paper: #F7F1E8;
     }
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    /* niente menu copia/incolla al tocco prolungato e niente selezione testo (tranne nei campi input);
+       touch-action: manipulation → niente zoom da doppio-tap */
+    html, body { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; touch-action: manipulation; }
+    input, textarea { -webkit-user-select: text; user-select: text; -webkit-touch-callout: default; }
     html, body { height: 100%; height: -webkit-fill-available; background: #000; font-family: 'DM Sans', sans-serif; color: var(--paper); overflow: hidden; }
     /* iOS: 100vh include l'area dietro le barre di Safari → canvas tagliato/nero.
        100dvh (viewport dinamica) usa solo l'area visibile. Fallback per Safari vecchi. */
@@ -198,6 +202,15 @@
   </style>
 </head>
 <body>
+<script>
+  // iOS Safari ignora user-scalable=no → blocco lo zoom a pizzico e il doppio-tap via JS.
+  document.addEventListener('gesturestart', function (e) { e.preventDefault(); }, { passive: false });
+  document.addEventListener('gesturechange', function (e) { e.preventDefault(); }, { passive: false });
+  document.addEventListener('gestureend', function (e) { e.preventDefault(); }, { passive: false });
+  // pinch con due dita: blocca lo zoom (non tocca i tap singoli né i campi input).
+  // Il doppio-tap-zoom è già disattivato da touch-action:manipulation nel CSS.
+  document.addEventListener('touchmove', function (e) { if (e.touches && e.touches.length > 1) e.preventDefault(); }, { passive: false });
+</script>
 <div id="wrap">
   <div id="game">
 
