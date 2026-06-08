@@ -359,8 +359,8 @@ function setGenerating(on) {
     if (creatorAvatar.animate) { try { genAnim = creatorAvatar.animate([{ opacity: 1 }, { opacity: 0.35 }, { opacity: 1 }], { duration: 1200, iterations: Infinity }); } catch (e) {} }
     let s = 0;
     creatorAiStatus.style.color = '#F2C53D';
-    creatorAiStatus.textContent = '🎨 Sto creando il tuo avatar… non chiudere (di solito 15-30s)';
-    genTimer = setInterval(() => { s += 1; creatorAiStatus.textContent = '🎨 Sto creando il tuo avatar… ' + s + 's (di solito 15-30s, non chiudere)'; }, 1000);
+    creatorAiStatus.textContent = '🦸 Sto creando il tuo supereroe… non chiudere (di solito 15-30s)';
+    genTimer = setInterval(() => { s += 1; creatorAiStatus.textContent = '🦸 Sto creando il tuo supereroe… ' + s + 's (di solito 15-30s, non chiudere)'; }, 1000);
   } else {
     if (genAnim) { try { genAnim.cancel(); } catch (e) {} genAnim = null; }
     if (genTimer) { clearInterval(genTimer); genTimer = null; }
@@ -383,7 +383,7 @@ async function generateAvatar(file) {
     creatorSel.avatarUrl = sprite;        // sprite a corpo intero → in gioco
     creatorSel.profileUrl = profile;      // ritratto → anteprima, card, badge
     setGenerating(false);
-    creatorAiStatus.style.color = '#7CD992'; creatorAiStatus.textContent = '✓ Avatar pronto! Scegli il superpotere e gioca.';
+    creatorAiStatus.style.color = '#7CD992'; creatorAiStatus.textContent = '✓ Supereroe pronto! Scegli il superpotere e gioca.';
     renderCreator(); refreshPhotoBtn();
     // NB: la pubblicazione in community avviene al clic su "Gioca" (vedi creator-play), così cattura
     // il superpotere/nome/colore FINALI scelti dall'utente (qui sarebbero ancora quelli di default).
