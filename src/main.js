@@ -420,8 +420,11 @@ function closeCreator() { creatorEl.classList.add('hidden'); document.getElement
 if (document.getElementById('creator-close')) document.getElementById('creator-close').onclick = closeCreator;
 if (document.getElementById('creator-play')) document.getElementById('creator-play').onclick = () => {
   const hero = { name: sanitizeNick(creatorName.value) || 'Eroe', baseLook: creatorSel.look, color: creatorSel.color, powerId: creatorSel.power, avatarUrl: creatorSel.avatarUrl || null, profileUrl: creatorSel.profileUrl || null };
-  setCustomHero(hero);
   CHARACTERS.custom = buildCustomCfg(hero);
+  // se l'eroe è pubblicato in community (consenso social) NON tengo anche la copia locale → niente
+  // card doppia nel menu. Salvo localmente solo se l'utente NON ha condiviso in community.
+  if (creatorSocial && creatorSocial.checked) clearCustomHero();
+  else setCustomHero(hero);
   startGame('custom', 1, { newRun: true });
 };
 
