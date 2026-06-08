@@ -56,7 +56,14 @@ export class GameScene extends Phaser.Scene {
     // base scelto. Rimuovo prima l'eventuale texture vecchia così carica sempre l'avatar corrente.
     if (state.selectedKey === 'custom' && state.cfg) {
       if (this.textures.exists('hero_custom')) this.textures.remove('hero_custom');
-      this.load.image('hero_custom', state.cfg.avatarUrl || ('./assets/char_' + (state.cfg.baseLook || 'memento') + '.webp'));
+      const url = state.cfg.avatarUrl;
+      const remote = !!url && /^https?:/i.test(url);   // sprite community (Supabase) = via rete
+      if (url && !(remote && !navigator.onLine)) {
+        this.load.image('hero_custom', url);           // data-URL locale, oppure URL remoto se online
+      } else if (!url) {
+        this.load.image('hero_custom', './assets/char_' + (state.cfg.baseLook || 'memento') + '.webp');
+      }
+      // OFFLINE + sprite remoto → non lo carico (bloccherebbe l'avvio): create() usa il volto base in precache
     }
   }
 
