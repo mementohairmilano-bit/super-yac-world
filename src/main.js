@@ -326,9 +326,9 @@ function processAvatar(b64png) {
       // riquadro quadrato centrato orizzontalmente sul personaggio, dalla testa al petto, con un
       // filo di headroom. Le aree fuori dal personaggio restano trasparenti → si vede lo sfondo.
       const cxC = bx + cw / 2;
-      const S = Math.round(cw * 1.18);                 // poco più largo delle spalle → busto centrato
+      const S = Math.round(cw * 1.5);                  // riquadro più ampio → personaggio più piccolo, con margine
       const sx = Math.round(cxC - S / 2);
-      const sy = Math.round(by - cw * 0.08);           // piccolo spazio sopra la testa
+      const sy = Math.round(by - cw * 0.2);            // più spazio sopra la testa
       const P = 256;
       const prof = document.createElement('canvas'); prof.width = P; prof.height = P;
       const pc = prof.getContext('2d');
