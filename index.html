@@ -322,6 +322,16 @@
       <button class="btn ghost" id="btn-board-close">Chiudi</button>
     </div>
 
+    <!-- ===== Nickname obbligatorio (chiesto una volta sola, all'inizio) ===== -->
+    <div id="nameask" class="overlay hidden" style="background:radial-gradient(120% 120% at 50% 0%,#2a1626,#0c0810f7);z-index:60">
+      <div class="big">👋 Come ti chiami?</div>
+      <p class="tag" style="max-width:300px">Scegli un nickname: comparirà nella classifica con il tuo punteggio.</p>
+      <input id="nameask-input" maxlength="16" placeholder="il tuo nickname" autocomplete="off" enterkeyhint="go"
+        style="font-family:'Syne',sans-serif;font-weight:700;font-size:16px;text-align:center;padding:11px 16px;border-radius:999px;border:2px solid #ffffff44;background:#1a121f;color:#fff;outline:none;width:260px;margin-top:8px">
+      <p class="tag" id="nameask-hint" style="min-height:14px;font-size:11.5px;color:#ff9b9b;margin-top:6px"></p>
+      <button class="btn" id="nameask-go" style="margin-top:6px">▸ Inizia a giocare!</button>
+    </div>
+
     <!-- ===== Crea il tuo eroe (sbloccato dopo aver finito il gioco) ===== -->
     <div id="creator" class="overlay hidden" style="background:radial-gradient(120% 120% at 50% 0%,#2a1626,#0c0810); justify-content:flex-start; overflow-y:auto; -webkit-overflow-scrolling:touch; padding-top:max(16px,env(safe-area-inset-top)); padding-bottom:max(24px,env(safe-area-inset-bottom))">
       <div class="big">✨ Crea il tuo eroe</div>
