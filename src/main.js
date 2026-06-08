@@ -173,6 +173,7 @@ const creatorConsent = document.getElementById('creator-consent');
 const creatorSocial = document.getElementById('creator-social');
 const creatorFile = document.getElementById('creator-file');
 const creatorPhotoBtn = document.getElementById('creator-photo-btn');
+const creatorPlay = document.getElementById('creator-play');
 
 // costruisce una config "alla CHARACTERS" dall'eroe personalizzato salvato (riusa look/stats base + potere)
 function buildCustomCfg(h) {
@@ -183,16 +184,18 @@ function buildCustomCfg(h) {
     hint: (h.name || 'Eroe') + ' · Z (da GRANDE): ' + pw.name + ' — ' + pw.desc,
     card: h.color || base.card, body: base.body, accent: base.accent,
     jumps: base.jumps, speed: base.speed, jump: base.jump, special: pw.special,
-    baseLook: h.baseLook, avatarUrl: h.avatarUrl || null,
+    baseLook: h.baseLook, avatarUrl: h.avatarUrl || null, profileUrl: h.profileUrl || null,
   };
 }
 
 function renderCreator() {
-  // anteprima dell'avatar (l'unico mostrato): foto generata, oppure il placeholder 📷
+  // anteprima dell'avatar: mostra il RITRATTO (profile) se c'è, altrimenti lo sprite, altrimenti 📷
   if (creatorAvatar) {
-    if (creatorSel.avatarUrl) {
+    const preview = creatorSel.profileUrl || creatorSel.avatarUrl;
+    if (preview) {
       creatorAvatar.textContent = '';
-      creatorAvatar.style.backgroundImage = "url('" + creatorSel.avatarUrl + "')";
+      creatorAvatar.style.backgroundImage = "url('" + preview + "')";
+      creatorAvatar.style.backgroundSize = creatorSel.profileUrl ? 'cover' : 'contain';
       creatorAvatar.style.borderStyle = 'solid';
       creatorAvatar.style.borderColor = creatorSel.color;
     } else {
@@ -227,8 +230,8 @@ function renderCreator() {
 function openCreator() {
   const h = getCustomHero();
   creatorSel = h
-    ? { look: h.baseLook || 'memento', color: h.color || '#F2C53D', power: h.powerId || 'shoot', avatarUrl: h.avatarUrl || null }
-    : { look: 'memento', color: '#F2C53D', power: 'shoot', avatarUrl: null };
+    ? { look: h.baseLook || 'memento', color: h.color || '#F2C53D', power: h.powerId || 'shoot', avatarUrl: h.avatarUrl || null, profileUrl: h.profileUrl || null }
+    : { look: 'memento', color: '#F2C53D', power: 'shoot', avatarUrl: null, profileUrl: null };
   if (creatorName) creatorName.value = h ? (h.name || '') : '';
   if (creatorAiStatus) creatorAiStatus.textContent = '';
   refreshPhotoBtn();
@@ -269,47 +272,96 @@ function fileToScaledB64(file, max = 768) {
   });
 }
 
-// rende trasparente lo sfondo verde chroma-key del PNG generato, ritaglia ai bordi e ritorna un PNG data-URL
-function chromaKeyToSprite(b64png) {
+// schiarisce/scurisce un colore hex (amt da -255 a 255) — usato per lo sfondo del ritratto
+function shade(hex, amt) {
+  const h = (hex || '#888888').replace('#', '');
+  const n = parseInt(h.length === 3 ? h.split('').map((c) => c + c).join('') : h, 16);
+  const clamp = (v) => Math.max(0, Math.min(255, v));
+  const r = clamp(((n >> 16) & 255) + amt), g = clamp(((n >> 8) & 255) + amt), b = clamp((n & 255) + amt);
+  return '#' + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+}
+
+// Elabora il PNG generato (sfondo verde chroma-key) e produce DUE immagini:
+//  - sprite: personaggio a corpo intero, sfondo trasparente → usato in GIOCO
+//  - profile: ritratto quadrato (testa/spalle) su sfondo col colore tema → mostrato e usato su card/badge
+function processAvatar(b64png) {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.onload = () => {
-      const cv = document.createElement('canvas'); cv.width = img.width; cv.height = img.height;
+      const W = img.width, H = img.height;
+      const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
       const ctx = cv.getContext('2d'); ctx.drawImage(img, 0, 0);
-      const data = ctx.getImageData(0, 0, cv.width, cv.height); const d = data.data;
-      let minX = cv.width, minY = cv.height, maxX = 0, maxY = 0;
+      const data = ctx.getImageData(0, 0, W, H); const d = data.data;
+      let minX = W, minY = H, maxX = 0, maxY = 0;
       for (let i = 0; i < d.length; i += 4) {
         const r = d[i], g = d[i + 1], b = d[i + 2];
         // verde dominante e abbastanza saturo → sfondo: rendilo trasparente
         if (g > 90 && g > r * 1.35 && g > b * 1.35) { d[i + 3] = 0; }
         else if (d[i + 3] > 8) {
-          const px = (i / 4) % cv.width, py = (i / 4 / cv.width) | 0;
+          const px = (i / 4) % W, py = (i / 4 / W) | 0;
           if (px < minX) minX = px; if (px > maxX) maxX = px;
           if (py < minY) minY = py; if (py > maxY) maxY = py;
         }
       }
       ctx.putImageData(data, 0, 0);
-      // ritaglio sul personaggio (con un piccolo margine), riscalato dentro 256px per stare nei limiti localStorage
-      if (maxX <= minX || maxY <= minY) { resolve(cv.toDataURL('image/png')); return; }
+      const full = cv.toDataURL('image/png');
+      if (maxX <= minX || maxY <= minY) { resolve({ sprite: full, profile: full }); return; }
       const pad = 6;
-      minX = Math.max(0, minX - pad); minY = Math.max(0, minY - pad);
-      maxX = Math.min(cv.width - 1, maxX + pad); maxY = Math.min(cv.height - 1, maxY + pad);
-      const cw = maxX - minX + 1, ch = maxY - minY + 1;
+      const bx = Math.max(0, minX - pad), by = Math.max(0, minY - pad);
+      const bX = Math.min(W - 1, maxX + pad), bY = Math.min(H - 1, maxY + pad);
+      const cw = bX - bx + 1, ch = bY - by + 1;
+
+      // --- SPRITE (gioco): corpo intero trasparente, dentro 256px ---
       const sc = Math.min(1, 256 / Math.max(cw, ch));
-      const out = document.createElement('canvas'); out.width = Math.round(cw * sc); out.height = Math.round(ch * sc);
-      out.getContext('2d').drawImage(cv, minX, minY, cw, ch, 0, 0, out.width, out.height);
-      resolve(out.toDataURL('image/png'));
+      const spr = document.createElement('canvas'); spr.width = Math.round(cw * sc); spr.height = Math.round(ch * sc);
+      spr.getContext('2d').drawImage(cv, bx, by, cw, ch, 0, 0, spr.width, spr.height);
+      const sprite = spr.toDataURL('image/png');
+
+      // --- PROFILE (ritratto): quadrato testa/spalle (dall'alto) su sfondo col colore tema ---
+      const side = Math.min(ch, Math.round(cw * 1.05));   // quadrato ~largo come il personaggio, dall'alto
+      const sx = bx + Math.max(0, (cw - side) / 2);
+      const P = 256;
+      const prof = document.createElement('canvas'); prof.width = P; prof.height = P;
+      const pc = prof.getContext('2d');
+      const grd = pc.createRadialGradient(P / 2, P * 0.4, 20, P / 2, P / 2, P * 0.72);
+      grd.addColorStop(0, shade(creatorSel.color, 25)); grd.addColorStop(1, shade(creatorSel.color, -55));
+      pc.fillStyle = grd; pc.fillRect(0, 0, P, P);
+      const dw = P * 0.94, dh = dw * (side / side);   // quadrato
+      pc.drawImage(cv, sx, by, side, side, (P - dw) / 2, P - dh - P * 0.02, dw, dh);   // ancorato in basso
+      const profile = prof.toDataURL('image/png');
+
+      resolve({ sprite, profile });
     };
     img.onerror = () => reject(new Error('PNG generato non valido'));
     img.src = 'data:image/png;base64,' + b64png;
   });
 }
 
+// mostra/nasconde lo stato "sto generando" nel riquadro avatar (animazione + countdown rassicurante)
+let genAnim = null, genTimer = null;
+function setGenerating(on) {
+  if (creatorPlay) creatorPlay.disabled = on;
+  creatorPhotoBtn.disabled = on || !navigator.onLine;
+  if (on) {
+    creatorAvatar.textContent = '⏳';
+    creatorAvatar.style.backgroundImage = 'none';
+    creatorAvatar.style.borderStyle = 'solid';
+    creatorAvatar.style.borderColor = creatorSel.color;
+    if (creatorAvatar.animate) { try { genAnim = creatorAvatar.animate([{ opacity: 1 }, { opacity: 0.35 }, { opacity: 1 }], { duration: 1200, iterations: Infinity }); } catch (e) {} }
+    let s = 0;
+    creatorAiStatus.style.color = '#F2C53D';
+    creatorAiStatus.textContent = '🎨 Sto creando il tuo avatar… non chiudere (di solito 15-30s)';
+    genTimer = setInterval(() => { s += 1; creatorAiStatus.textContent = '🎨 Sto creando il tuo avatar… ' + s + 's (di solito 15-30s, non chiudere)'; }, 1000);
+  } else {
+    if (genAnim) { try { genAnim.cancel(); } catch (e) {} genAnim = null; }
+    if (genTimer) { clearInterval(genTimer); genTimer = null; }
+  }
+}
+
 async function generateAvatar(file) {
-  if (!navigator.onLine) { creatorAiStatus.textContent = 'Sei offline: connettiti per generare l’avatar.'; return; }
-  if (!creatorConsent || !creatorConsent.checked) { creatorAiStatus.textContent = 'Spunta il consenso per inviare la foto.'; return; }
-  creatorPhotoBtn.disabled = true;
-  creatorAiStatus.style.color = ''; creatorAiStatus.textContent = '🎨 Genero il tuo avatar… (15-30s)';
+  if (!navigator.onLine) { creatorAiStatus.style.color = '#ff9b9b'; creatorAiStatus.textContent = 'Sei offline: connettiti per generare l’avatar.'; return; }
+  if (!creatorConsent || !creatorConsent.checked) { creatorAiStatus.style.color = '#ff9b9b'; creatorAiStatus.textContent = 'Spunta il consenso per inviare la foto.'; return; }
+  setGenerating(true);
   try {
     const b64 = await fileToScaledB64(file);
     const res = await fetch('/api/avatar', {
@@ -318,13 +370,16 @@ async function generateAvatar(file) {
     });
     const j = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(j.error || 'Generazione non riuscita');
-    const sprite = await chromaKeyToSprite(j.image);
-    creatorSel.avatarUrl = sprite;
+    const { sprite, profile } = await processAvatar(j.image);
+    creatorSel.avatarUrl = sprite;        // sprite a corpo intero → in gioco
+    creatorSel.profileUrl = profile;      // ritratto → anteprima, card, badge
+    setGenerating(false);
     creatorAiStatus.style.color = '#7CD992'; creatorAiStatus.textContent = '✓ Avatar pronto! Scegli il superpotere e gioca.';
     renderCreator(); refreshPhotoBtn();
-    // se l'utente ha dato il consenso social → salva l'avatar nel cloud (best-effort, non blocca il gioco)
-    if (creatorSocial && creatorSocial.checked) saveAvatarSocial(sprite);
+    // se l'utente ha dato il consenso social → salva il RITRATTO nel cloud (best-effort, non blocca il gioco)
+    if (creatorSocial && creatorSocial.checked) saveAvatarSocial(profile);
   } catch (e) {
+    setGenerating(false);
     creatorAiStatus.style.color = '#ff9b9b'; creatorAiStatus.textContent = (e && e.message) ? e.message : 'Generazione non riuscita, riprova.';
   } finally {
     creatorPhotoBtn.disabled = !navigator.onLine;
@@ -354,7 +409,7 @@ function closeCreator() { creatorEl.classList.add('hidden'); document.getElement
 
 if (document.getElementById('creator-close')) document.getElementById('creator-close').onclick = closeCreator;
 if (document.getElementById('creator-play')) document.getElementById('creator-play').onclick = () => {
-  const hero = { name: sanitizeNick(creatorName.value) || 'Eroe', baseLook: creatorSel.look, color: creatorSel.color, powerId: creatorSel.power, avatarUrl: creatorSel.avatarUrl || null };
+  const hero = { name: sanitizeNick(creatorName.value) || 'Eroe', baseLook: creatorSel.look, color: creatorSel.color, powerId: creatorSel.power, avatarUrl: creatorSel.avatarUrl || null, profileUrl: creatorSel.profileUrl || null };
   setCustomHero(hero);
   CHARACTERS.custom = buildCustomCfg(hero);
   startGame('custom', 1, { newRun: true });
@@ -374,7 +429,7 @@ function buildExtraCards() {
   const h = getCustomHero();
   if (h) {
     const cfg = buildCustomCfg(h); const pw = powerById(h.powerId);
-    const img = h.avatarUrl || CARD_IMG[h.baseLook] || CARD_IMG.memento;
+    const img = h.profileUrl || h.avatarUrl || CARD_IMG[h.baseLook] || CARD_IMG.memento;
     const card = document.createElement('div');
     card.className = 'card card-extra'; card.tabIndex = 0;
     card.style.setProperty('--c', cfg.card); card.style.setProperty('--c-border', cfg.card + '55'); card.style.setProperty('--c-glow', cfg.card + '40');
@@ -543,7 +598,7 @@ if (boardBadgeBtn) boardBadgeBtn.onclick = async () => {
     // la crew completa (in ordine), così il badge disegna tutti gli eroi evidenziando il tuo.
     // L'eroe personalizzato usa l'avatar generato (o, in fallback, l'art del volto base scelto).
     const art = { ...HERO_ART };
-    if (CHARACTERS.custom) art.custom = CHARACTERS.custom.avatarUrl || HERO_ART[CHARACTERS.custom.baseLook] || HERO_ART.memento;
+    if (CHARACTERS.custom) art.custom = CHARACTERS.custom.profileUrl || CHARACTERS.custom.avatarUrl || HERO_ART[CHARACTERS.custom.baseLook] || HERO_ART.memento;
     const crew = Object.keys(CHARACTERS).map((k) => ({ key: k, name: CHARACTERS[k].name, accent: CHARACTERS[k].card }));
     const { dataUrl } = await generateBadge({
       nickname: nick, score: target.score, charName: char.name, accent: char.card,
