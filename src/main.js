@@ -3,7 +3,7 @@ import { CHARACTERS } from './config.js';
 import { state, loadRun, clearRun, getBest, getNick, setNick, getEmail, setEmail, resetLetters, isGameCompleted, setGameCompleted, getCustomHero, setCustomHero, clearCustomHero } from './state.js';
 import { POWERS, powerById } from './powers.js';
 import { LEVELS } from './levels.js';
-import { submitScore, topScores, sanitizeNick, submitLead, validateEmail } from './leaderboard.js';
+import { submitScore, topScores, sanitizeNick, submitLead, validateEmail, fetchPublicHeroes } from './leaderboard.js';
 import { generateBadge, tierFor, downloadBadge, shareBadge } from './badge.js';
 import { GameScene } from './scenes/GameScene.js';
 import { AUDIO } from './audio.js';
@@ -384,7 +384,7 @@ async function generateAvatar(file) {
     creatorAiStatus.style.color = '#7CD992'; creatorAiStatus.textContent = '✓ Avatar pronto! Scegli il superpotere e gioca.';
     renderCreator(); refreshPhotoBtn();
     // se l'utente ha dato il consenso social → salva il RITRATTO nel cloud (best-effort, non blocca il gioco)
-    if (creatorSocial && creatorSocial.checked) saveAvatarSocial(profile);
+    if (creatorSocial && creatorSocial.checked) saveAvatarSocial();
   } catch (e) {
     setGenerating(false);
     creatorAiStatus.style.color = '#ff9b9b'; creatorAiStatus.textContent = (e && e.message) ? e.message : 'Generazione non riuscita, riprova.';
@@ -392,19 +392,20 @@ async function generateAvatar(file) {
     creatorPhotoBtn.disabled = !navigator.onLine;
   }
 }
-// salva l'avatar generato su Supabase Storage (solo col consenso social). Best-effort: non blocca,
-// non interrompe il gioco se fallisce. Allega nickname/email (se gia' lasciati per classifica/badge).
-function saveAvatarSocial(sprite) {
+// pubblica l'eroe (sprite + ritratto + config) così è giocabile da tutti, e allega nick/email per il
+// team (privati). Solo col consenso social. Best-effort: non blocca il gioco. Aggiorna poi la community.
+function saveAvatarSocial() {
   try {
     const power = powerById(creatorSel.power);
     fetch('/api/save-avatar', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        image: sprite, consent: true,
-        heroName: sanitizeNick(creatorName.value) || 'Eroe',
-        nick: getNick() || '', email: getEmail() || '', power: power.name,
+        consent: true,
+        sprite: creatorSel.avatarUrl || null, profile: creatorSel.profileUrl || null,
+        name: sanitizeNick(creatorName.value) || 'Eroe', color: creatorSel.color, powerId: creatorSel.power,
+        power: power.name, nick: getNick() || '', email: getEmail() || '',
       }),
-    }).catch(() => {});
+    }).then((r) => r && r.ok && setTimeout(refreshCommunity, 600)).catch(() => {});
   } catch (_) {}
 }
 if (creatorPhotoBtn) creatorPhotoBtn.onclick = () => {
@@ -452,9 +453,44 @@ function buildExtraCards() {
     };
     cardsEl.appendChild(card);
   }
+  buildCommunityCards();
+}
+
+// ----- EROI DELLA COMMUNITY: gli eroi pubblici di tutti, giocabili da chiunque -----
+let communityHeroes = [];
+function heroCfgFromPublic(h) {
+  const pw = powerById(h.power_id);
+  const base = CHARACTERS.memento;
+  return {
+    name: h.name || 'Eroe', role: 'Eroe della community', power: pw.name, pdesc: pw.emoji + ' ' + pw.desc,
+    hint: (h.name || 'Eroe') + ' · Z (da GRANDE): ' + pw.name + ' — ' + pw.desc,
+    card: h.color || base.card, body: base.body, accent: base.accent,
+    jumps: base.jumps, speed: base.speed, jump: base.jump, special: pw.special,
+    baseLook: 'memento', avatarUrl: h.sprite_url || null, profileUrl: h.profile_url || null,
+  };
+}
+function buildCommunityCards() {
+  if (!cardsEl) return;
+  cardsEl.querySelectorAll('.card-community').forEach((e) => e.remove());
+  communityHeroes.forEach((h) => {
+    const cfg = heroCfgFromPublic(h); const pw = powerById(h.power_id);
+    const img = h.profile_url || h.sprite_url || CARD_IMG.memento;
+    const card = document.createElement('div');
+    card.className = 'card card-community'; card.tabIndex = 0;
+    card.style.setProperty('--c', cfg.card); card.style.setProperty('--c-border', cfg.card + '55'); card.style.setProperty('--c-glow', cfg.card + '40');
+    card.innerHTML = "<div class=\"av\" style=\"background-image:url('" + img + "');background-size:cover;background-position:center;background-repeat:no-repeat\"></div><div class=\"nm\">" + cfg.name + '</div><div class="rl">Community</div><div class="pw">' + pw.name + '</div><div class="abx">' + pw.emoji + ' ' + pw.desc + '</div>';
+    const go = () => { CHARACTERS.custom = cfg; startGame('custom', 1, { newRun: true }); };
+    card.onclick = go; card.onkeydown = (e) => { if (e.key === 'Enter') go(); };
+    cardsEl.appendChild(card);
+  });
+}
+async function refreshCommunity() {
+  try { communityHeroes = await fetchPublicHeroes(120); } catch (e) { communityHeroes = []; }
+  buildCommunityCards();
 }
 
 refreshMenu();
+refreshCommunity();   // carica gli eroi della community nella home (per tutti i giocatori)
 
 // Scorciatoia di test/condivisione: aprendo il sito con ?crea (o #crea) si sblocca e si apre
 // subito il creatore dell'eroe, senza dover finire il gioco. Utile per provare l'avatar AI.

@@ -60,6 +60,19 @@ export async function submitLead({ nickname, email, score, world, tier }) {
   } catch (e) { return false; }
 }
 
+// EROI DELLA COMMUNITY: gli eroi pubblici (creati con consenso social) che compaiono nella home
+// di tutti i giocatori. Lettura pubblica (publishable key + RLS select su visible=true).
+export async function fetchPublicHeroes(limit = 100) {
+  try {
+    const r = await fetch(
+      SUPABASE_URL + '/rest/v1/heroes?select=id,name,color,power_id,sprite_url,profile_url&visible=eq.true&order=created_at.desc&limit=' + limit,
+      { headers: HEADERS },
+    );
+    if (!r.ok) return [];
+    return await r.json();
+  } catch (e) { return []; }
+}
+
 // top N punteggi (default 100), ordinati per punteggio. Ritorna [] in caso di errore.
 export async function topScores(limit = 100) {
   try {
