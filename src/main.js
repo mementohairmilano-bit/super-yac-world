@@ -162,12 +162,17 @@ if (continuaBtn) continuaBtn.onclick = () => {
 
 // ===== EROE PERSONALIZZATO (sbloccato dopo aver finito il gioco) =====
 const CREATOR_COLORS = ['#E14B3A', '#3BB36A', '#3B82E6', '#EC6AAE', '#F2C53D', '#9B6BD9'];
-let creatorSel = { look: 'memento', color: '#F2C53D', power: 'shoot' };
+let creatorSel = { look: 'memento', color: '#F2C53D', power: 'shoot', avatarUrl: null };
 const creatorEl = document.getElementById('creator');
 const creatorName = document.getElementById('creator-name');
 const creatorLooks = document.getElementById('creator-looks');
 const creatorColors = document.getElementById('creator-colors');
 const creatorPowers = document.getElementById('creator-powers');
+const creatorAvatar = document.getElementById('creator-avatar');
+const creatorAiStatus = document.getElementById('creator-ai-status');
+const creatorConsent = document.getElementById('creator-consent');
+const creatorFile = document.getElementById('creator-file');
+const creatorPhotoBtn = document.getElementById('creator-photo-btn');
 
 // costruisce una config "alla CHARACTERS" dall'eroe personalizzato salvato (riusa look/stats base + potere)
 function buildCustomCfg(h) {
@@ -183,6 +188,20 @@ function buildCustomCfg(h) {
 }
 
 function renderCreator() {
+  // anteprima avatar generato (se presente) → la sezione "ASPETTO" diventa solo fallback
+  if (creatorAvatar) {
+    if (creatorSel.avatarUrl) {
+      creatorAvatar.textContent = '';
+      creatorAvatar.style.backgroundImage = "url('" + creatorSel.avatarUrl + "')";
+      creatorAvatar.style.borderStyle = 'solid';
+      creatorAvatar.style.borderColor = creatorSel.color;
+    } else {
+      creatorAvatar.textContent = '📷';
+      creatorAvatar.style.backgroundImage = 'none';
+      creatorAvatar.style.borderStyle = 'dashed';
+      creatorAvatar.style.borderColor = '#ffffff33';
+    }
+  }
   creatorLooks.innerHTML = '';
   ['memento', 'yuri', 'carmine', 'andrea'].forEach((k) => {
     const b = document.createElement('div');
@@ -211,19 +230,117 @@ function renderCreator() {
 function openCreator() {
   const h = getCustomHero();
   creatorSel = h
-    ? { look: h.baseLook || 'memento', color: h.color || '#F2C53D', power: h.powerId || 'shoot' }
-    : { look: 'memento', color: '#F2C53D', power: 'shoot' };
+    ? { look: h.baseLook || 'memento', color: h.color || '#F2C53D', power: h.powerId || 'shoot', avatarUrl: h.avatarUrl || null }
+    : { look: 'memento', color: '#F2C53D', power: 'shoot', avatarUrl: null };
   if (creatorName) creatorName.value = h ? (h.name || '') : '';
+  if (creatorAiStatus) creatorAiStatus.textContent = '';
+  refreshPhotoBtn();
   renderCreator();
   ['menu', 'win', 'over', 'pause', 'board'].forEach((id) => document.getElementById(id).classList.add('hidden'));
   creatorEl.classList.remove('hidden');
 }
+
+// ----- Avatar dalla foto (Gemini / "Nano Banana") -----
+// offline o senza consenso → pulsante disabilitato con messaggio; il resto del creatore funziona.
+function refreshPhotoBtn() {
+  if (!creatorPhotoBtn) return;
+  const off = !navigator.onLine;
+  creatorPhotoBtn.disabled = off;
+  creatorPhotoBtn.style.opacity = off ? '.5' : '1';
+  creatorPhotoBtn.textContent = creatorSel.avatarUrl ? '📷 Cambia foto' : '📷 Genera avatar dalla foto';
+  if (off && creatorAiStatus) creatorAiStatus.textContent = 'Offline: l’avatar dalla foto richiede una connessione.';
+}
+window.addEventListener('online', refreshPhotoBtn);
+window.addEventListener('offline', refreshPhotoBtn);
+
+// ridimensiona la foto (lato client) a max ~768px e ritorna base64 JPEG (senza prefisso) → payload piccolo
+function fileToScaledB64(file, max = 768) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const r = Math.min(1, max / Math.max(img.width, img.height));
+      const w = Math.round(img.width * r), hh = Math.round(img.height * r);
+      const cv = document.createElement('canvas'); cv.width = w; cv.height = hh;
+      cv.getContext('2d').drawImage(img, 0, 0, w, hh);
+      resolve(cv.toDataURL('image/jpeg', 0.86).split(',')[1]);
+    };
+    img.onerror = () => reject(new Error('immagine non valida'));
+    const fr = new FileReader();
+    fr.onload = () => { img.src = fr.result; };
+    fr.onerror = () => reject(new Error('lettura file fallita'));
+    fr.readAsDataURL(file);
+  });
+}
+
+// rende trasparente lo sfondo verde chroma-key del PNG generato, ritaglia ai bordi e ritorna un PNG data-URL
+function chromaKeyToSprite(b64png) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const cv = document.createElement('canvas'); cv.width = img.width; cv.height = img.height;
+      const ctx = cv.getContext('2d'); ctx.drawImage(img, 0, 0);
+      const data = ctx.getImageData(0, 0, cv.width, cv.height); const d = data.data;
+      let minX = cv.width, minY = cv.height, maxX = 0, maxY = 0;
+      for (let i = 0; i < d.length; i += 4) {
+        const r = d[i], g = d[i + 1], b = d[i + 2];
+        // verde dominante e abbastanza saturo → sfondo: rendilo trasparente
+        if (g > 90 && g > r * 1.35 && g > b * 1.35) { d[i + 3] = 0; }
+        else if (d[i + 3] > 8) {
+          const px = (i / 4) % cv.width, py = (i / 4 / cv.width) | 0;
+          if (px < minX) minX = px; if (px > maxX) maxX = px;
+          if (py < minY) minY = py; if (py > maxY) maxY = py;
+        }
+      }
+      ctx.putImageData(data, 0, 0);
+      // ritaglio sul personaggio (con un piccolo margine), riscalato dentro 256px per stare nei limiti localStorage
+      if (maxX <= minX || maxY <= minY) { resolve(cv.toDataURL('image/png')); return; }
+      const pad = 6;
+      minX = Math.max(0, minX - pad); minY = Math.max(0, minY - pad);
+      maxX = Math.min(cv.width - 1, maxX + pad); maxY = Math.min(cv.height - 1, maxY + pad);
+      const cw = maxX - minX + 1, ch = maxY - minY + 1;
+      const sc = Math.min(1, 256 / Math.max(cw, ch));
+      const out = document.createElement('canvas'); out.width = Math.round(cw * sc); out.height = Math.round(ch * sc);
+      out.getContext('2d').drawImage(cv, minX, minY, cw, ch, 0, 0, out.width, out.height);
+      resolve(out.toDataURL('image/png'));
+    };
+    img.onerror = () => reject(new Error('PNG generato non valido'));
+    img.src = 'data:image/png;base64,' + b64png;
+  });
+}
+
+async function generateAvatar(file) {
+  if (!navigator.onLine) { creatorAiStatus.textContent = 'Sei offline: connettiti per generare l’avatar.'; return; }
+  if (!creatorConsent || !creatorConsent.checked) { creatorAiStatus.textContent = 'Spunta il consenso per inviare la foto.'; return; }
+  creatorPhotoBtn.disabled = true;
+  creatorAiStatus.style.color = ''; creatorAiStatus.textContent = '🎨 Genero il tuo avatar… (15-30s)';
+  try {
+    const b64 = await fileToScaledB64(file);
+    const res = await fetch('/api/avatar', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ image: b64, mime: 'image/jpeg' }),
+    });
+    const j = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(j.error || 'Generazione non riuscita');
+    const sprite = await chromaKeyToSprite(j.image);
+    creatorSel.avatarUrl = sprite;
+    creatorAiStatus.style.color = '#7CD992'; creatorAiStatus.textContent = '✓ Avatar pronto! Scegli il superpotere e gioca.';
+    renderCreator(); refreshPhotoBtn();
+  } catch (e) {
+    creatorAiStatus.style.color = '#ff9b9b'; creatorAiStatus.textContent = (e && e.message) ? e.message : 'Generazione non riuscita, riprova.';
+  } finally {
+    creatorPhotoBtn.disabled = !navigator.onLine;
+  }
+}
+if (creatorPhotoBtn) creatorPhotoBtn.onclick = () => {
+  if (!creatorConsent || !creatorConsent.checked) { creatorAiStatus.style.color = '#ff9b9b'; creatorAiStatus.textContent = 'Prima spunta il consenso privacy qui sopra.'; return; }
+  creatorFile.click();
+};
+if (creatorFile) creatorFile.onchange = () => { const f = creatorFile.files && creatorFile.files[0]; if (f) generateAvatar(f); creatorFile.value = ''; };
 function closeCreator() { creatorEl.classList.add('hidden'); document.getElementById('menu').classList.remove('hidden'); refreshMenu(); }
 
 if (document.getElementById('creator-close')) document.getElementById('creator-close').onclick = closeCreator;
 if (document.getElementById('creator-play')) document.getElementById('creator-play').onclick = () => {
-  const prev = getCustomHero();
-  const hero = { name: sanitizeNick(creatorName.value) || 'Eroe', baseLook: creatorSel.look, color: creatorSel.color, powerId: creatorSel.power, avatarUrl: prev && prev.avatarUrl ? prev.avatarUrl : null };
+  const hero = { name: sanitizeNick(creatorName.value) || 'Eroe', baseLook: creatorSel.look, color: creatorSel.color, powerId: creatorSel.power, avatarUrl: creatorSel.avatarUrl || null };
   setCustomHero(hero);
   CHARACTERS.custom = buildCustomCfg(hero);
   startGame('custom', 1, { newRun: true });
@@ -402,11 +519,14 @@ if (boardBadgeBtn) boardBadgeBtn.onclick = async () => {
   // il salvataggio del lead va in coda (riprova da solo se offline) e non blocca il badge
   queueLead({ nickname: nick, email, score: target.score, world: target.world, tier: tier.title }); flushPending();
   try {
-    // la crew completa (in ordine), così il badge disegna tutti e 4 gli eroi evidenziando il tuo
+    // la crew completa (in ordine), così il badge disegna tutti gli eroi evidenziando il tuo.
+    // L'eroe personalizzato usa l'avatar generato (o, in fallback, l'art del volto base scelto).
+    const art = { ...HERO_ART };
+    if (CHARACTERS.custom) art.custom = CHARACTERS.custom.avatarUrl || HERO_ART[CHARACTERS.custom.baseLook] || HERO_ART.memento;
     const crew = Object.keys(CHARACTERS).map((k) => ({ key: k, name: CHARACTERS[k].name, accent: CHARACTERS[k].card }));
     const { dataUrl } = await generateBadge({
       nickname: nick, score: target.score, charName: char.name, accent: char.card,
-      heroArt: HERO_ART, selectedKey: state.selectedKey, crew,
+      heroArt: art, selectedKey: state.selectedKey, crew,
     });
     lastBadgeUrl = dataUrl;
     badgeImg.src = dataUrl;
