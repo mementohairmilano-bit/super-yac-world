@@ -171,6 +171,7 @@ const creatorPowers = document.getElementById('creator-powers');
 const creatorAvatar = document.getElementById('creator-avatar');
 const creatorAiStatus = document.getElementById('creator-ai-status');
 const creatorConsent = document.getElementById('creator-consent');
+const creatorSocial = document.getElementById('creator-social');
 const creatorFile = document.getElementById('creator-file');
 const creatorPhotoBtn = document.getElementById('creator-photo-btn');
 
@@ -325,11 +326,28 @@ async function generateAvatar(file) {
     creatorSel.avatarUrl = sprite;
     creatorAiStatus.style.color = '#7CD992'; creatorAiStatus.textContent = '✓ Avatar pronto! Scegli il superpotere e gioca.';
     renderCreator(); refreshPhotoBtn();
+    // se l'utente ha dato il consenso social → salva l'avatar nel cloud (best-effort, non blocca il gioco)
+    if (creatorSocial && creatorSocial.checked) saveAvatarSocial(sprite);
   } catch (e) {
     creatorAiStatus.style.color = '#ff9b9b'; creatorAiStatus.textContent = (e && e.message) ? e.message : 'Generazione non riuscita, riprova.';
   } finally {
     creatorPhotoBtn.disabled = !navigator.onLine;
   }
+}
+// salva l'avatar generato su Supabase Storage (solo col consenso social). Best-effort: non blocca,
+// non interrompe il gioco se fallisce. Allega nickname/email (se gia' lasciati per classifica/badge).
+function saveAvatarSocial(sprite) {
+  try {
+    const power = powerById(creatorSel.power);
+    fetch('/api/save-avatar', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        image: sprite, consent: true,
+        heroName: sanitizeNick(creatorName.value) || 'Eroe',
+        nick: getNick() || '', email: getEmail() || '', power: power.name,
+      }),
+    }).catch(() => {});
+  } catch (_) {}
 }
 if (creatorPhotoBtn) creatorPhotoBtn.onclick = () => {
   if (!creatorConsent || !creatorConsent.checked) { creatorAiStatus.style.color = '#ff9b9b'; creatorAiStatus.textContent = 'Prima spunta il consenso privacy qui sopra.'; return; }
