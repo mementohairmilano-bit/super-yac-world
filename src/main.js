@@ -165,7 +165,6 @@ const CREATOR_COLORS = ['#E14B3A', '#3BB36A', '#3B82E6', '#EC6AAE', '#F2C53D', '
 let creatorSel = { look: 'memento', color: '#F2C53D', power: 'shoot', avatarUrl: null };
 const creatorEl = document.getElementById('creator');
 const creatorName = document.getElementById('creator-name');
-const creatorLooks = document.getElementById('creator-looks');
 const creatorColors = document.getElementById('creator-colors');
 const creatorPowers = document.getElementById('creator-powers');
 const creatorAvatar = document.getElementById('creator-avatar');
@@ -189,7 +188,7 @@ function buildCustomCfg(h) {
 }
 
 function renderCreator() {
-  // anteprima avatar generato (se presente) → la sezione "ASPETTO" diventa solo fallback
+  // anteprima dell'avatar (l'unico mostrato): foto generata, oppure il placeholder 📷
   if (creatorAvatar) {
     if (creatorSel.avatarUrl) {
       creatorAvatar.textContent = '';
@@ -200,16 +199,9 @@ function renderCreator() {
       creatorAvatar.textContent = '📷';
       creatorAvatar.style.backgroundImage = 'none';
       creatorAvatar.style.borderStyle = 'dashed';
-      creatorAvatar.style.borderColor = '#ffffff33';
+      creatorAvatar.style.borderColor = '#ffffff44';
     }
   }
-  creatorLooks.innerHTML = '';
-  ['memento', 'yuri', 'carmine', 'andrea'].forEach((k) => {
-    const b = document.createElement('div');
-    b.style.cssText = "width:56px;height:56px;border-radius:12px;background:#2c2038;background-image:url('" + CARD_IMG[k] + "');background-size:contain;background-position:center;background-repeat:no-repeat;cursor:pointer;border:2px solid " + (creatorSel.look === k ? '#fff' : '#ffffff33');
-    b.onclick = () => { creatorSel.look = k; renderCreator(); };
-    creatorLooks.appendChild(b);
-  });
   creatorColors.innerHTML = '';
   CREATOR_COLORS.forEach((col) => {
     const b = document.createElement('div');
@@ -219,9 +211,13 @@ function renderCreator() {
   });
   creatorPowers.innerHTML = '';
   POWERS.forEach((pw) => {
+    const sel = creatorSel.power === pw.id;
     const b = document.createElement('button');
-    b.type = 'button'; b.className = 'btn ghost';
-    b.style.cssText = 'padding:8px 6px;font-size:12px;line-height:1.2;border-width:2px;border-color:' + (creatorSel.power === pw.id ? '#fff' : '#ffffff2e');
+    b.type = 'button'; b.className = 'btn';
+    // selezionato = riempito col colore tema (testo scuro + glow): impossibile non capire quale è attivo
+    b.style.cssText = 'padding:9px 8px;font-size:12px;line-height:1.2;border-radius:12px;cursor:pointer;border:2px solid '
+      + (sel ? '#fff' : '#ffffff2e') + ';background:' + (sel ? creatorSel.color : 'transparent')
+      + ';color:' + (sel ? '#1a121f' : '#f7f1e8') + ';box-shadow:' + (sel ? '0 0 16px ' + creatorSel.color + '88' : 'none');
     b.innerHTML = pw.emoji + ' <b>' + pw.name + '</b><br><span style="font-size:10px;opacity:.8">' + pw.desc + '</span>';
     b.onclick = () => { creatorSel.power = pw.id; renderCreator(); };
     creatorPowers.appendChild(b);
