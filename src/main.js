@@ -292,12 +292,22 @@ function processAvatar(b64png) {
       const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
       const ctx = cv.getContext('2d'); ctx.drawImage(img, 0, 0);
       const data = ctx.getImageData(0, 0, W, H); const d = data.data;
-      // 1) rimuovi lo sfondo verde; 2) conta i pixel opachi per riga/colonna (per ignorare i puntini
-      // sparsi sfuggiti al chroma-key, che altrimenti falsano il riquadro e scentrano l'avatar).
+      // Stima il colore dello SFONDO campionando gli angoli (il personaggio è centrato → gli angoli
+      // sono sfondo). Così rimuoviamo lo sfondo qualunque verde sia (anche spento/olivastro), non
+      // solo un verde fisso. Poi contiamo i pixel opachi per riga/colonna per centrare ignorando i puntini.
+      const corner = (x, y) => { const i = (y * W + x) * 4; return [d[i], d[i + 1], d[i + 2]]; };
+      const cs = [corner(1, 1), corner(W - 2, 1), corner(1, H - 2), corner(W - 2, H - 2)];
+      let br = 0, bgc = 0, bb = 0;
+      cs.forEach((c) => { br += c[0]; bgc += c[1]; bb += c[2]; });
+      br /= cs.length; bgc /= cs.length; bb /= cs.length;
+      const TOL = 110 * 110;   // distanza² dal colore di sfondo entro cui un pixel è "sfondo"
       const colCount = new Uint32Array(W), rowCount = new Uint32Array(H);
       for (let i = 0; i < d.length; i += 4) {
         const r = d[i], g = d[i + 1], b = d[i + 2];
-        if (g > 85 && g > r * 1.3 && g > b * 1.3) { d[i + 3] = 0; }   // verde dominante → sfondo
+        const dr = r - br, dg = g - bgc, db = b - bb;
+        const nearBg = (dr * dr + dg * dg + db * db) < TOL;            // simile allo sfondo campionato
+        const greenish = g > 80 && g > r * 1.25 && g > b * 1.25;       // o comunque verde dominante
+        if (nearBg || greenish) { d[i + 3] = 0; }
         else if (d[i + 3] > 40) { const idx = i >> 2; colCount[idx % W]++; rowCount[(idx / W) | 0]++; }
       }
       ctx.putImageData(data, 0, 0);

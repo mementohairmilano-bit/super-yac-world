@@ -17,8 +17,10 @@ const PROMPT = [
   'Keep the person clearly recognizable: same hairstyle and hair color, same skin tone, glasses/beard if present,',
   'and an outfit inspired by their clothes. Friendly heroic standing pose, FACING THE CAMERA (front view), looking forward,',
   'symmetrical, arms visible. Full body head to feet, centered horizontally and vertically.',
-  'IMPORTANT: place the character on a COMPLETELY SOLID flat chroma-key background of pure bright green (#00E000),',
-  'no shadows on the background, no gradients, no scenery, no text, no border. Single character only.',
+  'IMPORTANT: place the character on a COMPLETELY SOLID flat CHROMA-KEY GREEN SCREEN background of pure, fully saturated,',
+  'bright green (#00FF00) — like a video green screen, NOT olive, NOT dark, NOT pastel. Fill the entire background with that',
+  'single uniform green. No shadows on the background, no gradients, no scenery, no text, no border. Single character only.',
+  'Do not use green for the clothes or hair.',
 ].join(' ');
 
 function readBody(req) {
