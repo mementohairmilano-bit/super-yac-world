@@ -2160,8 +2160,12 @@ export class GameScene extends Phaser.Scene {
   // più fluido sui livelli pieni di oggetti (es. Mondo 2). La FISICA/logica resta attiva: gli
   // oggetti collidono e si muovono comunque, semplicemente non vengono disegnati quando lontani.
   cullView() {
-    const cam = this.cameras.main, L = cam.scrollX, R = cam.scrollX + cam.width;
-    const cull = (o) => { if (o) { const hw = (o.displayWidth || 32) / 2 + 24; o.visible = (o.x + hw > L && o.x - hw < R); } };
+    // ogni 2 frame (basta per il culling visivo): dimezza il lavoro per-frame → più fluido su iPhone PWA
+    this._cullN = (this._cullN || 0) + 1;
+    if (this._cullN % 2) return;
+    const cam = this.cameras.main, L = cam.scrollX - 24, R = cam.scrollX + cam.width + 24;
+    const cull = this._cullFn || (this._cullFn = (o) => { if (o) { const hw = (o.displayWidth || 32) / 2; o.visible = (o.x + hw > this._cullL && o.x - hw < this._cullR); } });
+    this._cullL = L; this._cullR = R;
     if (this.blocks) this.blocks.children.iterate(cull);
     if (this.coins) this.coins.children.iterate(cull);
     if (this.enemies) this.enemies.children.iterate(o => { if (o && !o.dead) cull(o); });

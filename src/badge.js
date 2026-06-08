@@ -213,9 +213,20 @@ function dataUrlToFile(dataUrl, filename) {
 }
 
 export function downloadBadge(dataUrl, filename = 'yac-hero-badge.png') {
-  const a = document.createElement('a');
-  a.href = dataUrl; a.download = filename;
-  document.body.appendChild(a); a.click(); a.remove();
+  // Scarica usando un BLOB (non il data-URL): su iOS il data-URL apre l'anteprima/il menu,
+  // mentre il blob URL fa partire il download diretto (gestione download → salva nei File).
+  try {
+    const file = dataUrlToFile(dataUrl, filename);
+    const url = URL.createObjectURL(file);
+    const a = document.createElement('a');
+    a.href = url; a.download = filename; a.rel = 'noopener';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => { try { URL.revokeObjectURL(url); } catch (e) {} }, 4000);
+  } catch (e) {
+    const a = document.createElement('a');
+    a.href = dataUrl; a.download = filename;
+    document.body.appendChild(a); a.click(); a.remove();
+  }
 }
 
 // condivide il badge: Web Share API con file dove supportata, altrimenti scarica.
