@@ -320,13 +320,13 @@ function processAvatar(b64png) {
       spr.getContext('2d').drawImage(cv, bx, by, cw, ch, 0, 0, spr.width, spr.height);
       const sprite = spr.toDataURL('image/png');
 
-      // --- PROFILE (ritratto "mezzo busto"): testa + petto, centrato, su sfondo col colore tema ---
-      // riquadro quadrato centrato sul personaggio, poco più largo delle spalle, con un filo di
-      // headroom. Le aree fuori dal personaggio restano trasparenti → si vede lo sfondo (margini).
+      // --- PROFILE (ritratto quadrato come le card base 480x480): testa + petto, centrato ---
+      // riquadro quadrato centrato orizzontalmente sul personaggio, dalla testa al petto, con un
+      // filo di headroom. Le aree fuori dal personaggio restano trasparenti → si vede lo sfondo.
       const cxC = bx + cw / 2;
-      const S = Math.round(cw * 1.22);                 // poco più largo delle spalle → busto pieno, centrato
+      const S = Math.round(cw * 1.18);                 // poco più largo delle spalle → busto centrato
       const sx = Math.round(cxC - S / 2);
-      const sy = Math.round(by - cw * 0.12);           // piccolo spazio sopra la testa
+      const sy = Math.round(by - cw * 0.08);           // piccolo spazio sopra la testa
       const P = 256;
       const prof = document.createElement('canvas'); prof.width = P; prof.height = P;
       const pc = prof.getContext('2d');
@@ -441,7 +441,7 @@ function buildExtraCards() {
     const card = document.createElement('div');
     card.className = 'card card-extra'; card.tabIndex = 0; card.style.position = 'relative';
     card.style.setProperty('--c', cfg.card); card.style.setProperty('--c-border', cfg.card + '55'); card.style.setProperty('--c-glow', cfg.card + '40');
-    card.innerHTML = "<div class=\"av\" style=\"background-image:url('" + img + "');background-size:cover;background-position:center;background-repeat:no-repeat\"></div><div class=\"nm\">" + cfg.name + '</div><div class="rl">Il tuo eroe</div><div class="pw">' + pw.name + '</div><div class="abx">' + pw.emoji + ' ' + pw.desc + '</div>'
+    card.innerHTML = "<div class=\"av\" style=\"background-image:url('" + img + "');background-size:contain;background-position:center;background-repeat:no-repeat\"></div><div class=\"nm\">" + cfg.name + '</div><div class="rl">Il tuo eroe</div><div class="pw">' + pw.name + '</div><div class="abx">' + pw.emoji + ' ' + pw.desc + '</div>'
       + '<button class="card-del" title="Elimina questo eroe" aria-label="Elimina" style="position:absolute;top:6px;right:6px;width:26px;height:26px;border-radius:50%;border:none;background:#0009;color:#fff;font-size:14px;line-height:1;cursor:pointer;z-index:2">✕</button>';
     const go = () => { CHARACTERS.custom = cfg; startGame('custom', 1, { newRun: true }); };
     card.onclick = go; card.onkeydown = (e) => { if (e.key === 'Enter') go(); };
@@ -478,7 +478,7 @@ function buildCommunityCards() {
     const card = document.createElement('div');
     card.className = 'card card-community'; card.tabIndex = 0;
     card.style.setProperty('--c', cfg.card); card.style.setProperty('--c-border', cfg.card + '55'); card.style.setProperty('--c-glow', cfg.card + '40');
-    card.innerHTML = "<div class=\"av\" style=\"background-image:url('" + img + "');background-size:cover;background-position:center;background-repeat:no-repeat\"></div><div class=\"nm\">" + cfg.name + '</div><div class="rl">Community</div><div class="pw">' + pw.name + '</div><div class="abx">' + pw.emoji + ' ' + pw.desc + '</div>';
+    card.innerHTML = "<div class=\"av\" style=\"background-image:url('" + img + "');background-size:contain;background-position:center;background-repeat:no-repeat\"></div><div class=\"nm\">" + cfg.name + '</div><div class="rl">Community</div><div class="pw">' + pw.name + '</div><div class="abx">' + pw.emoji + ' ' + pw.desc + '</div>';
     const go = () => { CHARACTERS.custom = cfg; startGame('custom', 1, { newRun: true }); };
     card.onclick = go; card.onkeydown = (e) => { if (e.key === 'Enter') go(); };
     cardsEl.appendChild(card);
