@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { CHARACTERS } from './config.js';
-import { state, loadRun, clearRun, getBest, getNick, setNick, getEmail, setEmail, resetLetters } from './state.js';
+import { state, loadRun, clearRun, getBest, getNick, setNick, getEmail, setEmail, resetLetters, isGameCompleted, getCustomHero, setCustomHero } from './state.js';
+import { POWERS, powerById } from './powers.js';
 import { LEVELS } from './levels.js';
 import { submitScore, topScores, sanitizeNick, submitLead, validateEmail } from './leaderboard.js';
 import { generateBadge, tierFor, downloadBadge, shareBadge } from './badge.js';
@@ -152,11 +153,107 @@ function refreshMenu() {
     recordEl.classList.toggle('hidden', !best);
     if (best) recordEl.textContent = '🏆 Record: ' + best + ' pt';
   }
+  buildExtraCards();   // card "Crea il tuo eroe" + eroe custom salvato (se il gioco è finito)
 }
 if (continuaBtn) continuaBtn.onclick = () => {
   const run = loadRun(); if (!run) return;
   startGame(run.char || SELECTED, run.world, { resumeScore: run.runScore || 0 });
 };
+
+// ===== EROE PERSONALIZZATO (sbloccato dopo aver finito il gioco) =====
+const CREATOR_COLORS = ['#E14B3A', '#3BB36A', '#3B82E6', '#EC6AAE', '#F2C53D', '#9B6BD9'];
+let creatorSel = { look: 'memento', color: '#F2C53D', power: 'shoot' };
+const creatorEl = document.getElementById('creator');
+const creatorName = document.getElementById('creator-name');
+const creatorLooks = document.getElementById('creator-looks');
+const creatorColors = document.getElementById('creator-colors');
+const creatorPowers = document.getElementById('creator-powers');
+
+// costruisce una config "alla CHARACTERS" dall'eroe personalizzato salvato (riusa look/stats base + potere)
+function buildCustomCfg(h) {
+  const base = CHARACTERS[h.baseLook] || CHARACTERS.memento;
+  const pw = powerById(h.powerId);
+  return {
+    name: h.name || 'Eroe', role: 'Il tuo eroe', power: pw.name, pdesc: pw.emoji + ' ' + pw.desc,
+    hint: (h.name || 'Eroe') + ' · Z (da GRANDE): ' + pw.name + ' — ' + pw.desc,
+    card: h.color || base.card, body: base.body, accent: base.accent,
+    jumps: base.jumps, speed: base.speed, jump: base.jump, special: pw.special,
+    baseLook: h.baseLook, avatarUrl: h.avatarUrl || null,
+  };
+}
+
+function renderCreator() {
+  creatorLooks.innerHTML = '';
+  ['memento', 'yuri', 'carmine', 'andrea'].forEach((k) => {
+    const b = document.createElement('div');
+    b.style.cssText = "width:56px;height:56px;border-radius:12px;background:#2c2038;background-image:url('" + CARD_IMG[k] + "');background-size:contain;background-position:center;background-repeat:no-repeat;cursor:pointer;border:2px solid " + (creatorSel.look === k ? '#fff' : '#ffffff33');
+    b.onclick = () => { creatorSel.look = k; renderCreator(); };
+    creatorLooks.appendChild(b);
+  });
+  creatorColors.innerHTML = '';
+  CREATOR_COLORS.forEach((col) => {
+    const b = document.createElement('div');
+    b.style.cssText = 'width:30px;height:30px;border-radius:50%;cursor:pointer;background:' + col + ';border:3px solid ' + (creatorSel.color === col ? '#fff' : '#ffffff22');
+    b.onclick = () => { creatorSel.color = col; renderCreator(); };
+    creatorColors.appendChild(b);
+  });
+  creatorPowers.innerHTML = '';
+  POWERS.forEach((pw) => {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'btn ghost';
+    b.style.cssText = 'padding:8px 6px;font-size:12px;line-height:1.2;border-width:2px;border-color:' + (creatorSel.power === pw.id ? '#fff' : '#ffffff2e');
+    b.innerHTML = pw.emoji + ' <b>' + pw.name + '</b><br><span style="font-size:10px;opacity:.8">' + pw.desc + '</span>';
+    b.onclick = () => { creatorSel.power = pw.id; renderCreator(); };
+    creatorPowers.appendChild(b);
+  });
+}
+
+function openCreator() {
+  const h = getCustomHero();
+  creatorSel = h
+    ? { look: h.baseLook || 'memento', color: h.color || '#F2C53D', power: h.powerId || 'shoot' }
+    : { look: 'memento', color: '#F2C53D', power: 'shoot' };
+  if (creatorName) creatorName.value = h ? (h.name || '') : '';
+  renderCreator();
+  ['menu', 'win', 'over', 'pause', 'board'].forEach((id) => document.getElementById(id).classList.add('hidden'));
+  creatorEl.classList.remove('hidden');
+}
+function closeCreator() { creatorEl.classList.add('hidden'); document.getElementById('menu').classList.remove('hidden'); refreshMenu(); }
+
+if (document.getElementById('creator-close')) document.getElementById('creator-close').onclick = closeCreator;
+if (document.getElementById('creator-play')) document.getElementById('creator-play').onclick = () => {
+  const prev = getCustomHero();
+  const hero = { name: sanitizeNick(creatorName.value) || 'Eroe', baseLook: creatorSel.look, color: creatorSel.color, powerId: creatorSel.power, avatarUrl: prev && prev.avatarUrl ? prev.avatarUrl : null };
+  setCustomHero(hero);
+  CHARACTERS.custom = buildCustomCfg(hero);
+  startGame('custom', 1, { newRun: true });
+};
+
+// card extra nel menu: "Crea il tuo eroe" + l'eroe custom salvato (ricostruite a ogni refreshMenu)
+function buildExtraCards() {
+  if (!cardsEl) return;
+  cardsEl.querySelectorAll('.card-extra').forEach((e) => e.remove());
+  if (!isGameCompleted()) return;
+  const create = document.createElement('div');
+  create.className = 'card card-extra'; create.tabIndex = 0;
+  create.style.setProperty('--c', '#F2C53D'); create.style.setProperty('--c-border', '#F2C53D55'); create.style.setProperty('--c-glow', '#F2C53D40');
+  create.innerHTML = '<div class="av" style="display:flex;align-items:center;justify-content:center;font-size:40px">✨</div><div class="nm">Crea eroe</div><div class="rl">Sbloccato!</div><div class="pw">Tu</div><div class="abx">Avatar + superpotere a scelta</div>';
+  create.onclick = openCreator; create.onkeydown = (e) => { if (e.key === 'Enter') openCreator(); };
+  cardsEl.appendChild(create);
+  const h = getCustomHero();
+  if (h) {
+    const cfg = buildCustomCfg(h); const pw = powerById(h.powerId);
+    const img = h.avatarUrl || CARD_IMG[h.baseLook] || CARD_IMG.memento;
+    const card = document.createElement('div');
+    card.className = 'card card-extra'; card.tabIndex = 0;
+    card.style.setProperty('--c', cfg.card); card.style.setProperty('--c-border', cfg.card + '55'); card.style.setProperty('--c-glow', cfg.card + '40');
+    card.innerHTML = "<div class=\"av\" style=\"background-image:url('" + img + "');background-size:contain;background-position:center;background-repeat:no-repeat\"></div><div class=\"nm\">" + cfg.name + '</div><div class="rl">Il tuo eroe</div><div class="pw">' + pw.name + '</div><div class="abx">' + pw.emoji + ' ' + pw.desc + '</div>';
+    const go = () => { CHARACTERS.custom = cfg; startGame('custom', 1, { newRun: true }); };
+    card.onclick = go; card.onkeydown = (e) => { if (e.key === 'Enter') go(); };
+    cardsEl.appendChild(card);
+  }
+}
+
 refreshMenu();
 
 // Set logo images
@@ -331,8 +428,14 @@ document.getElementById('btn-board-menu').addEventListener('click', () => openBo
 document.getElementById('btn-board-over').addEventListener('click', () => openBoard(true));
 document.getElementById('btn-board-win').addEventListener('click', () => openBoard(true));
 document.getElementById('btn-board-close').addEventListener('click', closeBoard);
-// esposto alla GameScene per mostrare il pulsante "Classifica" sulla card del finale
-window._gameShowBoardBtn = (show) => document.getElementById('btn-board-win').classList.toggle('hidden', !show);
+// "✨ Crea il tuo eroe" sulla card del finale → apre il creatore (sblocco già fatto dalla scena)
+const creatorWinBtn = document.getElementById('btn-creator-win');
+if (creatorWinBtn) creatorWinBtn.addEventListener('click', () => { if (GAME) { GAME.destroy(true); GAME = null; } document.body.classList.remove('in-game'); document.getElementById('touch').classList.add('hidden'); document.getElementById('pausebtn').classList.add('hidden'); openCreator(); });
+// esposto alla GameScene per mostrare i pulsanti "Classifica" e "Crea il tuo eroe" sulla card del finale
+window._gameShowBoardBtn = (show) => {
+  document.getElementById('btn-board-win').classList.toggle('hidden', !show);
+  if (creatorWinBtn) creatorWinBtn.classList.toggle('hidden', !show);
+};
 // esposto alla GameScene: a fine partita apre da solo il form di salvataggio (col nome già a fuoco),
 // così il giocatore non deve cercare il pulsante. Non fa nulla se non c'è un punteggio da inviare.
 window._promptSaveScore = () => { if (window._runResult && boardEl.classList.contains('hidden')) openBoard(true); };

@@ -248,6 +248,7 @@
       <p class="tag" id="winscore" style="color:var(--yellow)"></p>
       <button class="btn hidden" id="btn-next-win">Prossimo mondo →</button>
       <button class="btn hidden" id="btn-board-win">🏆 Salva in classifica</button>
+      <button class="btn hidden" id="btn-creator-win">✨ Crea il tuo eroe</button>
       <button class="btn" id="btn-menu-win">Torna al menu</button>
     </div>
 
@@ -306,6 +307,22 @@
       <ol id="board-list" style="list-style:none;margin:6px 0;padding:0;width:min(360px,86vw);max-height:46vh;overflow-y:auto;text-align:left;font-family:'DM Sans',sans-serif"></ol>
       <p class="tag" id="board-empty" class="hidden" style="opacity:.7"></p>
       <button class="btn ghost" id="btn-board-close">Chiudi</button>
+    </div>
+
+    <!-- ===== Crea il tuo eroe (sbloccato dopo aver finito il gioco) ===== -->
+    <div id="creator" class="overlay hidden" style="background:radial-gradient(120% 120% at 50% 0%,#2a1626,#0c0810); justify-content:flex-start; overflow-y:auto; -webkit-overflow-scrolling:touch; padding-top:max(16px,env(safe-area-inset-top)); padding-bottom:max(24px,env(safe-area-inset-bottom))">
+      <div class="big">✨ Crea il tuo eroe</div>
+      <p class="tag" style="margin:0 0 2px;font-size:12px">Hai finito il gioco! Crea il tuo eroe: nome, aspetto e superpotere.</p>
+      <input id="creator-name" maxlength="16" placeholder="nome del tuo eroe" autocomplete="off"
+        style="font-family:'Syne',sans-serif;font-weight:700;font-size:15px;text-align:center;padding:9px 14px;border-radius:999px;border:2px solid #ffffff33;background:#1a121f;color:#fff;outline:none;width:240px;margin-top:8px">
+      <div class="tag" style="margin-top:12px;color:var(--yellow);font-weight:700;font-size:12px">ASPETTO</div>
+      <div id="creator-looks" style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:4px"></div>
+      <div class="tag" style="margin-top:8px;color:var(--yellow);font-weight:700;font-size:12px">COLORE</div>
+      <div id="creator-colors" style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:4px"></div>
+      <div class="tag" style="margin-top:8px;color:var(--yellow);font-weight:700;font-size:12px">SUPERPOTERE</div>
+      <div id="creator-powers" style="display:grid;grid-template-columns:repeat(2,1fr);gap:7px;width:min(380px,90vw);margin-top:4px"></div>
+      <button class="btn" id="creator-play" style="margin-top:12px">▸ Gioca con il tuo eroe</button>
+      <button class="btn ghost" id="creator-close" style="margin-top:4px">Chiudi</button>
     </div>
 
     <div id="install-help" class="overlay hidden" style="background:radial-gradient(120% 120% at 50% 0%,#2a1626,#0c0810)">

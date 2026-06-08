@@ -55,3 +55,13 @@ export function setNick(s) { try { localStorage.setItem(NKEY, s); } catch (e) {}
 // email per il Badge YAC Hero (lead gen): ricordata così non la si reinserisce ogni volta
 export function getEmail() { try { return localStorage.getItem(EKEY) || ''; } catch (e) { return ''; } }
 export function setEmail(s) { try { localStorage.setItem(EKEY, s); } catch (e) {} }
+
+// --- Gioco completato + EROE PERSONALIZZATO (sbloccato dopo aver finito il gioco) ---
+// done = ha visto il finale almeno una volta. customHero = config dell'eroe creato dal giocatore
+// { name, powerId, baseLook, color, avatarUrl? } (avatarUrl = sprite generato dalla foto, Fase 2).
+const DKEY = 'syw_done', CHKEY = 'syw_customHero';
+export function isGameCompleted() { try { return localStorage.getItem(DKEY) === '1'; } catch (e) { return false; } }
+export function setGameCompleted() { try { localStorage.setItem(DKEY, '1'); } catch (e) {} }
+export function getCustomHero() { try { const v = JSON.parse(localStorage.getItem(CHKEY)); return (v && v.name) ? v : null; } catch (e) { return null; } }
+export function setCustomHero(h) { try { localStorage.setItem(CHKEY, JSON.stringify(h)); } catch (e) {} }
+export function clearCustomHero() { try { localStorage.removeItem(CHKEY); } catch (e) {} }

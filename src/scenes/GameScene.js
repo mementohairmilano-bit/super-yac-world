@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { PAL } from '../config.js';
-import { state, collectLetter, hasAllLetters, hasLetter, SECRET_WORD, saveRun, clearRun, setBest, getBest } from '../state.js';
+import { state, collectLetter, hasAllLetters, hasLetter, SECRET_WORD, saveRun, clearRun, setBest, getBest, setGameCompleted } from '../state.js';
 import { AUDIO } from '../audio.js';
 import { LEVELS, OFFICINA_ID } from '../levels.js';
 
@@ -52,6 +52,12 @@ export class GameScene extends Phaser.Scene {
     this.load.image('hero_yuri', './assets/char_yuri.webp');
     this.load.image('hero_carmine', './assets/char_carmine.webp');
     this.load.image('hero_andrea', './assets/char_andrea.webp');
+    // EROE PERSONALIZZATO: sprite = avatar generato dalla foto (Fase 2, data-URL) oppure il volto
+    // base scelto. Rimuovo prima l'eventuale texture vecchia così carica sempre l'avatar corrente.
+    if (state.selectedKey === 'custom' && state.cfg) {
+      if (this.textures.exists('hero_custom')) this.textures.remove('hero_custom');
+      this.load.image('hero_custom', state.cfg.avatarUrl || ('./assets/char_' + (state.cfg.baseLook || 'memento') + '.webp'));
+    }
   }
 
   create() {
@@ -1202,6 +1208,8 @@ export class GameScene extends Phaser.Scene {
     this.invincible = false; this.shootMode = false; this.slowActive = false;
     if (this.shootEv) { this.shootEv.remove(); this.shootEv = null; }
     if (this.invEv) { this.invEv.remove(); this.invEv = null; }
+    if (this.magnetEv) { this.magnetEv.remove(); this.magnetEv = null; }
+    if (this.shieldEv) { this.shieldEv.remove(); this.shieldEv = null; }
     if (this.tint) { this.tint.destroy(); this.tint = null; }
     if (this.heroShots) this.heroShots.clear(true, true);
     this.sizePlayer(false); p.alpha = 1; p.setVelocity(0, 0).setPosition(this.checkpointX, this.H - 130);
@@ -1941,6 +1949,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   finaleSignature() {
+    setGameCompleted();   // ha visto il finale → sblocca la creazione dell'eroe personalizzato
     const W = this.scale.width, H = this.scale.height, cx = W / 2;
     const tag = this.add.text(cx, H * 0.42, 'YAC — Break the Mold.', {
       fontFamily: 'Syne, sans-serif', fontStyle: '800', fontSize: '30px',
@@ -2077,6 +2086,37 @@ export class GameScene extends Phaser.Scene {
       cd = 3000; p.pounding = true;
       if (p.body.blocked.down) p.setVelocityY(-300); else p.setVelocityY(980);
       if (this.bossActive && this.boss && !this.bossInvuln && Phaser.Math.Distance.Between(p.x, p.y, this.boss.x, this.boss.y) < 180) this.damageBoss();
+    } else if (s === 'dash') {
+      // SCATTO: balzo orizzontale che travolge i nemici (riusa p.dashing, già gestito in touchEnemy)
+      cd = 4500; p.dashing = true; AUDIO.sfx('powerup_grow');
+      this.popText(p.x, p.y - 42, 'SCATTO! 💨');
+      const dir = p.flipX ? -1 : 1; p.setVelocityX(dir * 640); this.cameras.main.shake(120, 0.004);
+      this.time.delayedCall(360, () => { if (p.active) p.dashing = false; });
+    } else if (s === 'superjump') {
+      // SUPER-SALTO: un balzo molto alto
+      cd = 5000; AUDIO.sfx('jump');
+      this.popText(p.x, p.y - 42, 'SUPER-SALTO! 🦘');
+      p.setVelocityY(-980); p.jumpCut = true; this.cameras.main.shake(70, 0.003);
+    } else if (s === 'shield') {
+      // SCUDO: immune ai danni per ~4.5s (riusa p.invuln, rispettato da tutti i danni; NON uccide i nemici)
+      cd = 9000; p.invuln = true; AUDIO.sfx('powerup_grow');
+      this.popText(p.x, p.y - 42, 'SCUDO! 🛡️');
+      const ring = this.add.circle(p.x, p.y, 30, 0x8fd3ff, 0.16).setStrokeStyle(3, 0x8fd3ff, 0.85).setDepth(6);
+      this.shieldEv = this.time.addEvent({ delay: 16, loop: true, callback: () => { if (ring.active && p.active) ring.setPosition(p.x, p.y - 2); } });
+      this.time.delayedCall(4500, () => { if (p.active) p.invuln = false; if (this.shieldEv) { this.shieldEv.remove(); this.shieldEv = null; } if (ring.active) ring.destroy(); });
+    } else if (s === 'magnet') {
+      // CALAMITA: attira e raccoglie le Gocce vicine per ~5s (usa this.grab per la raccolta reale)
+      cd = 9000; AUDIO.sfx('coin');
+      this.popText(p.x, p.y - 42, 'CALAMITA! 🧲');
+      this.magnetEv = this.time.addEvent({ delay: 24, loop: true, callback: () => {
+        if (this.state !== 'play' || !this.coins) return;
+        this.coins.children.iterate((c) => {
+          if (!c || !c.active) return;
+          const d = Phaser.Math.Distance.Between(c.x, c.y, p.x, p.y);
+          if (d < 230) { if (d < 26) { this.grab(p, c); return; } const a = Phaser.Math.Angle.Between(c.x, c.y, p.x, p.y); c.x += Math.cos(a) * 9; c.y += Math.sin(a) * 9; }
+        });
+      } });
+      this.time.delayedCall(5000, () => { if (this.magnetEv) { this.magnetEv.remove(); this.magnetEv = null; } });
     }
     this.time.delayedCall(cd, () => { this.specialReady = true; this.updateHUD(); });
     this.updateHUD();
