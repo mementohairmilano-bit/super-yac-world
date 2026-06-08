@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { CHARACTERS } from './config.js';
-import { state, loadRun, clearRun, getBest, getNick, setNick, getEmail, setEmail, resetLetters, isGameCompleted, getCustomHero, setCustomHero } from './state.js';
+import { state, loadRun, clearRun, getBest, getNick, setNick, getEmail, setEmail, resetLetters, isGameCompleted, setGameCompleted, getCustomHero, setCustomHero } from './state.js';
 import { POWERS, powerById } from './powers.js';
 import { LEVELS } from './levels.js';
 import { submitScore, topScores, sanitizeNick, submitLead, validateEmail } from './leaderboard.js';
@@ -390,6 +390,13 @@ function buildExtraCards() {
 }
 
 refreshMenu();
+
+// Scorciatoia di test/condivisione: aprendo il sito con ?crea (o #crea) si sblocca e si apre
+// subito il creatore dell'eroe, senza dover finire il gioco. Utile per provare l'avatar AI.
+if (/(?:[?&#])crea(?:[=&]|$)/.test(location.search + location.hash)) {
+  setGameCompleted();
+  try { openCreator(); } catch (e) {}
+}
 
 // Set logo images
 const logoUrl = new URL('../assets/logo_yac.webp', import.meta.url).href;
