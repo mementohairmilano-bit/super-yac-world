@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <title>Diagnostica · Super Yac World</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <style>
+    body { font-family: system-ui, -apple-system, sans-serif; background: radial-gradient(130% 130% at 50% 0%, #241629, #0c0810) no-repeat; min-height: 100vh; color: #f7f1e8; padding: 32px 20px; line-height: 1.5; }
+    h1 { font-size: 22px; margin: 0 0 4px; }
+    p.sub { opacity: .7; margin: 0 0 18px; font-size: 14px; }
+    .row { background: #1a121f; border: 1px solid #ffffff22; border-radius: 14px; padding: 16px 18px; margin: 12px 0; max-width: 540px; }
+    .big { font-size: 17px; font-weight: 700; }
+    small { opacity: .9; display: block; margin-top: 8px; font-size: 13px; }
+    .ok { color: #7CD992; } .bad { color: #ff9b9b; } .warn { color: #F2C53D; }
+    button { margin-top: 14px; background: #F2C53D; color: #1a121f; border: 0; border-radius: 999px; padding: 10px 20px; font-weight: 700; font-size: 14px; cursor: pointer; }
+    a { color: #F2C53D; }
+  </style>
+</head>
+<body>
+  <h1>🔧 Diagnostica Super Yac World</h1>
+  <p class="sub">Controlla se le chiavi sono configurate correttamente su Vercel.</p>
+  <p id="loading">Controllo in corso…</p>
+  <div id="out"></div>
+  <button id="again" style="display:none" onclick="run()">↻ Ricontrolla</button>
+
+  <script>
+    function block(title, ok, lines) {
+      return '<div class="row"><div class="big">' + title + ': ' +
+        (ok ? '<span class="ok">✅ OK</span>' : '<span class="bad">❌ DA SISTEMARE</span>') +
+        '</div>' + lines + '</div>';
+    }
+    function run() {
+      var loading = document.getElementById('loading');
+      var out = document.getElementById('out');
+      var again = document.getElementById('again');
+      loading.style.display = ''; loading.textContent = 'Controllo in corso…';
+      out.innerHTML = ''; again.style.display = 'none';
+      fetch('/api/health?t=' + Date.now(), { cache: 'no-store' })
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+          loading.style.display = 'none'; again.style.display = '';
+          var gem;
+          if (!d.gemini.configured) gem = '<small class="bad">La variabile <b>GEMINI_API_KEY</b> non è attiva in Production. Su Vercel aggiungila/abilitala per Production, poi fai <b>Redeploy</b>.</small>';
+          else if (!d.gemini.valid) gem = '<small class="bad">Chiave presente ma rifiutata da Google' + (d.gemini.error ? (': ' + d.gemini.error) : '') + '. Controlla che la chiave sia corretta e con fatturazione attiva.</small>';
+          else gem = '<small class="ok">Generazione dell\'avatar pronta.</small>';
+          out.innerHTML += block('Generazione avatar (Gemini)', d.gemini.configured && d.gemini.valid, gem);
+
+          var sup;
+          if (!d.supabase.configured) sup = '<small class="bad">La variabile <b>SUPABASE_SERVICE_ROLE_KEY</b> non è attiva in Production. Su Vercel aggiungila/abilitala per Production, poi fai <b>Redeploy</b>.</small>';
+          else if (!d.supabase.valid) sup = '<small class="bad">Chiave presente ma non valida' + (d.supabase.error ? (': ' + d.supabase.error) : '') + '. Assicurati di aver usato la chiave <b>service_role</b> (non la anon/publishable).</small>';
+          else sup = '<small class="ok">Salvataggio pronto. Bucket "syw-avatars": ' + (d.supabase.bucket ? 'già creato.' : 'verrà creato al primo avatar salvato.') + '</small>';
+          out.innerHTML += block('Salvataggio avatar (Supabase)', d.supabase.configured && d.supabase.valid, sup);
+        })
+        .catch(function () {
+          loading.innerHTML = '<span class="bad">Non riesco a contattare /api/health. Il deploy potrebbe non essere ancora attivo: fai <b>Redeploy</b> su Vercel, aspetta che sia "Ready" e ricarica questa pagina.</span>';
+          again.style.display = '';
+        });
+    }
+    run();
+  </script>
+</body>
+</html>

@@ -40,6 +40,7 @@ self.addEventListener('fetch', (e) => {
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;   // lascia passare Supabase & co.
+  if (url.pathname.startsWith('/api/')) { e.respondWith(fetch(req)); return; }   // funzioni serverless: sempre rete, mai cache
 
   // navigazioni: prima la rete fresca (aggiornamenti immediati), poi la cache come fallback OFFLINE
   if (req.mode === 'navigate') {
