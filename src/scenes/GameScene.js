@@ -287,8 +287,10 @@ export class GameScene extends Phaser.Scene {
       g.addColorStop(1, 'rgba(8,10,14,0.5)');
       ctx.fillStyle = g; ctx.fillRect(0, 0, W, H); tex.refresh();
     }
-    // depth -4: sopra i layer di sfondo (-10/-6), sotto il gameplay (>=0) → non scurisce il foreground
-    this.add.image(0, 0, 'vignette').setOrigin(0).setScrollFactor(0).setDepth(-4);
+    // depth -4: sopra i layer di sfondo (-10/-6), sotto il gameplay (>=0) → non scurisce il foreground.
+    // setDisplaySize a tutto schermo: la texture è in cache alla dimensione del primo avvio, ma qui la
+    // stiro alla dimensione ATTUALE → niente "linea scura a metà schermo" se la finestra è più larga.
+    this.vignetteImg = this.add.image(0, 0, 'vignette').setOrigin(0).setScrollFactor(0).setDepth(-4).setDisplaySize(W, H);
   }
 
   buildLevel() {
@@ -730,7 +732,8 @@ export class GameScene extends Phaser.Scene {
   }
 
   onResize() {
-    const W = this.scale.width;
+    const W = this.scale.width, H = this.scale.height;
+    if (this.vignetteImg) this.vignetteImg.setDisplaySize(W, H);   // il velo bordi copre sempre tutto lo schermo
     if (this.bgSurface && this.bgSurface.originX === 0.5) this.bgSurface.x = W / 2;   // ricentra lo sfondo "cover" (non l'Officina, origine 0)
     if (this.timeTxt) this.timeTxt.x = W / 2;
     if (this.hudLogo) this.hudLogo.x = W - 10;
