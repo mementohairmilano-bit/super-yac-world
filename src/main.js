@@ -222,6 +222,23 @@ async function loadBoard() {
 }
 function escapeHtml(s) { return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
 
+// ===== Coda offline: se l'invio del punteggio/lead fallisce (offline), resta in coda e parte
+// da solo quando torna la rete. I punti in locale (record) sono comunque sempre salvati. =====
+const PKEY = 'syw_pending';
+function loadPending() { try { return JSON.parse(localStorage.getItem(PKEY)) || {}; } catch (e) { return {}; } }
+function savePending(p) { try { localStorage.setItem(PKEY, JSON.stringify(p)); } catch (e) {} }
+function queueScore(s) { const p = loadPending(); if (!p.score || (s.score || 0) > (p.score.score || 0)) p.score = s; savePending(p); }
+function queueLead(l) { const p = loadPending(); p.lead = l; savePending(p); }
+async function flushPending() {
+  let p = loadPending();
+  if (p.score) { try { if (await submitScore(p.score.nick, p.score.score, p.score.world)) { p = loadPending(); delete p.score; savePending(p); } } catch (e) {} }
+  if (p.lead)  { try { if (await submitLead(p.lead)) { p = loadPending(); delete p.lead; savePending(p); } } catch (e) {} }
+  const q = loadPending();
+  return !q.score && !q.lead;   // true = coda vuota (tutto inviato)
+}
+window.addEventListener('online', () => { flushPending().then((ok) => { if (ok && !boardEl.classList.contains('hidden')) loadBoard(); }); });
+flushPending();   // all'avvio: prova a svuotare la coda (eventuali invii rimasti da offline)
+
 function openBoard(submit) {
   // Cosa si può inviare in classifica: il risultato di fine partita (_runResult) OPPURE, in ogni
   // altro momento (es. dal menu), il PROPRIO RECORD personale. Così il nome si può sempre mettere,
@@ -234,11 +251,15 @@ function openBoard(submit) {
     boardMyScore.textContent = target.score + ' pt';
     boardNick.value = getNick();
     boardSend.disabled = false; boardSend.textContent = 'Invia in classifica';
-    // reset area badge (l'email viene ricordata; il badge si ri-sblocca a ogni partita)
+    // reset area badge. Se l'email è GIÀ stata lasciata, niente più form: solo un pulsante
+    // compatto "genera il tuo badge" (l'email/consenso li abbiamo già → non li richiediamo più).
     if (boardEmail) boardEmail.value = getEmail();
     if (boardBadgeMsg) boardBadgeMsg.textContent = '';
     if (badgeResult) badgeResult.classList.add('hidden');
-    if (boardBadgeBtn) { boardBadgeBtn.disabled = false; boardBadgeBtn.textContent = '🏅 Sblocca il Badge'; }
+    const hasEmail = !!getEmail();
+    const emailAsk = document.getElementById('board-email-ask');
+    if (emailAsk) emailAsk.classList.toggle('hidden', hasEmail);
+    if (boardBadgeBtn) { boardBadgeBtn.disabled = false; boardBadgeBtn.textContent = hasEmail ? '🏅 Genera il tuo badge' : '🏅 Sblocca il Badge'; }
     lastBadgeUrl = null;
     // a fine partita (submit=true) porto subito il dito sul campo nome
     if (submit) setTimeout(() => { try { boardNick.focus(); if (!boardNick.value) boardNick.select(); } catch (e) {} }, 60);
@@ -256,10 +277,10 @@ if (boardSend) boardSend.onclick = async () => {
   const nick = sanitizeNick(boardNick.value);
   setNick(nick);
   boardSend.disabled = true; boardSend.textContent = 'Invio…';
-  const ok = await submitScore(nick, target.score, target.world);
-  boardSend.textContent = ok ? 'Inviato ✓' : 'Errore — riprova';
-  boardSend.disabled = !ok;
-  if (ok) loadBoard();
+  queueScore({ nick, score: target.score, world: target.world });   // sempre in coda
+  const done = await flushPending();
+  if (done) { boardSend.textContent = 'Inviato ✓'; boardSend.disabled = true; loadBoard(); }
+  else { boardSend.textContent = 'In coda — parte appena torni online ✓'; boardSend.disabled = false; }
 };
 
 // Badge YAC Hero: email opzionale → salva il lead (Supabase `leads`, privato) e genera il
@@ -268,9 +289,11 @@ if (boardSend) boardSend.onclick = async () => {
 if (boardBadgeBtn) boardBadgeBtn.onclick = async () => {
   const target = window._boardTarget;
   if (!target) return;
-  const email = validateEmail(boardEmail.value);
+  // se l'email è già stata lasciata, la riusiamo (niente form/consenso da rifare)
+  const saved = getEmail();
+  const email = saved || validateEmail(boardEmail.value);
   if (!email) { boardBadgeMsg.style.color = '#ff9a9a'; boardBadgeMsg.textContent = 'Inserisci un\'email valida.'; return; }
-  if (!boardConsent.checked) { boardBadgeMsg.style.color = '#ff9a9a'; boardBadgeMsg.textContent = 'Spunta il consenso per continuare.'; return; }
+  if (!saved && !boardConsent.checked) { boardBadgeMsg.style.color = '#ff9a9a'; boardBadgeMsg.textContent = 'Spunta il consenso per continuare.'; return; }
 
   const nick = sanitizeNick(boardNick.value);
   setNick(nick); setEmail(email);
@@ -279,8 +302,8 @@ if (boardBadgeBtn) boardBadgeBtn.onclick = async () => {
 
   boardBadgeBtn.disabled = true; boardBadgeBtn.textContent = 'Genero il badge…';
   boardBadgeMsg.style.color = '#c4b8c2'; boardBadgeMsg.textContent = '';
-  // il salvataggio del lead non deve bloccare il badge: lo facciamo "in parallelo"
-  submitLead({ nickname: nick, email, score: target.score, world: target.world, tier: tier.title });
+  // il salvataggio del lead va in coda (riprova da solo se offline) e non blocca il badge
+  queueLead({ nickname: nick, email, score: target.score, world: target.world, tier: tier.title }); flushPending();
   try {
     // la crew completa (in ordine), così il badge disegna tutti e 4 gli eroi evidenziando il tuo
     const crew = Object.keys(CHARACTERS).map((k) => ({ key: k, name: CHARACTERS[k].name, accent: CHARACTERS[k].card }));
