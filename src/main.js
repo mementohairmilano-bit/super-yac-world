@@ -292,19 +292,22 @@ function processAvatar(b64png) {
       const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
       const ctx = cv.getContext('2d'); ctx.drawImage(img, 0, 0);
       const data = ctx.getImageData(0, 0, W, H); const d = data.data;
-      let minX = W, minY = H, maxX = 0, maxY = 0;
+      // 1) rimuovi lo sfondo verde; 2) conta i pixel opachi per riga/colonna (per ignorare i puntini
+      // sparsi sfuggiti al chroma-key, che altrimenti falsano il riquadro e scentrano l'avatar).
+      const colCount = new Uint32Array(W), rowCount = new Uint32Array(H);
       for (let i = 0; i < d.length; i += 4) {
         const r = d[i], g = d[i + 1], b = d[i + 2];
-        // verde dominante e abbastanza saturo → sfondo: rendilo trasparente
-        if (g > 90 && g > r * 1.35 && g > b * 1.35) { d[i + 3] = 0; }
-        else if (d[i + 3] > 8) {
-          const px = (i / 4) % W, py = (i / 4 / W) | 0;
-          if (px < minX) minX = px; if (px > maxX) maxX = px;
-          if (py < minY) minY = py; if (py > maxY) maxY = py;
-        }
+        if (g > 85 && g > r * 1.3 && g > b * 1.3) { d[i + 3] = 0; }   // verde dominante → sfondo
+        else if (d[i + 3] > 40) { const idx = i >> 2; colCount[idx % W]++; rowCount[(idx / W) | 0]++; }
       }
       ctx.putImageData(data, 0, 0);
       const full = cv.toDataURL('image/png');
+      // un riga/colonna conta solo se ha abbastanza pixel opachi → i puntini isolati vengono ignorati
+      const colThr = Math.max(3, Math.round(H * 0.02));
+      const rowThr = Math.max(3, Math.round(W * 0.02));
+      let minX = W, minY = H, maxX = 0, maxY = 0;
+      for (let x = 0; x < W; x++) if (colCount[x] >= colThr) { if (x < minX) minX = x; if (x > maxX) maxX = x; }
+      for (let y = 0; y < H; y++) if (rowCount[y] >= rowThr) { if (y < minY) minY = y; if (y > maxY) maxY = y; }
       if (maxX <= minX || maxY <= minY) { resolve({ sprite: full, profile: full }); return; }
       const pad = 6;
       const bx = Math.max(0, minX - pad), by = Math.max(0, minY - pad);

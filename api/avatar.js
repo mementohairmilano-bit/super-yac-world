@@ -15,7 +15,9 @@ const PROMPT = [
   'Transform the person in this photo into a cute full-body 2D platformer game character (chibi mascot style),',
   'cel-shaded with clean bold outlines and flat vibrant colors, like a Super Mario / indie platformer hero.',
   'Keep the person clearly recognizable: same hairstyle and hair color, same skin tone, glasses/beard if present,',
-  'and an outfit inspired by their clothes. Friendly heroic pose, facing the camera, full body visible head to feet, centered.',
+  'and an outfit inspired by their clothes. Friendly heroic pose.',
+  'Show the character in a 3/4 view turned toward the RIGHT (body and feet oriented to the right, as if walking to the right),',
+  'with the face clearly visible. Full body head to feet, centered.',
   'IMPORTANT: place the character on a COMPLETELY SOLID flat chroma-key background of pure bright green (#00E000),',
   'no shadows on the background, no gradients, no scenery, no text, no border. Single character only.',
 ].join(' ');
