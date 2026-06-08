@@ -317,17 +317,21 @@ function processAvatar(b64png) {
       spr.getContext('2d').drawImage(cv, bx, by, cw, ch, 0, 0, spr.width, spr.height);
       const sprite = spr.toDataURL('image/png');
 
-      // --- PROFILE (ritratto): quadrato testa/spalle (dall'alto) su sfondo col colore tema ---
-      const side = Math.min(ch, Math.round(cw * 1.05));   // quadrato ~largo come il personaggio, dall'alto
-      const sx = bx + Math.max(0, (cw - side) / 2);
+      // --- PROFILE (ritratto): testa/spalle CON MARGINE, su sfondo col colore tema ---
+      // riquadro sorgente più largo del personaggio (margini ai lati) e un po' sopra la testa
+      // (headroom). Le aree fuori dal personaggio restano trasparenti → si vede lo sfondo.
+      const cxC = bx + cw / 2;
+      const S = Math.round(cw * 1.55);                 // ~55% più largo del personaggio
+      const sx = Math.round(cxC - S / 2);
+      const sy = Math.round(by - cw * 0.22);           // spazio sopra la testa
       const P = 256;
       const prof = document.createElement('canvas'); prof.width = P; prof.height = P;
       const pc = prof.getContext('2d');
       const grd = pc.createRadialGradient(P / 2, P * 0.4, 20, P / 2, P / 2, P * 0.72);
       grd.addColorStop(0, shade(creatorSel.color, 25)); grd.addColorStop(1, shade(creatorSel.color, -55));
       pc.fillStyle = grd; pc.fillRect(0, 0, P, P);
-      const dw = P * 0.94, dh = dw * (side / side);   // quadrato
-      pc.drawImage(cv, sx, by, side, side, (P - dw) / 2, P - dh - P * 0.02, dw, dh);   // ancorato in basso
+      // il canvas ritaglia in proporzione le parti di sorgente fuori bordo → margini = sfondo
+      pc.drawImage(cv, sx, sy, S, S, 0, 0, P, P);
       const profile = prof.toDataURL('image/png');
 
       resolve({ sprite, profile });
