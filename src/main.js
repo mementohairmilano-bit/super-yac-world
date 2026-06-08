@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { CHARACTERS } from './config.js';
-import { state, loadRun, clearRun, getBest, getNick, setNick, getEmail, setEmail, resetLetters, isGameCompleted, setGameCompleted, getCustomHero, setCustomHero } from './state.js';
+import { state, loadRun, clearRun, getBest, getNick, setNick, getEmail, setEmail, resetLetters, isGameCompleted, setGameCompleted, getCustomHero, setCustomHero, clearCustomHero } from './state.js';
 import { POWERS, powerById } from './powers.js';
 import { LEVELS } from './levels.js';
 import { submitScore, topScores, sanitizeNick, submitLead, validateEmail } from './leaderboard.js';
@@ -65,7 +65,7 @@ function startGame(key, worldId = 1, opts = {}) {
   state.worldId = WORLD_ID;
   state.level = LEVELS[WORLD_ID];
 
-  ['menu', 'win', 'over', 'pause'].forEach(id => document.getElementById(id).classList.add('hidden'));
+  ['menu', 'win', 'over', 'pause', 'creator'].forEach(id => document.getElementById(id).classList.add('hidden'));
   document.getElementById('pausebtn').classList.remove('hidden');
   if (isTouch()) document.getElementById('touch').classList.remove('hidden');
   document.body.classList.add('in-game');   // attiva l'invito "ruota il telefono" in portrait
@@ -317,13 +317,13 @@ function processAvatar(b64png) {
       spr.getContext('2d').drawImage(cv, bx, by, cw, ch, 0, 0, spr.width, spr.height);
       const sprite = spr.toDataURL('image/png');
 
-      // --- PROFILE (ritratto): testa/spalle CON MARGINE, su sfondo col colore tema ---
-      // riquadro sorgente più largo del personaggio (margini ai lati) e un po' sopra la testa
-      // (headroom). Le aree fuori dal personaggio restano trasparenti → si vede lo sfondo.
+      // --- PROFILE (ritratto "mezzo busto"): testa + petto, centrato, su sfondo col colore tema ---
+      // riquadro quadrato centrato sul personaggio, poco più largo delle spalle, con un filo di
+      // headroom. Le aree fuori dal personaggio restano trasparenti → si vede lo sfondo (margini).
       const cxC = bx + cw / 2;
-      const S = Math.round(cw * 1.55);                 // ~55% più largo del personaggio
+      const S = Math.round(cw * 1.22);                 // poco più largo delle spalle → busto pieno, centrato
       const sx = Math.round(cxC - S / 2);
-      const sy = Math.round(by - cw * 0.22);           // spazio sopra la testa
+      const sy = Math.round(by - cw * 0.12);           // piccolo spazio sopra la testa
       const P = 256;
       const prof = document.createElement('canvas'); prof.width = P; prof.height = P;
       const pc = prof.getContext('2d');
@@ -435,11 +435,18 @@ function buildExtraCards() {
     const cfg = buildCustomCfg(h); const pw = powerById(h.powerId);
     const img = h.profileUrl || h.avatarUrl || CARD_IMG[h.baseLook] || CARD_IMG.memento;
     const card = document.createElement('div');
-    card.className = 'card card-extra'; card.tabIndex = 0;
+    card.className = 'card card-extra'; card.tabIndex = 0; card.style.position = 'relative';
     card.style.setProperty('--c', cfg.card); card.style.setProperty('--c-border', cfg.card + '55'); card.style.setProperty('--c-glow', cfg.card + '40');
-    card.innerHTML = "<div class=\"av\" style=\"background-image:url('" + img + "');background-size:contain;background-position:center;background-repeat:no-repeat\"></div><div class=\"nm\">" + cfg.name + '</div><div class="rl">Il tuo eroe</div><div class="pw">' + pw.name + '</div><div class="abx">' + pw.emoji + ' ' + pw.desc + '</div>';
+    card.innerHTML = "<div class=\"av\" style=\"background-image:url('" + img + "');background-size:cover;background-position:center;background-repeat:no-repeat\"></div><div class=\"nm\">" + cfg.name + '</div><div class="rl">Il tuo eroe</div><div class="pw">' + pw.name + '</div><div class="abx">' + pw.emoji + ' ' + pw.desc + '</div>'
+      + '<button class="card-del" title="Elimina questo eroe" aria-label="Elimina" style="position:absolute;top:6px;right:6px;width:26px;height:26px;border-radius:50%;border:none;background:#0009;color:#fff;font-size:14px;line-height:1;cursor:pointer;z-index:2">✕</button>';
     const go = () => { CHARACTERS.custom = cfg; startGame('custom', 1, { newRun: true }); };
     card.onclick = go; card.onkeydown = (e) => { if (e.key === 'Enter') go(); };
+    card.querySelector('.card-del').onclick = (e) => {
+      e.stopPropagation();
+      if (confirm('Eliminare l\'eroe "' + cfg.name + '"? (resta nel menu solo l\'ultimo creato)')) {
+        clearCustomHero(); delete CHARACTERS.custom; refreshMenu();
+      }
+    };
     cardsEl.appendChild(card);
   }
 }
