@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <title>Avatar raccolti · Super Yac World</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <style>
+    body { font-family: system-ui, -apple-system, sans-serif; background: radial-gradient(130% 130% at 50% 0%, #241629, #0c0810) no-repeat; min-height: 100vh; color: #f7f1e8; padding: 28px 20px; }
+    h1 { font-size: 22px; margin: 0 0 4px; }
+    p.sub { opacity: .7; margin: 0 0 18px; font-size: 14px; }
+    .bar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 18px; }
+    input { background: #1a121f; border: 2px solid #ffffff33; color: #fff; border-radius: 999px; padding: 9px 16px; font-size: 14px; outline: none; min-width: 220px; }
+    button { background: #F2C53D; color: #1a121f; border: 0; border-radius: 999px; padding: 9px 18px; font-weight: 700; font-size: 14px; cursor: pointer; }
+    button.ghost { background: transparent; color: #f7f1e8; border: 2px solid #ffffff33; }
+    .msg { font-size: 14px; margin: 8px 0; }
+    .bad { color: #ff9b9b; } .ok { color: #7CD992; } .warn { color: #F2C53D; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 14px; margin-top: 10px; }
+    .card { background: #1a121f; border: 1px solid #ffffff1f; border-radius: 14px; padding: 12px; }
+    .thumb { width: 100%; aspect-ratio: 1; border-radius: 10px; background: #0d0a12 center/contain no-repeat; image-rendering: auto; }
+    .nm { font-weight: 700; font-size: 14px; margin-top: 8px; }
+    .meta { font-size: 11px; opacity: .8; margin-top: 3px; word-break: break-word; }
+    .dl { display: inline-block; margin-top: 8px; font-size: 12px; color: #F2C53D; text-decoration: none; }
+    a { color: #F2C53D; }
+  </style>
+</head>
+<body>
+  <h1>🖼️ Avatar raccolti</h1>
+  <p class="sub">Solo gli avatar di chi ha dato il consenso social. Pagina privata, protetta da password.</p>
+  <div class="bar">
+    <input id="pw" type="password" placeholder="password admin" autocomplete="current-password">
+    <button id="go">Apri</button>
+    <button id="logout" class="ghost" style="display:none">Esci</button>
+  </div>
+  <div id="msg" class="msg"></div>
+  <div id="grid" class="grid"></div>
+
+  <script>
+    var pw = document.getElementById('pw');
+    var msg = document.getElementById('msg');
+    var grid = document.getElementById('grid');
+    var logout = document.getElementById('logout');
+    var saved = localStorage.getItem('syw_admin') || '';
+    if (saved) pw.value = saved;
+
+    function esc(s) { return (s == null ? '' : String(s)).replace(/[<>&"]/g, function (c) { return { '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c]; }); }
+    function fmt(d) { try { return new Date(d).toLocaleString('it-IT'); } catch (e) { return ''; } }
+
+    function load() {
+      var token = pw.value.trim();
+      if (!token) { msg.innerHTML = '<span class="warn">Inserisci la password.</span>'; return; }
+      msg.textContent = 'Carico…'; grid.innerHTML = '';
+      fetch('/api/list-avatars?token=' + encodeURIComponent(token) + '&t=' + Date.now(), { cache: 'no-store' })
+        .then(function (r) { return r.json().then(function (j) { return { s: r.status, j: j }; }); })
+        .then(function (o) {
+          if (o.s === 401) { msg.innerHTML = '<span class="bad">Password errata.</span>'; return; }
+          if (o.s !== 200) { msg.innerHTML = '<span class="bad">' + esc(o.j.error || 'Errore') + (o.j.detail ? (' — ' + esc(o.j.detail)) : '') + '</span>'; return; }
+          localStorage.setItem('syw_admin', token); logout.style.display = '';
+          if (!o.j.items || !o.j.items.length) { msg.innerHTML = '<span class="warn">Ancora nessun avatar raccolto. Appena qualcuno ne genera uno con il consenso social, comparirà qui.</span>'; return; }
+          msg.innerHTML = '<span class="ok">' + o.j.count + ' avatar.</span>';
+          grid.innerHTML = o.j.items.map(function (it) {
+            var img = it.url ? ('style="background-image:url(\'' + it.url + '\')"') : '';
+            var name = esc(it.hero_name || it.nickname || 'Eroe');
+            var lines = [];
+            if (it.nickname) lines.push('👤 ' + esc(it.nickname));
+            if (it.email) lines.push('✉️ ' + esc(it.email));
+            if (it.power) lines.push('⚡ ' + esc(it.power));
+            if (it.created_at) lines.push('🕒 ' + esc(fmt(it.created_at)));
+            return '<div class="card"><div class="thumb" ' + img + '></div>' +
+              '<div class="nm">' + name + '</div>' +
+              '<div class="meta">' + lines.join('<br>') + '</div>' +
+              (it.url ? ('<a class="dl" href="' + it.url + '" download target="_blank">⬇ Scarica</a>') : '') +
+              '</div>';
+          }).join('');
+        })
+        .catch(function () { msg.innerHTML = '<span class="bad">Errore di rete. Il deploy è attivo? Le env ADMIN_TOKEN e SUPABASE_SERVICE_ROLE_KEY sono impostate?</span>'; });
+    }
+
+    document.getElementById('go').onclick = load;
+    pw.addEventListener('keydown', function (e) { if (e.key === 'Enter') load(); });
+    logout.onclick = function () { localStorage.removeItem('syw_admin'); pw.value = ''; grid.innerHTML = ''; msg.textContent = ''; logout.style.display = 'none'; };
+    if (saved) load();
+  </script>
+</body>
+</html>
