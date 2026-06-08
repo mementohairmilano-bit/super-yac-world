@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { CHARACTERS } from './config.js';
-import { state, loadRun, clearRun, getBest, getNick, setNick, getEmail, setEmail, resetLetters, isGameCompleted, setGameCompleted, getCustomHero, setCustomHero, clearCustomHero } from './state.js';
+import { state, loadRun, clearRun, getBest, getNick, setNick, getEmail, setEmail, resetLetters, isGameCompleted, setGameCompleted, getCustomHero, setCustomHero, clearCustomHero, hasCreatedHero, setCreatedHero, clearCreatedHero } from './state.js';
 import { POWERS, powerById } from './powers.js';
 import { LEVELS } from './levels.js';
 import { submitScore, topScores, sanitizeNick, submitLead, validateEmail, fetchPublicHeroes } from './leaderboard.js';
@@ -425,6 +425,7 @@ if (document.getElementById('creator-play')) document.getElementById('creator-pl
   // card doppia nel menu. Salvo localmente solo se l'utente NON ha condiviso in community.
   if (creatorSocial && creatorSocial.checked) clearCustomHero();
   else setCustomHero(hero);
+  setCreatedHero();   // l'utente ha creato il suo eroe → la card "Crea eroe" sparisce
   startGame('custom', 1, { newRun: true });
 };
 
@@ -432,13 +433,16 @@ if (document.getElementById('creator-play')) document.getElementById('creator-pl
 function buildExtraCards() {
   if (!cardsEl) return;
   cardsEl.querySelectorAll('.card-extra').forEach((e) => e.remove());
-  if (!isGameCompleted()) return;
-  const create = document.createElement('div');
-  create.className = 'card card-extra'; create.tabIndex = 0;
-  create.style.setProperty('--c', '#F2C53D'); create.style.setProperty('--c-border', '#F2C53D55'); create.style.setProperty('--c-glow', '#F2C53D40');
-  create.innerHTML = '<div class="av" style="display:flex;align-items:center;justify-content:center;font-size:40px">✨</div><div class="nm">Crea eroe</div><div class="rl">Sbloccato!</div><div class="pw">Tu</div><div class="abx">Avatar + superpotere a scelta</div>';
-  create.onclick = openCreator; create.onkeydown = (e) => { if (e.key === 'Enter') openCreator(); };
-  cardsEl.appendChild(create);
+  if (!isGameCompleted()) return;   // la card appare SOLO dopo aver finito il gioco
+  // la card "Crea eroe" sparisce una volta che l'utente ha già creato il suo eroe
+  if (!hasCreatedHero()) {
+    const create = document.createElement('div');
+    create.className = 'card card-extra'; create.tabIndex = 0;
+    create.style.setProperty('--c', '#F2C53D'); create.style.setProperty('--c-border', '#F2C53D55'); create.style.setProperty('--c-glow', '#F2C53D40');
+    create.innerHTML = '<div class="av" style="display:flex;align-items:center;justify-content:center;font-size:40px">✨</div><div class="nm">Crea eroe</div><div class="rl">Sbloccato!</div><div class="pw">Tu</div><div class="abx">Avatar + superpotere a scelta</div>';
+    create.onclick = openCreator; create.onkeydown = (e) => { if (e.key === 'Enter') openCreator(); };
+    cardsEl.appendChild(create);
+  }
   const h = getCustomHero();
   if (h) {
     const cfg = buildCustomCfg(h); const pw = powerById(h.powerId);
@@ -452,8 +456,8 @@ function buildExtraCards() {
     card.onclick = go; card.onkeydown = (e) => { if (e.key === 'Enter') go(); };
     card.querySelector('.card-del').onclick = (e) => {
       e.stopPropagation();
-      if (confirm('Eliminare l\'eroe "' + cfg.name + '"? (resta nel menu solo l\'ultimo creato)')) {
-        clearCustomHero(); delete CHARACTERS.custom; refreshMenu();
+      if (confirm('Eliminare l\'eroe "' + cfg.name + '"? Potrai crearne uno nuovo.')) {
+        clearCustomHero(); clearCreatedHero(); delete CHARACTERS.custom; refreshMenu();
       }
     };
     cardsEl.appendChild(card);

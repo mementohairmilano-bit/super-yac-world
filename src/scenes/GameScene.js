@@ -63,6 +63,11 @@ export class GameScene extends Phaser.Scene {
   create() {
     const c = this.cfg;
     this.heroKey = 'hero_' + (state.selectedKey || 'memento');   // sprite del personaggio scelto
+    // OFFLINE: lo sprite dell'eroe custom/community arriva dalla rete; se non si è caricato, uso il
+    // volto base (precache) così il gioco è sempre giocabile anche senza connessione.
+    if (this.heroKey === 'hero_custom' && !this.textures.exists('hero_custom')) {
+      this.heroKey = 'hero_' + ((this.cfg && this.cfg.baseLook) || 'memento');
+    }
     this.W = this.level.width; this.H = 506;
     this.lives = 3; this.gocce = 0;
     this.score = state.runScore || 0;   // punteggio CUMULATIVO della partita (si porta tra i mondi)

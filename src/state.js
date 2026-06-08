@@ -59,9 +59,13 @@ export function setEmail(s) { try { localStorage.setItem(EKEY, s); } catch (e) {
 // --- Gioco completato + EROE PERSONALIZZATO (sbloccato dopo aver finito il gioco) ---
 // done = ha visto il finale almeno una volta. customHero = config dell'eroe creato dal giocatore
 // { name, powerId, baseLook, color, avatarUrl? } (avatarUrl = sprite generato dalla foto, Fase 2).
-const DKEY = 'syw_done', CHKEY = 'syw_customHero';
+const DKEY = 'syw_done', CHKEY = 'syw_customHero', CRKEY = 'syw_created';
 export function isGameCompleted() { try { return localStorage.getItem(DKEY) === '1'; } catch (e) { return false; } }
 export function setGameCompleted() { try { localStorage.setItem(DKEY, '1'); } catch (e) {} }
 export function getCustomHero() { try { const v = JSON.parse(localStorage.getItem(CHKEY)); return (v && v.name) ? v : null; } catch (e) { return null; } }
 export function setCustomHero(h) { try { localStorage.setItem(CHKEY, JSON.stringify(h)); } catch (e) {} }
 export function clearCustomHero() { try { localStorage.removeItem(CHKEY); } catch (e) {} }
+// l'utente ha già creato il suo eroe → la card "Crea eroe" sparisce (un eroe a testa)
+export function hasCreatedHero() { try { return localStorage.getItem(CRKEY) === '1'; } catch (e) { return false; } }
+export function setCreatedHero() { try { localStorage.setItem(CRKEY, '1'); } catch (e) {} }
+export function clearCreatedHero() { try { localStorage.removeItem(CRKEY); } catch (e) {} }
