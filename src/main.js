@@ -501,6 +501,28 @@ async function refreshCommunity() {
 refreshMenu();
 refreshCommunity();   // carica gli eroi della community nella home (per tutti i giocatori)
 
+// ===== Nickname obbligatorio (una volta sola, all'inizio) =====
+const nameaskEl = document.getElementById('nameask');
+const nameaskInput = document.getElementById('nameask-input');
+const nameaskHint = document.getElementById('nameask-hint');
+function maybeAskName() {
+  if (!nameaskEl) return;
+  if (getNick()) return;                 // già impostato → non chiedere più
+  nameaskInput.value = '';
+  nameaskEl.classList.remove('hidden');
+  setTimeout(() => { try { nameaskInput.focus(); } catch (e) {} }, 80);
+}
+function submitName() {
+  const raw = (nameaskInput.value || '').trim();
+  if (raw.length < 2) { nameaskHint.textContent = 'Scrivi un nickname (almeno 2 caratteri).'; return; }
+  setNick(sanitizeNick(raw));
+  nameaskHint.textContent = '';
+  nameaskEl.classList.add('hidden');
+}
+if (document.getElementById('nameask-go')) document.getElementById('nameask-go').onclick = submitName;
+if (nameaskInput) nameaskInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') submitName(); });
+maybeAskName();
+
 // Scorciatoia di test/condivisione: aprendo il sito con ?crea (o #crea) si sblocca e si apre
 // subito il creatore dell'eroe, senza dover finire il gioco. Utile per provare l'avatar AI.
 if (/(?:[?&#])crea(?:[=&]|$)/.test(location.search + location.hash)) {
