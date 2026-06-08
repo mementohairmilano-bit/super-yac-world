@@ -385,8 +385,8 @@ async function generateAvatar(file) {
     setGenerating(false);
     creatorAiStatus.style.color = '#7CD992'; creatorAiStatus.textContent = '✓ Avatar pronto! Scegli il superpotere e gioca.';
     renderCreator(); refreshPhotoBtn();
-    // se l'utente ha dato il consenso social → salva il RITRATTO nel cloud (best-effort, non blocca il gioco)
-    if (creatorSocial && creatorSocial.checked) saveAvatarSocial();
+    // NB: la pubblicazione in community avviene al clic su "Gioca" (vedi creator-play), così cattura
+    // il superpotere/nome/colore FINALI scelti dall'utente (qui sarebbero ancora quelli di default).
   } catch (e) {
     setGenerating(false);
     creatorAiStatus.style.color = '#ff9b9b'; creatorAiStatus.textContent = (e && e.message) ? e.message : 'Generazione non riuscita, riprova.';
@@ -423,7 +423,7 @@ if (document.getElementById('creator-play')) document.getElementById('creator-pl
   CHARACTERS.custom = buildCustomCfg(hero);
   // se l'eroe è pubblicato in community (consenso social) NON tengo anche la copia locale → niente
   // card doppia nel menu. Salvo localmente solo se l'utente NON ha condiviso in community.
-  if (creatorSocial && creatorSocial.checked) clearCustomHero();
+  if (creatorSocial && creatorSocial.checked) { clearCustomHero(); saveAvatarSocial(); }   // pubblica coi valori FINALI
   else setCustomHero(hero);
   setCreatedHero();   // l'utente ha creato il suo eroe → la card "Crea eroe" sparisce
   startGame('custom', 1, { newRun: true });
