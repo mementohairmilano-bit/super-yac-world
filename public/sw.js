@@ -1,12 +1,28 @@
-// Service worker di Super Yac World (PWA).
-// Strategia: runtime caching same-origin (offline DOPO la prima visita), navigazioni
-// network-first con fallback a index. Le chiamate cross-origin (Supabase/classifica) NON
-// vengono toccate → la classifica resta sempre "live" e non funziona offline (corretto).
-const CACHE = 'syw-v5';
+// Service worker di Super Yac World (PWA) — con PRECACHE per il gioco OFFLINE.
+// All'installazione scarica e mette in cache TUTTI i file del gioco (lista in precache.json,
+// generata dal build) → dopo la prima visita il gioco è giocabile senza rete. Le chiamate
+// cross-origin (Supabase/classifica) NON vengono toccate → la classifica resta "live" (richiede
+// rete; offline mostra l'ultima cache). BUILD cambia a ogni deploy: il SW si re-installa e
+// ri-precacha SOLO i file nuovi (gli asset con hash invariato non vengono riscaricati = poca banda).
+const CACHE = 'syw-pwa';
+const BUILD = '__BUILD__';   // sostituito dal build (vite.config) → forza l'aggiornamento del SW
 
 self.addEventListener('install', (e) => {
   e.waitUntil((async () => {
-    try { const c = await caches.open(CACHE); await c.addAll(['/', '/index.html']); } catch (err) {}
+    const c = await caches.open(CACHE);
+    try { await c.put('/index.html', await fetch('/index.html', { cache: 'reload' })); } catch (_) {}
+    // precache completo (salta i file già in cache → niente ri-download sugli aggiornamenti)
+    try {
+      const res = await fetch('/precache.json?b=' + BUILD, { cache: 'reload' });
+      if (res.ok) {
+        const list = await res.json();
+        await Promise.allSettled(list.map(async (u) => {
+          if (await c.match(u)) return;
+          const r = await fetch(u, { cache: 'reload' });
+          if (r && r.ok) await c.put(u, r);
+        }));
+      }
+    } catch (_) {}
     await self.skipWaiting();
   })());
 });
@@ -25,8 +41,7 @@ self.addEventListener('fetch', (e) => {
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;   // lascia passare Supabase & co.
 
-  // navigazioni: SEMPRE rete fresca (cache:'reload' bypassa anche la cache HTTP del browser, così
-  // gli aggiornamenti arrivano subito su iPhone), poi cache solo come fallback offline.
+  // navigazioni: prima la rete fresca (aggiornamenti immediati), poi la cache come fallback OFFLINE
   if (req.mode === 'navigate') {
     e.respondWith((async () => {
       try { return await fetch(req, { cache: 'reload' }); }
@@ -35,7 +50,7 @@ self.addEventListener('fetch', (e) => {
     return;
   }
 
-  // asset (js/css/png/audio…): cache prima, poi rete (e mette in cache)
+  // asset (js/css/immagini/audio…): cache prima (offline), poi rete (e mette in cache)
   e.respondWith((async () => {
     const cached = await caches.match(req);
     if (cached) return cached;

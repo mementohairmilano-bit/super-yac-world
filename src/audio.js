@@ -10,15 +10,9 @@ const MUSIC = ['title_theme', 'mondo1_loop', 'underground_loop', 'boss_loop', 'g
   'mondo5_loop', 'mondo5_vault_loop', 'mondo5_penthouse_loop', 'mondo5_boss_loop',
   'mondo6_plaza_loop', 'mondo6_foundations_loop', 'mondo6_ascent_loop', 'mondo6_boss_loop',
   'finale_theme'];
-// le tracce dei Mondi 2, 3, 4, 5 e 6 sono WAV sintetizzate (le altre sono .ogg)
-const MUSIC_EXT = {
-  mondo2_loop: 'wav', mondo2_water_loop: 'wav', mondo2_tower_loop: 'wav', mondo2_boss_loop: 'wav',
-  mondo3_loop: 'wav', mondo3_net_loop: 'wav', mondo3_heights_loop: 'wav', mondo3_boss_loop: 'wav',
-  mondo4_loop: 'wav', mondo4_basement_loop: 'wav', mondo4_reactor_loop: 'wav', mondo4_boss_loop: 'wav',
-  mondo5_loop: 'wav', mondo5_vault_loop: 'wav', mondo5_penthouse_loop: 'wav', mondo5_boss_loop: 'wav',
-  mondo6_plaza_loop: 'wav', mondo6_foundations_loop: 'wav', mondo6_ascent_loop: 'wav', mondo6_boss_loop: 'wav',
-  finale_theme: 'wav',
-};
+// tutte le tracce sono ora .ogg (convertite da WAV: ~10x più leggere → meno memoria/più fluido,
+// e cache offline molto più piccola). Mappa estensioni vuota = tutto .ogg.
+const MUSIC_EXT = {};
 const SFX = ['jump', 'coin', 'stomp', 'powerup_grow', 'shrink', 'hit_damage', 'one_up',
   'brick_break', 'kick_shell', 'pipe_enter', 'level_clear', 'death', 'boss_hit',
   'boss_shot', 'boss_defeat', 'salon_liberation',
@@ -28,13 +22,8 @@ const SFX = ['jump', 'coin', 'stomp', 'powerup_grow', 'shrink', 'hit_damage', 'o
   'mask_absorb', 'phase_shift', 'core_hit',
   'firework', 'score_tick', 'shoot', 'star',
   'letter_get', 'chain_break'];
-// gli SFX dei Mondi 3-6 + FX di gioco sono WAV sintetizzati (gli altri sono .ogg)
-const SFX_EXT = { flyer_throw: 'wav', spraybill: 'wav', flash: 'wav', boss_zap: 'wav',
-  goccia_drop: 'wav', acid_splash: 'wav', acid_sizzle: 'wav', vapor: 'wav',
-  bolletta_fire: 'wav', chart_crash: 'wav', laser_zap: 'wav', uni_summon: 'wav',
-  mask_absorb: 'wav', phase_shift: 'wav', core_hit: 'wav',
-  firework: 'wav', score_tick: 'wav', shoot: 'wav', star: 'wav',
-  letter_get: 'wav', chain_break: 'wav' };
+// tutti gli SFX sono ora .ogg (convertiti da WAV). Mappa vuota = tutto .ogg.
+const SFX_EXT = {};
 
 class AudioManager {
   constructor() {
