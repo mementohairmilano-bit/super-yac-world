@@ -25,8 +25,8 @@
   </style>
 </head>
 <body>
-  <h1>🖼️ Avatar raccolti</h1>
-  <p class="sub">Solo gli avatar di chi ha dato il consenso social. Pagina privata, protetta da password.</p>
+  <h1>🖼️ Eroi pubblici (community)</h1>
+  <p class="sub">Gli eroi creati col consenso social, visibili nella home di tutti. Puoi nasconderne qualcuno (moderazione). Pagina privata, protetta da password.</p>
   <div class="bar">
     <input id="pw" type="password" placeholder="password admin" autocomplete="current-password">
     <button id="go">Apri</button>
@@ -57,21 +57,33 @@
           if (o.s !== 200) { msg.innerHTML = '<span class="bad">' + esc(o.j.error || 'Errore') + (o.j.detail ? (' — ' + esc(o.j.detail)) : '') + '</span>'; return; }
           localStorage.setItem('syw_admin', token); logout.style.display = '';
           if (!o.j.items || !o.j.items.length) { msg.innerHTML = '<span class="warn">Ancora nessun avatar raccolto. Appena qualcuno ne genera uno con il consenso social, comparirà qui.</span>'; return; }
-          msg.innerHTML = '<span class="ok">' + o.j.count + ' avatar.</span>';
-          grid.innerHTML = o.j.items.map(function (it) {
-            var img = it.url ? ('style="background-image:url(\'' + it.url + '\')"') : '';
-            var name = esc(it.hero_name || it.nickname || 'Eroe');
+          msg.innerHTML = '<span class="ok">' + o.j.count + ' eroi.</span>';
+          if (!o.j.items.length) { grid.innerHTML = '<span class="warn">Ancora nessun eroe pubblico. Appena qualcuno ne crea uno col consenso social, comparirà qui (e nella home di tutti).</span>'; return; }
+          grid.innerHTML = '';
+          o.j.items.forEach(function (it) {
+            var card = document.createElement('div'); card.className = 'card';
+            if (!it.visible) card.style.opacity = '.45';
             var lines = [];
             if (it.nickname) lines.push('👤 ' + esc(it.nickname));
             if (it.email) lines.push('✉️ ' + esc(it.email));
-            if (it.power) lines.push('⚡ ' + esc(it.power));
+            if (it.power_id) lines.push('⚡ ' + esc(it.power_id));
             if (it.created_at) lines.push('🕒 ' + esc(fmt(it.created_at)));
-            return '<div class="card"><div class="thumb" ' + img + '></div>' +
-              '<div class="nm">' + name + '</div>' +
+            if (!it.visible) lines.push('🚫 nascosto');
+            card.innerHTML = '<div class="thumb" ' + (it.url ? ('style="background-image:url(\'' + it.url + '\')"') : '') + '></div>' +
+              '<div class="nm">' + esc(it.name || it.nickname || 'Eroe') + '</div>' +
               '<div class="meta">' + lines.join('<br>') + '</div>' +
-              (it.url ? ('<a class="dl" href="' + it.url + '" download target="_blank">⬇ Scarica</a>') : '') +
-              '</div>';
-          }).join('');
+              (it.url ? ('<a class="dl" href="' + it.url + '" download target="_blank">⬇ Scarica</a> ') : '') +
+              '<button class="dl" style="background:none;border:none;cursor:pointer;color:' + (it.visible ? '#ff9b9b' : '#7CD992') + '">' + (it.visible ? '🚫 Nascondi dalla home' : '✓ Mostra nella home') + '</button>';
+            var btn = card.querySelector('button');
+            btn.onclick = function () {
+              btn.disabled = true; btn.textContent = '…';
+              fetch('/api/hero-visibility', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: pw.value.trim(), id: it.id, visible: !it.visible }) })
+                .then(function (r) { return r.ok; })
+                .then(function (ok) { if (ok) load(); else { btn.disabled = false; btn.textContent = 'Errore, riprova'; } })
+                .catch(function () { btn.disabled = false; btn.textContent = 'Errore di rete'; });
+            };
+            grid.appendChild(card);
+          });
         })
         .catch(function () { msg.innerHTML = '<span class="bad">Errore di rete. Il deploy è attivo? Le env ADMIN_TOKEN e SUPABASE_SERVICE_ROLE_KEY sono impostate?</span>'; });
     }
