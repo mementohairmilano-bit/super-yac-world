@@ -544,6 +544,12 @@ function refreshPerfBtn() { if (perfBtn) perfBtn.textContent = '⚡ Modalità pr
 if (perfBtn) perfBtn.onclick = () => { setPerf(!isPerf()); refreshPerfBtn(); };
 refreshPerfBtn();
 
+// ===== Modalità prestazioni (toggle nel menu) =====
+const perfBtn = document.getElementById('btn-perf');
+function refreshPerfBtn() { if (perfBtn) perfBtn.textContent = '⚡ Modalità prestazioni: ' + (isPerf() ? 'ON' : 'OFF'); }
+if (perfBtn) perfBtn.onclick = () => { setPerf(!isPerf()); refreshPerfBtn(); };
+refreshPerfBtn();
+
 // ===== TEST LIVELLI: ?livelli (o ?levels) → scegli eroe e salta a qualsiasi livello =====
 const levelselEl = document.getElementById('levelsel');
 let levelselHero = 'memento';
