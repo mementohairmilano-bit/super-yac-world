@@ -322,6 +322,15 @@
       <button class="btn ghost" id="btn-board-close">Chiudi</button>
     </div>
 
+    <!-- ===== Test livelli (scegli eroe + livello singolo) — solo con ?livelli ===== -->
+    <div id="levelsel" class="overlay hidden" style="background:radial-gradient(120% 120% at 50% 0%,#16223a,#0c0810);justify-content:flex-start;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-top:max(16px,env(safe-area-inset-top));padding-bottom:max(24px,env(safe-area-inset-bottom));z-index:62">
+      <div class="big">🧪 Test livelli</div>
+      <p class="tag" style="font-size:12px">Scegli l'eroe e salta a qualsiasi livello (modalità test).</p>
+      <div id="levelsel-heroes" style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:8px"></div>
+      <div id="levelsel-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;width:min(440px,92vw);margin-top:12px"></div>
+      <button class="btn ghost" id="levelsel-close" style="margin-top:14px">Chiudi</button>
+    </div>
+
     <!-- ===== Nickname obbligatorio (chiesto una volta sola, all'inizio) ===== -->
     <div id="nameask" class="overlay hidden" style="background:radial-gradient(120% 120% at 50% 0%,#2a1626,#0c0810f7);z-index:60">
       <div class="big">👋 Come ti chiami?</div>
