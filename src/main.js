@@ -523,6 +523,42 @@ if (document.getElementById('nameask-go')) document.getElementById('nameask-go')
 if (nameaskInput) nameaskInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') submitName(); });
 maybeAskName();
 
+// ===== TEST LIVELLI: ?livelli (o ?levels) → scegli eroe e salta a qualsiasi livello =====
+const levelselEl = document.getElementById('levelsel');
+let levelselHero = 'memento';
+function buildLevelSel() {
+  const heroesBox = document.getElementById('levelsel-heroes');
+  const grid = document.getElementById('levelsel-grid');
+  if (!heroesBox || !grid) return;
+  heroesBox.innerHTML = '';
+  ['memento', 'yuri', 'carmine', 'andrea'].forEach((k) => {
+    const c = CHARACTERS[k]; if (!c) return;
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'btn';
+    const sel = levelselHero === k;
+    b.textContent = c.name;
+    b.style.cssText = 'padding:6px 12px;font-size:12px;border-radius:999px;border:2px solid ' + (sel ? '#fff' : '#ffffff2e') + ';background:' + (sel ? (c.card || '#F2C53D') : 'transparent') + ';color:' + (sel ? '#16121A' : '#f7f1e8') + ';cursor:pointer';
+    b.onclick = () => { levelselHero = k; buildLevelSel(); };
+    heroesBox.appendChild(b);
+  });
+  grid.innerHTML = '';
+  Object.keys(LEVELS).forEach((id) => {
+    const lv = LEVELS[id];
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'btn ghost';
+    b.style.cssText = 'padding:8px 6px;font-size:11px;line-height:1.25;border-radius:10px;cursor:pointer';
+    b.innerHTML = '<b>' + id + '</b><br>' + (lv && lv.name ? lv.name : 'Livello ' + id);
+    b.onclick = () => { levelselEl.classList.add('hidden'); startGame(levelselHero, parseInt(id, 10), { newRun: true }); };
+    grid.appendChild(b);
+  });
+}
+function openLevelSel() {
+  buildLevelSel();
+  ['menu', 'win', 'over', 'pause', 'creator', 'board', 'nameask'].forEach((id) => { const e = document.getElementById(id); if (e) e.classList.add('hidden'); });
+  levelselEl.classList.remove('hidden');
+}
+if (document.getElementById('levelsel-close')) document.getElementById('levelsel-close').onclick = () => { levelselEl.classList.add('hidden'); document.getElementById('menu').classList.remove('hidden'); };
+if (/(?:[?&#])(livelli|levels)(?:[=&]|$)/.test(location.search + location.hash)) openLevelSel();
+
+
 // Scorciatoia di test/condivisione: aprendo il sito con ?crea (o #crea) si sblocca e si apre
 // subito il creatore dell'eroe, senza dover finire il gioco. Utile per provare l'avatar AI.
 if (/(?:[?&#])crea(?:[=&]|$)/.test(location.search + location.hash)) {
