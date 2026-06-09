@@ -657,7 +657,10 @@ function openBoard(submit) {
     boardSubmit.classList.remove('hidden');
     boardMyScore.textContent = target.score + ' pt';
     boardNick.value = getNick();
-    boardSend.disabled = false; boardSend.textContent = 'Invia in classifica';
+    // il punteggio è già stato salvato in automatico col tuo nickname → niente da premere.
+    // Il pulsante serve solo se vuoi CAMBIARE nome e re-inviare.
+    window._autoSubmitScore();
+    boardSend.disabled = true; boardSend.textContent = '✓ Salvato in classifica';
     // reset area badge. Se l'email è GIÀ stata lasciata, niente più form: solo un pulsante
     // compatto "genera il tuo badge" (l'email/consenso li abbiamo già → non li richiediamo più).
     if (boardEmail) boardEmail.value = getEmail();
@@ -678,6 +681,16 @@ function openBoard(submit) {
 }
 function closeBoard() { boardEl.classList.add('hidden'); }
 
+// AUTO-SALVATAGGIO punteggio: a fine partita (morte/vittoria) il punteggio va in classifica DA SOLO
+// usando il nickname (obbligatorio, già impostato). Niente pulsante da premere. Esposto alla scena.
+window._autoSubmitScore = () => {
+  const nick = getNick(); if (!nick) return;
+  const t = window._runResult || (getBest() > 0 ? { score: getBest(), world: state.worldId || null } : null);
+  if (!t) return;
+  queueScore({ nick, score: t.score, world: t.world });
+  flushPending();
+};
+
 if (boardSend) boardSend.onclick = async () => {
   const target = window._boardTarget;
   if (!target) return;
@@ -689,6 +702,8 @@ if (boardSend) boardSend.onclick = async () => {
   if (done) { boardSend.textContent = 'Inviato ✓'; boardSend.disabled = true; loadBoard(); }
   else { boardSend.textContent = 'In coda — parte appena torni online ✓'; boardSend.disabled = false; }
 };
+// se cambi il nickname, riabilito l'invio (per aggiornare il nome in classifica)
+if (boardNick) boardNick.addEventListener('input', () => { if (boardSend && boardSend.textContent.startsWith('✓')) { boardSend.disabled = false; boardSend.textContent = 'Aggiorna nome in classifica'; } });
 
 // Badge YAC Hero: email opzionale → salva il lead (Supabase `leads`, privato) e genera il
 // badge personalizzato da scaricare/condividere. Lo riceve chiunque lascia l'email → niente
