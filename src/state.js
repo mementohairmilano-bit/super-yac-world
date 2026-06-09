@@ -70,7 +70,22 @@ export function hasCreatedHero() { try { return localStorage.getItem(CRKEY) === 
 export function setCreatedHero() { try { localStorage.setItem(CRKEY, '1'); } catch (e) {} }
 export function clearCreatedHero() { try { localStorage.removeItem(CRKEY); } catch (e) {} }
 
-// Modalità prestazioni: riduce gli effetti grafici (per iPhone/PWA che vanno a scatti)
+// Modalità prestazioni: riduce gli effetti grafici (per iPhone/PWA che vanno a scatti).
+// Default: ON sui telefoni (dove serve), OFF su PC. L'utente può sempre cambiarla (override salvato).
 const PFKEY = 'syw_perf';
-export function isPerf() { try { return localStorage.getItem(PFKEY) === '1'; } catch (e) { return false; } }
+function defaultPerf() {
+  try {
+    const ua = navigator.userAgent || '';
+    return /iPhone|iPad|iPod|Android/i.test(ua) || (window.matchMedia && matchMedia('(pointer:coarse)').matches);
+  } catch (e) { return false; }
+}
+export function isPerf() {
+  try { const v = localStorage.getItem(PFKEY); if (v === '1') return true; if (v === '0') return false; return !!defaultPerf(); }
+  catch (e) { return false; }
+}
 export function setPerf(on) { try { localStorage.setItem(PFKEY, on ? '1' : '0'); } catch (e) {} }
+
+// disclaimer iniziale mostrato una volta sola
+const INKEY = 'syw_intro';
+export function seenIntro() { try { return localStorage.getItem(INKEY) === '1'; } catch (e) { return false; } }
+export function setSeenIntro() { try { localStorage.setItem(INKEY, '1'); } catch (e) {} }

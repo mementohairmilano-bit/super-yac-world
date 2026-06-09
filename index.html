@@ -324,6 +324,17 @@
       <button class="btn ghost" id="btn-board-close">Chiudi</button>
     </div>
 
+    <!-- ===== Disclaimer iniziale (una volta sola) ===== -->
+    <div id="intro" class="overlay hidden" style="background:radial-gradient(120% 120% at 50% 0%,#2a1626,#0c0810f7);justify-content:flex-start;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-top:max(20px,env(safe-area-inset-top));padding-bottom:max(24px,env(safe-area-inset-bottom));z-index:64">
+      <div class="big" style="margin-top:6px">🎮 Benvenuto in Super Yac World!</div>
+      <div style="text-align:left;max-width:min(360px,90vw);font-family:'DM Sans',sans-serif;color:#F7F1E8;line-height:1.5;font-size:14px;margin-top:10px">
+        <p style="margin:0 0 10px"><b>📲 Aggiungilo alla Home</b><br>Per giocare a schermo intero come un'app: tocca i <b>3 puntini</b> (o l'icona <b>Condividi</b>) del browser e scegli <b>"Aggiungi a schermata Home"</b>.</p>
+        <p style="margin:0 0 10px"><b>💻 Si gioca al meglio da PC</b><br>Su computer è fluido e completo.</p>
+        <p style="margin:0 0 10px"><b>📱 Su alcuni telefoni può rallentare</b><br>Niente paura: dal menu puoi attivare la <b>"Modalità prestazioni"</b> per renderlo più fluido (sui telefoni è già attiva).</p>
+      </div>
+      <button class="btn" id="intro-go" style="margin-top:10px">▸ Inizia!</button>
+    </div>
+
     <!-- ===== Test livelli (scegli eroe + livello singolo) — solo con ?livelli ===== -->
     <div id="levelsel" class="overlay hidden" style="background:radial-gradient(120% 120% at 50% 0%,#16223a,#0c0810);justify-content:flex-start;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-top:max(16px,env(safe-area-inset-top));padding-bottom:max(24px,env(safe-area-inset-bottom));z-index:62">
       <div class="big">🧪 Test livelli</div>

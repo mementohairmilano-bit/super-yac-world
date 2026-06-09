@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { CHARACTERS } from './config.js';
-import { state, loadRun, clearRun, getBest, getNick, setNick, getEmail, setEmail, resetLetters, isGameCompleted, setGameCompleted, getCustomHero, setCustomHero, clearCustomHero, hasCreatedHero, setCreatedHero, clearCreatedHero, isPerf, setPerf } from './state.js';
+import { state, loadRun, clearRun, getBest, getNick, setNick, getEmail, setEmail, resetLetters, isGameCompleted, setGameCompleted, getCustomHero, setCustomHero, clearCustomHero, hasCreatedHero, setCreatedHero, clearCreatedHero, isPerf, setPerf, seenIntro, setSeenIntro } from './state.js';
 import { POWERS, powerById } from './powers.js';
 import { LEVELS } from './levels.js';
 import { submitScore, topScores, sanitizeNick, submitLead, validateEmail, fetchPublicHeroes } from './leaderboard.js';
@@ -521,7 +521,22 @@ function submitName() {
 }
 if (document.getElementById('nameask-go')) document.getElementById('nameask-go').onclick = submitName;
 if (nameaskInput) nameaskInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') submitName(); });
-maybeAskName();
+
+// Disclaimer iniziale (una volta sola), POI il nickname obbligatorio
+const introEl = document.getElementById('intro');
+function startupFlow() {
+  if (introEl && !seenIntro()) {
+    introEl.classList.remove('hidden');
+  } else {
+    maybeAskName();
+  }
+}
+if (document.getElementById('intro-go')) document.getElementById('intro-go').onclick = () => {
+  setSeenIntro();
+  if (introEl) introEl.classList.add('hidden');
+  maybeAskName();
+};
+startupFlow();
 
 // ===== Modalità prestazioni (toggle nel menu) =====
 const perfBtn = document.getElementById('btn-perf');
