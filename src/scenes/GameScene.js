@@ -348,6 +348,7 @@ export class GameScene extends Phaser.Scene {
       // nastro (galloni animati)
       const belt = this.add.tileSprite(cx, cv.topY, w, BH, 'belt').setOrigin(0.5, 0).setDepth(1);
       belt.tileScaleX = belt.tileScaleY = BH / 24;
+      belt.setFlipX(cv.dir < 0);   // nastri verso sinistra: galloni puntati a sinistra (verso la spinta)
       // rulli arancioni alle estremità, con razza che gira
       const spokes = [];
       for (const rx of [cv.x1, cv.x2]) {
@@ -2273,9 +2274,15 @@ export class GameScene extends Phaser.Scene {
     if (this.oozePits && this.oozePits.length) this.updateOoze();   // ooze che sale (Mondo 4-2)
     if (this.chartList && this.chartList.length) this.updateCharts();   // piattaforme-grafico (Mondo 5)
     if (this.lasers && this.lasers.length) this.updateLasers();         // griglie laser (Mondo 5)
-    if (this.conveyors) for (const cv of this.conveyors) {   // scorrimento nastri + rulli che girano
-      cv.belt.tilePositionX += cv.dir * cv.speed * 0.02;
-      if (cv.spokes) for (const sk of cv.spokes) sk.rotation += cv.dir * cv.speed * 0.006;
+    if (this.conveyors) {   // scorrimento nastri + rulli che girano (solo quelli a schermo)
+      const cam = this.cameras.main, L = cam.scrollX, R = cam.scrollX + cam.width;
+      for (const cv of this.conveyors) {
+        if (cv.x2 < L - 40 || cv.x1 > R + 40) continue;   // fuori vista → non animare (più fluido)
+        // il nastro scorre NEL VERSO della spinta (tilePositionX cresce → contenuto va a sinistra,
+        // quindi sottraggo cv.dir per far "scorrere" il nastro nel senso in cui spinge il giocatore)
+        cv.belt.tilePositionX -= cv.dir * cv.speed * 0.02;
+        if (cv.spokes) for (const sk of cv.spokes) sk.rotation += cv.dir * cv.speed * 0.006;
+      }
     }
     const p = this.player, c = this.cfg, cu = this.cur, t = this.t;
     const left = cu.left.isDown || k.A.isDown || t.left || (pad && pad.left);
