@@ -69,3 +69,8 @@ export function clearCustomHero() { try { localStorage.removeItem(CHKEY); } catc
 export function hasCreatedHero() { try { return localStorage.getItem(CRKEY) === '1'; } catch (e) { return false; } }
 export function setCreatedHero() { try { localStorage.setItem(CRKEY, '1'); } catch (e) {} }
 export function clearCreatedHero() { try { localStorage.removeItem(CRKEY); } catch (e) {} }
+
+// Modalità prestazioni: riduce gli effetti grafici (per iPhone/PWA che vanno a scatti)
+const PFKEY = 'syw_perf';
+export function isPerf() { try { return localStorage.getItem(PFKEY) === '1'; } catch (e) { return false; } }
+export function setPerf(on) { try { localStorage.setItem(PFKEY, on ? '1' : '0'); } catch (e) {} }
