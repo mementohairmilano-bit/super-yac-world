@@ -69,6 +69,7 @@ export class GameScene extends Phaser.Scene {
 
   create() {
     const c = this.cfg;
+    this._winScreenShown = false;   // reset per livello (anti-doppione / fail-safe vittoria)
     this.heroKey = 'hero_' + (state.selectedKey || 'memento');   // sprite del personaggio scelto
     // OFFLINE: lo sprite dell'eroe custom/community arriva dalla rete; se non si è caricato, uso il
     // volto base (precache) così il gioco è sempre giocabile anche senza connessione.
@@ -1747,6 +1748,9 @@ export class GameScene extends Phaser.Scene {
     if (this.won) return;
     if (this.officina) { this.officinaEnd(); return; }   // Mondo 0: chiusura calma, niente pennone/fuochi
     this.won = true; this.state = 'won';
+    // FAIL-SAFE: la schermata di vittoria DEVE comparire comunque entro 8s, anche se l'animazione
+    // di fine livello dovesse incepparsi o rallentare troppo (niente soft-lock dopo la bandiera).
+    this.time.delayedCall(8000, () => { if (!this._winScreenShown) this.endWin(); });
     if (this.timerEv) this.timerEv.paused = true;
     AUDIO.sfx('level_clear');   // pennone agganciato / fine livello
     const endDigit = this.timeLeft % 10;
@@ -1833,6 +1837,8 @@ export class GameScene extends Phaser.Scene {
   }
 
   showWinScreen(opts = {}) {
+    if (this._winScreenShown) return;   // fail-safe / anti-doppione: la card di vittoria si mostra una volta sola
+    this._winScreenShown = true;
     if (!opts.keepMusic) AUDIO.stopMusic();
     this.scene.pause();
     const L = this.level;
@@ -1848,7 +1854,7 @@ export class GameScene extends Phaser.Scene {
     // flusso multi-mondo: se c'è un livello successivo, mostra il pulsante "prossimo"
     if (window._gameShowWin) window._gameShowWin(nextId, opts.cta || L.win.cta);
     // pulsante "Classifica" solo sulla card del FINALE (non a ogni livello)
-    if (opts.leaderboard) window._runResult = { score: getBest(), world: state.worldId };
+    if (opts.leaderboard) { window._runResult = { score: getBest(), world: state.worldId }; if (window._autoSubmitScore) window._autoSubmitScore(); }
     if (window._gameShowBoardBtn) window._gameShowBoardBtn(!!opts.leaderboard);
     document.getElementById('win').classList.remove('hidden');
     // fine del gioco (card finale): proponi da solo il salvataggio in classifica
@@ -2037,6 +2043,7 @@ export class GameScene extends Phaser.Scene {
     setBest(this.score); clearRun();   // la partita finisce: salva il record, chiudi la run in corso
     // in classifica va il record personale (lo stesso valore mostrato nella home), non solo l'ultima run
     window._runResult = { score: getBest(), world: state.worldId };
+    if (window._autoSubmitScore) window._autoSubmitScore();   // salva subito in classifica (nickname obbligatorio)
     const os = document.getElementById('overscore'); if (os) os.textContent = 'Punteggio: ' + this.score + ' pt';
     AUDIO.playMusic('game_over');   // one-shot (non in loop)
     this.scene.pause();
