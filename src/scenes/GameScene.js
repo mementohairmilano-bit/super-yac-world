@@ -2203,25 +2203,33 @@ export class GameScene extends Phaser.Scene {
     // che la scena legge tramite this.t.
     if (!window._touch) {
       const t = window._touch = { left: false, right: false, jump: false, special: false, down: false };
+      const ptr = {};   // pointerId → tasto premuto (per il rilascio robusto)
+      const release = (id) => { const k = ptr[id]; if (k !== undefined) { t[k] = false; delete ptr[id]; } };
       document.querySelectorAll('.tb').forEach(b => {
         const k = b.dataset.k;
-        const off = () => { t[k] = false; };
         // Pointer Events + setPointerCapture: il tasto "cattura" il dito finché non lo rilasci,
         // così iOS non annulla il tocco interpretandolo come scroll/gesto (causa del non-rispondere).
         b.addEventListener('pointerdown', e => {
           e.preventDefault();
           try { b.setPointerCapture(e.pointerId); } catch (_) {}
-          t[k] = true;
+          ptr[e.pointerId] = k; t[k] = true;
         }, { passive: false });
-        b.addEventListener('pointerup', off);
-        b.addEventListener('pointercancel', off);
-        b.addEventListener('lostpointercapture', off);
         // fallback per browser senza Pointer Events (Android vecchi)
         if (!window.PointerEvent) {
           b.addEventListener('touchstart', e => { e.preventDefault(); t[k] = true; }, { passive: false });
-          b.addEventListener('touchend', off); b.addEventListener('touchcancel', off);
+          b.addEventListener('touchend', () => { t[k] = false; }); b.addEventListener('touchcancel', () => { t[k] = false; });
         }
       });
+      // RILASCIO ROBUSTO a livello DOCUMENTO: anche se il pulsante non riceve il suo pointerup
+      // (iOS annulla il tocco con un gesto, o il dito esce dal tasto) liberiamo l'input giusto per
+      // pointerId → niente più "il personaggio cammina da solo". Multi-touch safe.
+      if (window.PointerEvent) {
+        document.addEventListener('pointerup', e => release(e.pointerId));
+        document.addEventListener('pointercancel', e => release(e.pointerId));
+      }
+      // se l'app perde il focus o va in background, libera TUTTI i comandi (niente input "appiccicati")
+      window.addEventListener('blur', () => Object.keys(t).forEach(kk => { t[kk] = false; }));
+      document.addEventListener('visibilitychange', () => { if (document.hidden) Object.keys(t).forEach(kk => { t[kk] = false; }); });
     }
     this.t = window._touch;
     // reset a ogni (ri)avvio così non resta un tasto "premuto" dopo un restart
