@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { PAL } from '../config.js';
-import { state, collectLetter, hasAllLetters, hasLetter, SECRET_WORD, saveRun, clearRun, setBest, getBest, setGameCompleted } from '../state.js';
+import { state, collectLetter, hasAllLetters, hasLetter, SECRET_WORD, saveRun, clearRun, setBest, getBest, setGameCompleted, isPerf } from '../state.js';
 import { AUDIO } from '../audio.js';
 import { LEVELS, OFFICINA_ID } from '../levels.js';
 
@@ -70,6 +70,7 @@ export class GameScene extends Phaser.Scene {
   create() {
     const c = this.cfg;
     this._winScreenShown = false;   // reset per livello (anti-doppione / fail-safe vittoria)
+    this._perf = isPerf();          // modalità prestazioni → meno effetti (iPhone/PWA a scatti)
     this.heroKey = 'hero_' + (state.selectedKey || 'memento');   // sprite del personaggio scelto
     // OFFLINE: lo sprite dell'eroe custom/community arriva dalla rete; se non si è caricato, uso il
     // volto base (precache) così il gioco è sempre giocabile anche senza connessione.
@@ -286,6 +287,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   addVignette() {
+    if (this._perf) return;   // modalità prestazioni: niente velo bordi
     const W = this.scale.width, H = this.scale.height;
     if (!this.textures.exists('vignette')) {
       const tex = this.textures.createCanvas('vignette', W, H);
@@ -691,6 +693,7 @@ export class GameScene extends Phaser.Scene {
     if (this.shots) this.physics.add.overlap(this.player, this.shots, this.hitByShot, null, this);
     // segue solo in orizzontale; in verticale la camera è bloccata dai bounds (pavimento sempre visibile)
     this.cameras.main.startFollow(this.player, true, 0.12, 0.12);
+    this.cameras.main.setFollowOffset(-70, 0);   // anticipa la vista in avanti → vedi prima cosa arriva
     this.physics.add.collider(this.player, this.platforms);
     this.physics.add.collider(this.enemies, this.platforms);
     this.physics.add.collider(this.player, this.blocks, this.hitBlock, null, this);
@@ -1134,6 +1137,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   popText(x, y, t) {
+    if (this._perf) return;   // modalità prestazioni: niente testi fluttuanti (creano texture → scatti)
     // testo ben leggibile: bianco, grande, con contorno scuro spesso, sopra il gameplay
     const o = this.add.text(x, y, t, {
       fontFamily: 'Syne, sans-serif', fontStyle: '800', fontSize: '18px', color: '#FFFFFF',
@@ -2288,7 +2292,7 @@ export class GameScene extends Phaser.Scene {
         // il nastro scorre NEL VERSO della spinta (tilePositionX cresce → contenuto va a sinistra,
         // quindi sottraggo cv.dir per far "scorrere" il nastro nel senso in cui spinge il giocatore)
         cv.belt.tilePositionX -= cv.dir * cv.speed * 0.02;
-        if (cv.spokes) for (const sk of cv.spokes) sk.rotation += cv.dir * cv.speed * 0.006;
+        if (cv.spokes && !this._perf) for (const sk of cv.spokes) sk.rotation += cv.dir * cv.speed * 0.006;
       }
     }
     const p = this.player, c = this.cfg, cu = this.cur, t = this.t;

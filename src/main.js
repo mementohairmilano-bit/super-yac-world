@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { CHARACTERS } from './config.js';
-import { state, loadRun, clearRun, getBest, getNick, setNick, getEmail, setEmail, resetLetters, isGameCompleted, setGameCompleted, getCustomHero, setCustomHero, clearCustomHero, hasCreatedHero, setCreatedHero, clearCreatedHero } from './state.js';
+import { state, loadRun, clearRun, getBest, getNick, setNick, getEmail, setEmail, resetLetters, isGameCompleted, setGameCompleted, getCustomHero, setCustomHero, clearCustomHero, hasCreatedHero, setCreatedHero, clearCreatedHero, isPerf, setPerf } from './state.js';
 import { POWERS, powerById } from './powers.js';
 import { LEVELS } from './levels.js';
 import { submitScore, topScores, sanitizeNick, submitLead, validateEmail, fetchPublicHeroes } from './leaderboard.js';
@@ -522,6 +522,12 @@ function submitName() {
 if (document.getElementById('nameask-go')) document.getElementById('nameask-go').onclick = submitName;
 if (nameaskInput) nameaskInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') submitName(); });
 maybeAskName();
+
+// ===== Modalità prestazioni (toggle nel menu) =====
+const perfBtn = document.getElementById('btn-perf');
+function refreshPerfBtn() { if (perfBtn) perfBtn.textContent = '⚡ Modalità prestazioni: ' + (isPerf() ? 'ON' : 'OFF'); }
+if (perfBtn) perfBtn.onclick = () => { setPerf(!isPerf()); refreshPerfBtn(); };
+refreshPerfBtn();
 
 // ===== TEST LIVELLI: ?livelli (o ?levels) → scegli eroe e salta a qualsiasi livello =====
 const levelselEl = document.getElementById('levelsel');
