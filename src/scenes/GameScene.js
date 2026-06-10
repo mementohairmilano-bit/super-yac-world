@@ -47,6 +47,8 @@ export class GameScene extends Phaser.Scene {
       this.load.image('salon_corp', L.salone.corp); // salone occupato (prima)
       this.load.image('salon_yac', L.salone.yac);   // salone liberato (dopo)
     }
+    // immagine prodotto per la scena "LA DIFFERENZA YAC" (solo livelli boss con yacFact)
+    if (L.yacFact && L.yacFact.productImg) this.load.image(L.yacFact.productKey, L.yacFact.productImg);
     // Eroi in VISTA LATERALE (sprite del giocatore)
     this.load.image('hero_memento', './assets/char_memento.webp');
     this.load.image('hero_yuri', './assets/char_yuri.webp');
@@ -70,6 +72,7 @@ export class GameScene extends Phaser.Scene {
   create() {
     const c = this.cfg;
     this._winScreenShown = false;   // reset per livello (anti-doppione / fail-safe vittoria)
+    this._yacShown = false; this._yacSceneActive = false;   // scena "LA DIFFERENZA YAC"
     this._perf = isPerf();          // modalità prestazioni → meno effetti (iPhone/PWA a scatti)
     this.heroKey = 'hero_' + (state.selectedKey || 'memento');   // sprite del personaggio scelto
     // OFFLINE: lo sprite dell'eroe custom/community arriva dalla rete; se non si è caricato, uso il
@@ -1760,7 +1763,7 @@ export class GameScene extends Phaser.Scene {
     this.won = true; this.state = 'won';
     // FAIL-SAFE: la schermata di vittoria DEVE comparire comunque entro 8s, anche se l'animazione
     // di fine livello dovesse incepparsi o rallentare troppo (niente soft-lock dopo la bandiera).
-    this.time.delayedCall(8000, () => { if (!this._winScreenShown) this.endWin(); });
+    this.time.delayedCall(8000, () => { if (!this._winScreenShown && !this._yacSceneActive) this.endWin(); });
     if (this.timerEv) this.timerEv.paused = true;
     AUDIO.sfx('level_clear');   // pennone agganciato / fine livello
     const endDigit = this.timeLeft % 10;
@@ -1778,14 +1781,117 @@ export class GameScene extends Phaser.Scene {
         // 2. salta giù dal pennone verso destra
         this.tweens.add({
           targets: p, x: poleX + 44, duration: 260, delay: 200, onComplete: () => {
-            // 3a. livello finale del mondo (con salone): corsa → liberazione → tempo → fuochi
-            if (this.salone) this.runToSalone(() => this.convertTime(() => this.fireworksSeq(endDigit, () => this.endWin())));
+            // 3a. livello finale del mondo (con salone): corsa → liberazione → tempo → fuochi →
+            //     scena "LA DIFFERENZA YAC" (se il livello ha yacFact) → schermata di vittoria
+            if (this.salone) this.runToSalone(() => this.convertTime(() => this.fireworksSeq(endDigit, () => this.showYacDifference(() => this.endWin()))));
             // 3b. livello intermedio: conversione tempo → fuochi sul pennone → schermata "settore completato"
             else this.convertTime(() => this.fireworksSeq(endDigit, () => this.endWin()));
           }
         });
       }
     });
+  }
+
+  // ============== Scena "LA DIFFERENZA YAC" (dopo i fuochi, prima della vittoria) ==============
+  // L'eroe SCELTO dal giocatore (anche custom da foto) "presenta" come YAC batte il vizio del mondo
+  // appena liberato: titolo + poche righe + immagine prodotto + CTA verso yacstore.it (tracciata).
+  // In-engine (niente video): leggera, offline-friendly, stessa estetica del finale. Skippabile.
+  showYacDifference(done) {
+    const YF = this.level.yacFact;
+    if (!YF || this._yacShown) { done(); return; }
+    this._yacShown = true; this._yacSceneActive = true;
+    const W = this.scale.width, H = this.scale.height, cx = W / 2;
+    const layer = [];
+    let over = false;
+    const fin = () => {
+      if (over) return; over = true;
+      this._yacSceneActive = false;
+      layer.forEach((o) => { try { this.tweens.killTweensOf(o); o.destroy(); } catch (e) {} });
+      done();
+    };
+
+    // velo scuro brand sopra tutto (sopra i fuochi, depth 210+)
+    const veil = this.add.rectangle(cx, H / 2, W, H, 0x16121A, 0).setScrollFactor(0).setDepth(210);
+    layer.push(veil);
+    this.tweens.add({ targets: veil, fillAlpha: 0.93, duration: 450 });
+
+    // header dorato
+    const header = this.add.text(cx, 40, '—  LA DIFFERENZA YAC  —', {
+      fontFamily: 'Syne, sans-serif', fontStyle: '800', fontSize: '16px', color: '#F2C53D', letterSpacing: 3,
+    }).setOrigin(0.5).setScrollFactor(0).setDepth(212).setAlpha(0);
+    layer.push(header);
+    this.tweens.add({ targets: header, alpha: 1, y: 46, duration: 450, delay: 300 });
+
+    // l'EROE SCELTO entra da sinistra (slide + leggero "respiro")
+    const heroTex = this.textures.exists(this.heroKey) ? this.heroKey : 'hero_memento';
+    const src = this.textures.get(heroTex).getSourceImage() || { width: 244, height: 380 };
+    const hero = this.add.image(-120, H * 0.60, heroTex).setScrollFactor(0).setDepth(212);
+    hero.setScale(170 / (src.height || 380));
+    layer.push(hero);
+    this.tweens.add({ targets: hero, x: W * 0.18, duration: 650, delay: 350, ease: 'Back.easeOut' });
+    this.tweens.add({ targets: hero, y: '-=7', yoyo: true, repeat: -1, duration: 950, delay: 1050, ease: 'Sine.easeInOut' });
+
+    // immagine PRODOTTO a destra (pop con rimbalzo) + alone caldo dietro
+    if (YF.productKey && this.textures.exists(YF.productKey)) {
+      const glow = this.add.circle(W * 0.80, H * 0.52, 86, 0xF2C53D, 0.13).setScrollFactor(0).setDepth(211).setScale(0);
+      const psrc = this.textures.get(YF.productKey).getSourceImage() || { width: 200, height: 400 };
+      const prod = this.add.image(W * 0.80, H * 0.52, YF.productKey).setScrollFactor(0).setDepth(212);
+      prod.setScale(0).setAngle(-5);
+      layer.push(glow, prod);
+      const ps = 190 / (psrc.height || 400);
+      this.time.delayedCall(750, () => {
+        AUDIO.sfx('star');
+        this.tweens.add({ targets: prod, scale: ps, angle: 0, duration: 520, ease: 'Back.easeOut' });
+        this.tweens.add({ targets: glow, scale: 1, alpha: 0.13, duration: 520, ease: 'Quad.easeOut' });
+        this.tweens.add({ targets: glow, scale: 1.12, yoyo: true, repeat: -1, duration: 1200, delay: 600, ease: 'Sine.easeInOut' });
+      });
+    }
+
+    // titolo + righe (centro)
+    const title = this.add.text(cx, H * 0.30, YF.title || '', {
+      fontFamily: 'Syne, sans-serif', fontStyle: '800', fontSize: '24px', color: '#FFFFFF',
+      stroke: '#16121A', strokeThickness: 5, align: 'center', wordWrap: { width: Math.min(W * 0.55, 480) },
+    }).setOrigin(0.5).setScrollFactor(0).setDepth(212).setAlpha(0);
+    layer.push(title);
+    this.time.delayedCall(650, () => { AUDIO.sfx('letter_get'); this.tweens.add({ targets: title, alpha: 1, y: H * 0.28, duration: 420, ease: 'Quad.easeOut' }); });
+    (YF.lines || []).forEach((ln, i) => {
+      const t = this.add.text(cx, H * 0.45 + i * 24, ln, {
+        fontFamily: 'DM Sans, sans-serif', fontStyle: '600', fontSize: '15px', color: '#F7E7C8',
+        align: 'center', wordWrap: { width: Math.min(W * 0.6, 520) },
+      }).setOrigin(0.5).setScrollFactor(0).setDepth(212).setAlpha(0);
+      layer.push(t);
+      this.tweens.add({ targets: t, alpha: 0.95, duration: 420, delay: 1000 + i * 350 });
+    });
+
+    // CTA verso lo store (tracciata con Memento Studio) — non skippa la scena
+    if (YF.cta) {
+      const cta = this.add.text(cx, H * 0.68, YF.cta, {
+        fontFamily: 'Syne, sans-serif', fontStyle: '800', fontSize: '15px', color: '#1A121F',
+        backgroundColor: '#F2C53D', padding: { x: 16, y: 8 },
+      }).setOrigin(0.5).setScrollFactor(0).setDepth(213).setAlpha(0);
+      layer.push(cta);
+      this.tweens.add({ targets: cta, alpha: 1, duration: 420, delay: 1700 });
+      cta.setInteractive({ useHandCursor: true }).on('pointerdown', (pointer, lx, ly, event) => {
+        if (event && event.stopPropagation) event.stopPropagation();
+        try { if (window.msTrack) window.msTrack('event', { meta: { name: 'yac_store_click', mondo: state.worldId } }); } catch (e) {}
+        try { window.open(YF.url || 'https://www.yacstore.it', '_blank', 'noopener'); } catch (e) {}
+      });
+    }
+
+    // "Continua →" + tap ovunque per saltare (dopo 1.5s, per evitare tap accidentali residui)
+    const cont = this.add.text(W - 16, H - 16, 'Continua →', {
+      fontFamily: 'DM Sans, sans-serif', fontStyle: '700', fontSize: '14px', color: '#F2C53D',
+    }).setOrigin(1).setScrollFactor(0).setDepth(213).setAlpha(0);
+    layer.push(cont);
+    this.tweens.add({ targets: cont, alpha: 0.95, duration: 400, delay: 1500 });
+    this.tweens.add({ targets: cont, alpha: 0.5, yoyo: true, repeat: -1, duration: 800, delay: 2000 });
+    this.time.delayedCall(1500, () => {
+      if (over) return;
+      cont.setInteractive({ useHandCursor: true }).on('pointerdown', fin);
+      veil.setInteractive().on('pointerdown', fin);
+    });
+    // auto-avanza comunque (nessun blocco possibile)
+    this.time.delayedCall(10000, fin);
   }
 
   runToSalone(done) {

@@ -130,6 +130,15 @@ const MONDO1 = {
     title: 'Salone liberato — adesso è uno YAC Salon! 🎉',
     tag: 'Hai cacciato la multinazionale: prodotto vero batte produzione di massa. Mondo 1 completato.',
   },
+
+  // Scena "LA DIFFERENZA YAC" dopo i fuochi: l'eroe spiega come YAC batte il vizio di questo mondo.
+  // productKey 'yaclogo' = logo YAC (già precaricato); productImg solo se serve caricare un file nuovo.
+  yacFact: {
+    productKey: 'yaclogo', productImg: null,
+    title: 'Pensato dai parrucchieri,\nper i parrucchieri',
+    lines: ['I prodotti YAC non escono da una catena di montaggio:', 'nascono in salone, dal mestiere. Break the Mold.'],
+    cta: 'Scopri su yacstore.it →', url: 'https://www.yacstore.it',
+  },
 };
 
 // ====================== MONDO 2-1 — Zona di Carico (superficie) ======================
@@ -433,6 +442,15 @@ const MONDO2_3 = {
   win: {
     title: 'Magazzino liberato — è uno YAC Salon! 🎉',
     tag: 'Hai scalato la Torre, sbaragliato BoxKing e ripreso tutto il Magazzino. Mondo 2 completato!',
+  },
+
+  // Il vizio del Mondo 2 è il MAGAZZINO stracolmo → la risposta YAC è Liquid Vibes: 38 nuance
+  // miscelabili = tutte le sfumature con meno referenze a scaffale.
+  yacFact: {
+    productKey: 'prod_vibes', productImg: A + 'prod_vibes.webp',
+    title: 'Liquid Vibes — 38 nuance',
+    lines: ['Con 38 nuance miscelabili crei tutte le sfumature.', 'Meno prodotti, meno magazzino, meno spesa.'],
+    cta: 'Scopri su yacstore.it →', url: 'https://www.yacstore.it',
   },
 };
 
