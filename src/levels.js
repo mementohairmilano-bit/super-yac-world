@@ -704,6 +704,15 @@ const MONDO3_3 = {
     title: 'Distretto liberato — diventa YAC! 🎉🌃',
     tag: 'Hai spento ViralCorp… ma era solo un altro marchio di The Conglomerate. Mondo 3 completato!',
   },
+
+  // Il vizio del Mondo 3 è l'HYPE (cartelloni, social, virale) → la risposta YAC è il risultato vero.
+  yacFact: {
+    productKey: 'prod_golilla', productImg: A + 'prod_golilla.webp',
+    vice: 'hype',
+    problem: 'Tutto fumo: hype, cartelloni, promesse virali…',
+    title: 'Golilla — l\'effetto wow vero',
+    lines: ['Il risultato si vede in testa, non nello spot.', 'Niente hype: parlano i capelli, non la pubblicità.'],
+  },
 };
 
 // ====================== MONDO 4-1 — Le Vasche (superficie, luminoso) ======================
@@ -1004,6 +1013,15 @@ const MONDO4_3 = {
     title: 'Laboratorio bonificato — diventa YAC! 🎉☣️',
     tag: 'Hai spento ToxiLab e bonificato il laboratorio… ma era un altro marchio di The Conglomerate. Mondo 4 completato!',
   },
+
+  // Il vizio del Mondo 4 è la CHIMICA aggressiva (laboratorio tossico) → la risposta YAC è pH Changer.
+  yacFact: {
+    productKey: 'prod_ph', productImg: A + 'prod_ph.webp',
+    vice: 'chimica',
+    problem: 'Chimica aggressiva, formule da laboratorio…',
+    title: 'pH Changer — da permanente a demi',
+    lines: ['Formule dosate da chi i capelli li lavora ogni giorno.', 'Forza dove serve, delicatezza dove conta.'],
+  },
 };
 
 // ====================== MONDO 5 — La Borsa / Direzione ======================
@@ -1286,6 +1304,15 @@ const MONDO5_3 = {
     title: 'Direzione ribaltata — diventa YAC! 🎉🏙️',
     tag: 'Hai spento Unibeauty e ribaltato la torre… ma chi possiede tutti i marchi? Mondo 5 completato!',
   },
+
+  // Il vizio del Mondo 5 è la FINANZA (la Borsa, il profitto sopra tutto) → la risposta YAC è il valore vero.
+  yacFact: {
+    productKey: 'prod_flashbang', productImg: A + 'prod_flashbang.webp',
+    vice: 'finanza',
+    problem: 'In Borsa conta il profitto, non la tua testa…',
+    title: 'Paghi il prodotto, non il marchio',
+    lines: ['Professionale e onesto: niente prezzo gonfiato dal marketing.', 'Uno strumento che lavora, non un logo da esibire.'],
+  },
 };
 
 // ====================== MONDO 6 — Big Beauty Tower (FINALE) ======================
@@ -1556,6 +1583,15 @@ const MONDO6_3 = {
   win: {
     title: 'HAI BATTUTO IL SISTEMA! 🎉👑',
     tag: 'The Conglomerate è caduto: i loghi freddi si staccano e tutta la torre diventa YAC. Hai vinto Super Yac World!',
+  },
+
+  // Il vizio del Mondo 6 è IL SISTEMA (un colosso che possiede tutti i marchi) → la risposta YAC è l'alternativa.
+  yacFact: {
+    productKey: 'yaclogo', productImg: null,
+    vice: 'sistema',
+    problem: 'Un solo colosso possiede tutti i marchi…',
+    title: 'YAC — l\'onda che travolge il sistema',
+    lines: ['Indipendenti, dai parrucchieri per i parrucchieri.', 'Non un marchio del sistema: l\'alternativa. Break the Mold.'],
   },
 };
 
