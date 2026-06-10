@@ -55,7 +55,7 @@ function startGame(key, worldId = 1, opts = {}) {
   //  - altrimenti (prossimo mondo / ricomincia) → mantiene il totale corrente
   // newRun = partita da capo: azzera anche le lettere FREEDOM (altrimenti la lettera del Mondo 1
   // risulta già presa e il suo collezionabile non compare). Il "Continua" invece le conserva.
-  if (opts.newRun) { state.runScore = 0; clearRun(); resetLetters(); }
+  if (opts.newRun) { state.runScore = 0; clearRun(); resetLetters(); try { if (window.msTrack) window.msTrack('event', { meta: { name: 'partita_iniziata', eroe: key } }); } catch (e) {} }
   else if (opts.resumeScore != null) state.runScore = opts.resumeScore;
 
   SELECTED = key;

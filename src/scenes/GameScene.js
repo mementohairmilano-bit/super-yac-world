@@ -1098,6 +1098,7 @@ export class GameScene extends Phaser.Scene {
   grabLetter(lt) {
     if (this._gotLetter) return; this._gotLetter = true;
     collectLetter(lt.id);
+    try { if (window.msTrack) window.msTrack('event', { meta: { name: 'lettera_freedom', valore: state.letters.length } }); } catch (e) {}
     AUDIO.sfx('letter_get');
     if (this.letterZone) { this.letterZone.destroy(); this.letterZone = null; }
     const x = this.letterObj ? this.letterObj.x : lt.x, y = this.letterObj ? this.letterObj.y : lt.y;
@@ -1981,6 +1982,7 @@ export class GameScene extends Phaser.Scene {
 
   finaleSignature() {
     setGameCompleted();   // ha visto il finale → sblocca la creazione dell'eroe personalizzato
+    try { if (window.msTrack) window.msTrack('event', { meta: { name: 'gioco_finito' } }); } catch (e) {}
     const W = this.scale.width, H = this.scale.height, cx = W / 2;
     const tag = this.add.text(cx, H * 0.42, 'YAC — Break the Mold.', {
       fontFamily: 'Syne, sans-serif', fontStyle: '800', fontSize: '30px',
