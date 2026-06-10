@@ -1816,10 +1816,10 @@ export class GameScene extends Phaser.Scene {
     const veil = add(this.add.rectangle(cx, H / 2, W, H, 0x16121A, 0)).setDepth(210);
     this.tweens.add({ targets: veil, fillAlpha: 0.95, duration: 500 });
     cam.flash(280, 20, 16, 26);
-    const header = add(this.add.text(cx, 34, 'LA DIFFERENZA YAC', {
+    const header = add(this.add.text(cx, 22, 'LA DIFFERENZA YAC', {
       fontFamily: 'Syne, sans-serif', fontStyle: '800', fontSize: '13px', color: '#F2C53D', letterSpacing: 2,
     })).setOrigin(0.5).setDepth(214).setAlpha(0);
-    this.tweens.add({ targets: header, alpha: 1, y: 40, duration: 400, delay: 300 });
+    this.tweens.add({ targets: header, alpha: 1, y: 28, duration: 400, delay: 300 });
 
     // --- Beat 1: il MAGAZZINO infinito — pila di scatole 📦 che cresce + didascalia "problema" ---
     const boxes = [];
@@ -1856,7 +1856,7 @@ export class GameScene extends Phaser.Scene {
     });
 
     // --- Beat 4: il PRODOTTO YAC esplode in scena + titolo + righe (testi piccoli) ---
-    const px = W * 0.66, py = H * 0.46;
+    const px = W * 0.68, py = H * 0.52;
     this.time.delayedCall(4200, () => {
       if (over) return;
       cam.flash(240, 242, 197, 61); AUDIO.sfx('star');
@@ -1872,14 +1872,14 @@ export class GameScene extends Phaser.Scene {
         this.tweens.add({ targets: [prod, glow], y: py - 7, yoyo: true, repeat: -1, duration: 1200, delay: 800, ease: 'Sine.easeInOut' });
         this.tweens.add({ targets: glow, scale: 1.15, yoyo: true, repeat: -1, duration: 1300, delay: 800, ease: 'Sine.easeInOut' });
       }
-      const title = add(this.add.text(cx, H * 0.16, YF.title || '', {
+      const title = add(this.add.text(cx, H * 0.28, YF.title || '', {
         fontFamily: 'Syne, sans-serif', fontStyle: '800', fontSize: '18px', color: '#FFFFFF',
-        stroke: '#16121A', strokeThickness: 4, align: 'center', wordWrap: { width: Math.min(W * 0.8, 560) },
+        stroke: '#16121A', strokeThickness: 4, align: 'center', lineSpacing: 2, wordWrap: { width: Math.min(W * 0.8, 560) },
       })).setOrigin(0.5).setDepth(214).setAlpha(0);
       AUDIO.sfx('letter_get');
-      this.tweens.add({ targets: title, alpha: 1, y: H * 0.14, duration: 450, ease: 'Quad.easeOut' });
+      this.tweens.add({ targets: title, alpha: 1, y: H * 0.26, duration: 450, ease: 'Quad.easeOut' });
       (YF.lines || []).forEach((ln, i) => {
-        const t = add(this.add.text(cx, H * 0.76 + i * 22, ln, {
+        const t = add(this.add.text(cx, H * 0.80 + i * 22, ln, {
           fontFamily: 'DM Sans, sans-serif', fontStyle: '600', fontSize: '13px', color: '#F7E7C8',
           align: 'center', wordWrap: { width: Math.min(W * 0.82, 600) },
         })).setOrigin(0.5).setDepth(214).setAlpha(0);
