@@ -1821,16 +1821,46 @@ export class GameScene extends Phaser.Scene {
     })).setOrigin(0.5).setDepth(214).setAlpha(0);
     this.tweens.add({ targets: header, alpha: 1, y: 28, duration: 400, delay: 300 });
 
-    // --- Beat 1: il MAGAZZINO infinito — pila di scatole 📦 che cresce + didascalia "problema" ---
-    const boxes = [];
-    const pileX = cx, pileY = H * 0.56;   // base della pila al centro
-    const layout = [[-36, 0], [0, 0], [36, 0], [-18, -34], [18, -34], [0, -68]];   // piramide
-    layout.forEach((p, i) => {
-      const b = add(this.add.text(pileX + p[0], pileY + p[1], '📦', { fontSize: '34px' })).setOrigin(0.5).setDepth(212).setAlpha(0).setScale(0.4);
-      boxes.push(b);
-      this.tweens.add({ targets: b, alpha: 1, scale: 1, duration: 300, delay: 700 + i * 200, ease: 'Back.easeOut' });
-    });
-    const problem = add(this.add.text(cx, H * 0.24, YF.problem || 'Magazzino infinito, prodotti su prodotti…', {
+    // --- Beat 1: il "VIZIO" del mondo (grafica DIVERSA per ogni mondo) + didascalia "problema" ---
+    // yacFact.vice decide cosa mostrare: 'massa' (catena: prodotti identici in fila sul nastro),
+    // 'magazzino' (pila di scatole), 'hype' (cartelloni), 'chimica' (taniche tossiche),
+    // 'finanza' (banconote/€), 'sistema' (loghi/catene). Tutti vengono poi "spazzati via".
+    const vice = [];
+    const emojiRow = (emo, beltColor) => {
+      const n = 5, gap = Math.min(70, W * 0.06), y = H * 0.55, x0 = cx - (n - 1) * gap / 2;
+      if (beltColor != null) {
+        const belt = add(this.add.rectangle(cx, y + 26, n * gap + 44, 7, beltColor)).setDepth(211).setAlpha(0);
+        vice.push(belt); this.tweens.add({ targets: belt, alpha: 0.9, duration: 300, delay: 600 });
+      }
+      for (let i = 0; i < n; i++) {
+        const b = add(this.add.text(x0 + i * gap, y, emo, { fontSize: '30px' })).setOrigin(0.5).setDepth(212).setAlpha(0);
+        vice.push(b);
+        this.tweens.add({ targets: b, alpha: 1, duration: 240, delay: 700 + i * 170, ease: 'Quad.easeOut' });
+      }
+    };
+    const kind = YF.vice || 'magazzino';
+    if (kind === 'magazzino') {
+      const pileX = cx, pileY = H * 0.58;
+      const layout = [[-36, 0], [0, 0], [36, 0], [-18, -34], [18, -34], [0, -68]];   // piramide di scatole
+      layout.forEach((p, i) => {
+        const b = add(this.add.text(pileX + p[0], pileY + p[1], '📦', { fontSize: '34px' })).setOrigin(0.5).setDepth(212).setAlpha(0).setScale(0.4);
+        vice.push(b);
+        this.tweens.add({ targets: b, alpha: 1, scale: 1, duration: 300, delay: 700 + i * 200, ease: 'Back.easeOut' });
+      });
+    } else if (kind === 'massa') {
+      emojiRow('🧴', 0x4b545d);   // catena di montaggio: 5 prodotti IDENTICI in fila sul nastro
+    } else if (kind === 'hype') {
+      emojiRow('📢', null);       // cartelloni/altoparlanti dell'hype
+    } else if (kind === 'chimica') {
+      emojiRow('🧪', null);       // taniche/provette tossiche
+    } else if (kind === 'finanza') {
+      emojiRow('💸', null);       // soldi/listini gonfiati
+    } else if (kind === 'sistema') {
+      emojiRow('🏢', null);       // i palazzi/loghi del conglomerato
+    } else {
+      emojiRow('📦', null);
+    }
+    const problem = add(this.add.text(cx, H * 0.24, YF.problem || '', {
       fontFamily: 'DM Sans, sans-serif', fontStyle: '700', fontSize: '15px', color: '#ff9b9b',
       align: 'center', wordWrap: { width: Math.min(W * 0.8, 560) },
     })).setOrigin(0.5).setDepth(214).setAlpha(0);
@@ -1844,12 +1874,12 @@ export class GameScene extends Phaser.Scene {
     this.tweens.add({ targets: hero, x: W * 0.24, duration: 1100, delay: 2100, ease: 'Sine.easeOut' });
     this.tweens.add({ targets: hero, y: '-=7', yoyo: true, repeat: 6, duration: 180, delay: 2100 });   // passi
 
-    // --- Beat 3: l'eroe SPAZZA VIA il magazzino (shake + SFX, le scatole volano via) ---
+    // --- Beat 3: l'eroe SPAZZA VIA il vizio (shake + SFX, gli oggetti volano via) ---
     this.time.delayedCall(3350, () => {
       if (over) return;
       cam.shake(300, 0.012); AUDIO.sfx('boss_defeat');
       this.tweens.add({ targets: problem, alpha: 0, duration: 300 });
-      boxes.forEach((b, i) => this.tweens.add({
+      vice.forEach((b, i) => this.tweens.add({
         targets: b, x: b.x + 260 + Math.random() * 120, y: b.y + 200 + Math.random() * 80, angle: 220, alpha: 0,
         duration: 750, delay: i * 60, ease: 'Quad.easeIn', onComplete: () => { try { b.destroy(); } catch (e) {} },
       }));
