@@ -1793,9 +1793,9 @@ export class GameScene extends Phaser.Scene {
   }
 
   // ============== Scena "LA DIFFERENZA YAC" (dopo i fuochi, prima della vittoria) ==============
-  // SCENETTA animata (stile sequenza finale): l'eroe scelto entra di corsa → compare il "caos"
-  // della produzione di massa (scatoloni grigi) → l'eroe lo spazza via (shake+SFX) → il prodotto
-  // YAC esplode in scena col messaggio + CTA verso yacstore.it (tracciata). In-engine, skippabile.
+  // SCENETTA animata e leggibile (stile sequenza finale): compare il "magazzino infinito" della
+  // produzione di massa (pila di scatole 📦) → l'eroe scelto entra e lo spazza via (shake+SFX) →
+  // il prodotto YAC esplode col messaggio. In-engine, niente voce, niente yacstore qui. Skippabile.
   showYacDifference(done) {
     const YF = this.level.yacFact;
     if (!YF || this._yacShown) { done(); return; }
@@ -1812,95 +1812,86 @@ export class GameScene extends Phaser.Scene {
     };
     const add = (o) => { layer.push(o); return o.setScrollFactor(0); };
 
-    // --- velo scuro brand + header (Beat 0) ---
+    // --- Beat 0: velo + header piccolo ---
     const veil = add(this.add.rectangle(cx, H / 2, W, H, 0x16121A, 0)).setDepth(210);
-    this.tweens.add({ targets: veil, fillAlpha: 0.94, duration: 400 });
-    cam.flash(260, 20, 16, 26);
-    const header = add(this.add.text(cx, 38, '—  LA DIFFERENZA YAC  —', {
-      fontFamily: 'Syne, sans-serif', fontStyle: '800', fontSize: '15px', color: '#F2C53D', letterSpacing: 3,
+    this.tweens.add({ targets: veil, fillAlpha: 0.95, duration: 500 });
+    cam.flash(280, 20, 16, 26);
+    const header = add(this.add.text(cx, 34, 'LA DIFFERENZA YAC', {
+      fontFamily: 'Syne, sans-serif', fontStyle: '800', fontSize: '13px', color: '#F2C53D', letterSpacing: 2,
     })).setOrigin(0.5).setDepth(214).setAlpha(0);
-    this.tweens.add({ targets: header, alpha: 1, y: 44, duration: 400, delay: 250 });
+    this.tweens.add({ targets: header, alpha: 1, y: 40, duration: 400, delay: 300 });
 
-    // --- Beat 1: il CAOS della produzione di massa (scatoloni grigi che traballano) ---
-    const clutter = [];
-    for (let i = 0; i < 7; i++) {
-      const rx = cx + 40 + (Math.random() * W * 0.30 - W * 0.06);
-      const ry = H * 0.46 + (Math.random() * 150 - 75);
-      const b = add(this.add.rectangle(rx, ry, 30, 30, 0x6b7079, 1)).setStrokeStyle(2, 0x2c3036).setDepth(211).setAlpha(0).setAngle(Math.random() * 30 - 15);
-      clutter.push(b);
-      this.tweens.add({ targets: b, alpha: 1, scale: 1, duration: 280, delay: 450 + i * 70, ease: 'Back.easeOut' });
-      this.tweens.add({ targets: b, angle: b.angle + (Math.random() < 0.5 ? 10 : -10), yoyo: true, repeat: -1, duration: 480 + Math.random() * 280, delay: 800 });
-    }
+    // --- Beat 1: il MAGAZZINO infinito — pila di scatole 📦 che cresce + didascalia "problema" ---
+    const boxes = [];
+    const pileX = cx, pileY = H * 0.56;   // base della pila al centro
+    const layout = [[-36, 0], [0, 0], [36, 0], [-18, -34], [18, -34], [0, -68]];   // piramide
+    layout.forEach((p, i) => {
+      const b = add(this.add.text(pileX + p[0], pileY + p[1], '📦', { fontSize: '34px' })).setOrigin(0.5).setDepth(212).setAlpha(0).setScale(0.4);
+      boxes.push(b);
+      this.tweens.add({ targets: b, alpha: 1, scale: 1, duration: 300, delay: 700 + i * 200, ease: 'Back.easeOut' });
+    });
+    const problem = add(this.add.text(cx, H * 0.24, YF.problem || 'Magazzino infinito, prodotti su prodotti…', {
+      fontFamily: 'DM Sans, sans-serif', fontStyle: '700', fontSize: '15px', color: '#ff9b9b',
+      align: 'center', wordWrap: { width: Math.min(W * 0.8, 560) },
+    })).setOrigin(0.5).setDepth(214).setAlpha(0);
+    this.tweens.add({ targets: problem, alpha: 0.95, duration: 450, delay: 1100 });
 
-    // --- Beat 2: l'EROE SCELTO entra di CORSA da sinistra ---
+    // --- Beat 2: l'EROE SCELTO entra camminando da sinistra ---
     const heroTex = this.textures.exists(this.heroKey) ? this.heroKey : 'hero_memento';
     const src = this.textures.get(heroTex).getSourceImage() || { width: 244, height: 380 };
-    const hero = add(this.add.image(-120, H * 0.66, heroTex)).setDepth(213);
-    hero.setScale(165 / (src.height || 380));
-    this.tweens.add({ targets: hero, x: W * 0.20, duration: 800, delay: 350, ease: 'Quad.easeOut' });
-    this.tweens.add({ targets: hero, y: '-=9', yoyo: true, repeat: 4, duration: 150, delay: 350 });   // saltelli di corsa
+    const hero = add(this.add.image(-130, H * 0.66, heroTex)).setDepth(213);
+    hero.setScale(160 / (src.height || 380));
+    this.tweens.add({ targets: hero, x: W * 0.24, duration: 1100, delay: 2100, ease: 'Sine.easeOut' });
+    this.tweens.add({ targets: hero, y: '-=7', yoyo: true, repeat: 6, duration: 180, delay: 2100 });   // passi
 
-    // --- Beat 3: l'eroe SPAZZA VIA il caos (shake + SFX, gli scatoloni volano via) ---
-    this.time.delayedCall(1450, () => {
+    // --- Beat 3: l'eroe SPAZZA VIA il magazzino (shake + SFX, le scatole volano via) ---
+    this.time.delayedCall(3350, () => {
       if (over) return;
-      cam.shake(260, 0.011); AUDIO.sfx('boss_defeat');
-      clutter.forEach((b, i) => this.tweens.add({
-        targets: b, x: b.x + 300, y: b.y + 240, angle: b.angle + 220, alpha: 0,
-        duration: 600, delay: i * 35, ease: 'Quad.easeIn', onComplete: () => { try { b.destroy(); } catch (e) {} },
+      cam.shake(300, 0.012); AUDIO.sfx('boss_defeat');
+      this.tweens.add({ targets: problem, alpha: 0, duration: 300 });
+      boxes.forEach((b, i) => this.tweens.add({
+        targets: b, x: b.x + 260 + Math.random() * 120, y: b.y + 200 + Math.random() * 80, angle: 220, alpha: 0,
+        duration: 750, delay: i * 60, ease: 'Quad.easeIn', onComplete: () => { try { b.destroy(); } catch (e) {} },
       }));
     });
 
-    // --- Beat 4: il PRODOTTO YAC esplode in scena + titolo + righe ---
-    const px = W * 0.66, py = H * 0.44;
-    this.time.delayedCall(2050, () => {
+    // --- Beat 4: il PRODOTTO YAC esplode in scena + titolo + righe (testi piccoli) ---
+    const px = W * 0.66, py = H * 0.46;
+    this.time.delayedCall(4200, () => {
       if (over) return;
-      cam.flash(220, 242, 197, 61); AUDIO.sfx('star');
+      cam.flash(240, 242, 197, 61); AUDIO.sfx('star');
       const ring = add(this.add.circle(px, py, 18, 0xF2C53D, 0).setStrokeStyle(5, 0xF2C53D, 0.9)).setDepth(211);
-      this.tweens.add({ targets: ring, radius: 120, alpha: 0, duration: 650, ease: 'Cubic.easeOut', onComplete: () => { try { ring.destroy(); } catch (e) {} } });
+      this.tweens.add({ targets: ring, radius: 110, alpha: 0, duration: 700, ease: 'Cubic.easeOut', onComplete: () => { try { ring.destroy(); } catch (e) {} } });
       if (YF.productKey && this.textures.exists(YF.productKey)) {
-        const glow = add(this.add.circle(px, py, 80, 0xF2C53D, 0.14)).setDepth(211).setScale(0);
+        const glow = add(this.add.circle(px, py, 76, 0xF2C53D, 0.14)).setDepth(211).setScale(0);
         const psrc = this.textures.get(YF.productKey).getSourceImage() || { width: 200, height: 400 };
         const prod = add(this.add.image(px, py, YF.productKey)).setDepth(213).setScale(0).setAngle(-8);
-        const ps = 140 / (psrc.height || 400);
-        this.tweens.add({ targets: prod, scale: ps, angle: 0, duration: 540, ease: 'Back.easeOut' });
-        this.tweens.add({ targets: glow, scale: 1, duration: 540 });
-        this.tweens.add({ targets: [prod, glow], y: py - 8, yoyo: true, repeat: -1, duration: 1100, delay: 700, ease: 'Sine.easeInOut' });
-        this.tweens.add({ targets: glow, scale: 1.15, yoyo: true, repeat: -1, duration: 1200, delay: 700, ease: 'Sine.easeInOut' });
+        const ps = 132 / (psrc.height || 400);
+        this.tweens.add({ targets: prod, scale: ps, angle: 0, duration: 560, ease: 'Back.easeOut' });
+        this.tweens.add({ targets: glow, scale: 1, duration: 560 });
+        this.tweens.add({ targets: [prod, glow], y: py - 7, yoyo: true, repeat: -1, duration: 1200, delay: 800, ease: 'Sine.easeInOut' });
+        this.tweens.add({ targets: glow, scale: 1.15, yoyo: true, repeat: -1, duration: 1300, delay: 800, ease: 'Sine.easeInOut' });
       }
-      // titolo (in alto, sopra la scena)
       const title = add(this.add.text(cx, H * 0.16, YF.title || '', {
-        fontFamily: 'Syne, sans-serif', fontStyle: '800', fontSize: '22px', color: '#FFFFFF',
-        stroke: '#16121A', strokeThickness: 5, align: 'center', wordWrap: { width: Math.min(W * 0.8, 560) },
+        fontFamily: 'Syne, sans-serif', fontStyle: '800', fontSize: '18px', color: '#FFFFFF',
+        stroke: '#16121A', strokeThickness: 4, align: 'center', wordWrap: { width: Math.min(W * 0.8, 560) },
       })).setOrigin(0.5).setDepth(214).setAlpha(0);
       AUDIO.sfx('letter_get');
-      this.tweens.add({ targets: title, alpha: 1, y: H * 0.14, duration: 420, ease: 'Quad.easeOut' });
-      // righe (sotto)
+      this.tweens.add({ targets: title, alpha: 1, y: H * 0.14, duration: 450, ease: 'Quad.easeOut' });
       (YF.lines || []).forEach((ln, i) => {
-        const t = add(this.add.text(cx, H * 0.74 + i * 24, ln, {
-          fontFamily: 'DM Sans, sans-serif', fontStyle: '600', fontSize: '15px', color: '#F7E7C8',
+        const t = add(this.add.text(cx, H * 0.76 + i * 22, ln, {
+          fontFamily: 'DM Sans, sans-serif', fontStyle: '600', fontSize: '13px', color: '#F7E7C8',
           align: 'center', wordWrap: { width: Math.min(W * 0.82, 600) },
         })).setOrigin(0.5).setDepth(214).setAlpha(0);
-        this.tweens.add({ targets: t, alpha: 0.96, duration: 380, delay: 350 + i * 300 });
+        this.tweens.add({ targets: t, alpha: 0.96, duration: 420, delay: 500 + i * 450 });
       });
     });
 
-    // --- Beat 5: CTA store (tracciata) + Continua + skip ---
-    this.time.delayedCall(3100, () => {
+    // --- Beat 5: Continua (niente yacstore qui) + tap per saltare ---
+    this.time.delayedCall(5400, () => {
       if (over) return;
-      if (YF.cta) {
-        const cta = add(this.add.text(cx, H * 0.90, YF.cta, {
-          fontFamily: 'Syne, sans-serif', fontStyle: '800', fontSize: '15px', color: '#1A121F',
-          backgroundColor: '#F2C53D', padding: { x: 16, y: 8 },
-        })).setOrigin(0.5).setDepth(215).setAlpha(0);
-        this.tweens.add({ targets: cta, alpha: 1, y: H * 0.88, duration: 380 });
-        cta.setInteractive({ useHandCursor: true }).on('pointerdown', (pointer, lx, ly, ev) => {
-          if (ev && ev.stopPropagation) ev.stopPropagation();
-          try { if (window.msTrack) window.msTrack('event', { meta: { name: 'yac_store_click', mondo: state.worldId } }); } catch (e) {}
-          try { window.open(YF.url || 'https://www.yacstore.it', '_blank', 'noopener'); } catch (e) {}
-        });
-      }
       const cont = add(this.add.text(W - 14, H - 12, 'Continua →', {
-        fontFamily: 'DM Sans, sans-serif', fontStyle: '700', fontSize: '14px', color: '#F2C53D',
+        fontFamily: 'DM Sans, sans-serif', fontStyle: '700', fontSize: '13px', color: '#F2C53D',
       })).setOrigin(1).setDepth(215).setAlpha(0);
       this.tweens.add({ targets: cont, alpha: 0.9, duration: 350 });
       this.tweens.add({ targets: cont, alpha: 0.45, yoyo: true, repeat: -1, duration: 800, delay: 600 });
@@ -1908,7 +1899,7 @@ export class GameScene extends Phaser.Scene {
       veil.setInteractive().on('pointerdown', fin);   // tap ovunque per saltare
     });
     // auto-avanza comunque (nessun blocco possibile)
-    this.time.delayedCall(11000, fin);
+    this.time.delayedCall(15000, fin);
   }
 
   runToSalone(done) {

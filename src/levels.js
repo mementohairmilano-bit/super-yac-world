@@ -135,9 +135,9 @@ const MONDO1 = {
   // productKey 'yaclogo' = logo YAC (già precaricato); productImg solo se serve caricare un file nuovo.
   yacFact: {
     productKey: 'yaclogo', productImg: null,
+    problem: 'Tutto uguale, prodotto in serie…',
     title: 'Pensato dai parrucchieri,\nper i parrucchieri',
     lines: ['I prodotti YAC non escono da una catena di montaggio:', 'nascono in salone, dal mestiere. Break the Mold.'],
-    cta: 'Scopri su yacstore.it →', url: 'https://www.yacstore.it',
   },
 };
 
@@ -448,9 +448,9 @@ const MONDO2_3 = {
   // miscelabili = tutte le sfumature con meno referenze a scaffale.
   yacFact: {
     productKey: 'prod_vibes', productImg: A + 'prod_vibes.webp',
+    problem: 'Magazzino infinito, prodotti su prodotti…',
     title: 'Liquid Vibes — 38 nuance',
     lines: ['Con 38 nuance miscelabili crei tutte le sfumature.', 'Meno prodotti, meno magazzino, meno spesa.'],
-    cta: 'Scopri su yacstore.it →', url: 'https://www.yacstore.it',
   },
 };
 
