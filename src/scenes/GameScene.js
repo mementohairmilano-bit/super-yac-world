@@ -1309,6 +1309,11 @@ export class GameScene extends Phaser.Scene {
 
   beginPlay() {
     this.state = 'play'; this.physics.resume(); if (this.timerEv) this.timerEv.paused = false; this.updateHUD();
+    // SALVATAGGIO a ogni inizio livello → "Continua" riprende sempre da qui, anche se chiudi la PWA
+    // a metà partita (prima si salvava solo a livello completato). Non per l'Officina (finale).
+    if (!this.officina && state.selectedKey) {
+      saveRun({ world: state.worldId, char: state.selectedKey, runScore: state.runScore || this.score || 0 });
+    }
     this.resetOoze();   // l'ooze riparte basso a ogni avvio/respawn (climb sempre equa)
     AUDIO.playMusic(this.bossActive && !this.bossDefeated ? this.level.music.boss : this.level.music.surface);
   }

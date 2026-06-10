@@ -157,7 +157,14 @@ function refreshMenu() {
 }
 if (continuaBtn) continuaBtn.onclick = () => {
   const run = loadRun(); if (!run) return;
-  startGame(run.char || SELECTED, run.world, { resumeScore: run.runScore || 0 });
+  let char = run.char || SELECTED;
+  // eroe personalizzato: su un avvio "pulito" CHARACTERS.custom non esiste ancora → lo ricostruisco
+  // dal salvataggio locale; se non c'è (eroe della community) riparto con un eroe base.
+  if (char === 'custom' && !CHARACTERS.custom) {
+    const h = getCustomHero();
+    if (h) CHARACTERS.custom = buildCustomCfg(h); else char = 'memento';
+  }
+  startGame(char, run.world, { resumeScore: run.runScore || 0 });
 };
 
 // ===== EROE PERSONALIZZATO (sbloccato dopo aver finito il gioco) =====
