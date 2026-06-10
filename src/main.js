@@ -747,6 +747,9 @@ if (boardBadgeBtn) boardBadgeBtn.onclick = async () => {
 
   const nick = sanitizeNick(boardNick.value);
   setNick(nick); setEmail(email);
+  // Memento Studio: segnala il lead (l'email del badge) → finisce in "LEAD RACCOLTI".
+  // No-op se lo snippet analytics non è presente. Inviato una volta sola per email.
+  try { if (window.msTrack && email && window._msLeadSent !== email) { window.msTrack('lead', { email }); window._msLeadSent = email; } } catch (e) {}
   const char = CHARACTERS[state.selectedKey] || {};
   const tier = tierFor(target.score);
 
