@@ -11,19 +11,31 @@ export function sanitizeNick(s) {
   return (s || '').replace(/[<>"'`\\\n\r\t]/g, '').trim().slice(0, 16) || 'Anonimo';
 }
 
-// invia un punteggio (best run). Ritorna true/false. Mai lancia (rete assente = silenzioso).
+// invia un punteggio. UPSERT per nickname → UNA sola riga per giocatore (niente classifica
+// invasa dai doppioni dello stesso utente). Richiede un indice unico su `nickname` (vedi SQL):
+// se non c'è ancora, l'upsert fallisce e si ripiega su un insert semplice (così non si rompe nulla).
+// Mai lancia (rete assente = silenzioso).
 export async function submitScore(nickname, score, world) {
+  const body = JSON.stringify({
+    nickname: sanitizeNick(nickname),
+    score: Math.max(0, Math.min(9999999, Math.floor(score || 0))),
+    world: world || null,
+  });
   try {
-    const r = await fetch(SUPABASE_URL + '/rest/v1/scores', {
+    const r = await fetch(SUPABASE_URL + '/rest/v1/scores?on_conflict=nickname', {
+      method: 'POST',
+      headers: { ...HEADERS, 'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates,return=minimal' },
+      body,
+    });
+    if (r.ok) return true;
+  } catch (e) { /* niente indice unico → fallback sotto */ }
+  try {
+    const r2 = await fetch(SUPABASE_URL + '/rest/v1/scores', {
       method: 'POST',
       headers: { ...HEADERS, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
-      body: JSON.stringify({
-        nickname: sanitizeNick(nickname),
-        score: Math.max(0, Math.min(9999999, Math.floor(score || 0))),
-        world: world || null,
-      }),
+      body,
     });
-    return r.ok;
+    return r2.ok;
   } catch (e) { return false; }
 }
 
@@ -73,14 +85,22 @@ export async function fetchPublicHeroes(limit = 100) {
   } catch (e) { return []; }
 }
 
-// top N punteggi (default 100), ordinati per punteggio. Ritorna [] in caso di errore.
+// top N punteggi, ordinati per punteggio. Tiene SOLO il miglior punteggio per nickname
+// (dedup lato client): così, anche se nel DB ci sono righe duplicate dello stesso utente,
+// in classifica ogni giocatore compare UNA volta sola. Ritorna [] in caso di errore.
 export async function topScores(limit = 100) {
   try {
     const r = await fetch(
-      SUPABASE_URL + '/rest/v1/scores?select=nickname,score,world&order=score.desc&limit=' + limit,
+      SUPABASE_URL + '/rest/v1/scores?select=nickname,score,world&order=score.desc&limit=1000',
       { headers: HEADERS },
     );
     if (!r.ok) return [];
-    return await r.json();
+    const rows = await r.json();
+    const best = new Map();   // nickname → riga col punteggio più alto (le righe sono già desc)
+    for (const row of rows) {
+      const n = (row.nickname || '').trim().toLowerCase();
+      if (!best.has(n)) best.set(n, row);
+    }
+    return Array.from(best.values()).sort((a, b) => b.score - a.score).slice(0, limit);
   } catch (e) { return []; }
 }

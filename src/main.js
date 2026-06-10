@@ -715,6 +715,10 @@ window._autoSubmitScore = () => {
   const nick = getNick(); if (!nick) return;
   const t = window._runResult || (getBest() > 0 ? { score: getBest(), world: state.worldId || null } : null);
   if (!t) return;
+  // non re-inviare lo stesso identico (nick+punteggio) → niente righe inutili in classifica
+  const sig = nick + '|' + t.score;
+  if (window._lastScoreSig === sig) return;
+  window._lastScoreSig = sig;
   queueScore({ nick, score: t.score, world: t.world });
   flushPending();
 };
