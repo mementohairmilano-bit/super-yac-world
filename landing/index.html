@@ -2,6 +2,15 @@
 <html lang="it">
 <head>
 <meta charset="utf-8">
+<!-- Memento Studio analytics -->
+<script>
+(function(){var B="https://memento-studio-beta.vercel.app/api/clients/0fe25748-b3c8-460a-8b3a-9bcd549289ec/track?t=2dfd15a1305113902f43c528950f933d8a2f28306cf93025fdd00a2592f6acbf";
+function vid(){try{var k="_msv",v=localStorage.getItem(k);if(!v){v=Math.random().toString(36).slice(2)+Date.now().toString(36);localStorage.setItem(k,v);}return v;}catch(e){return "";}}
+function send(t,x){try{var d=Object.assign({type:t,host:location.host,path:location.pathname,ref:document.referrer,vid:vid()},x||{});var b=JSON.stringify(d);if(navigator.sendBeacon){navigator.sendBeacon(B,b);}else{fetch(B,{method:"POST",body:b,keepalive:true});}}catch(e){}}
+send("pageview");
+window.msTrack=function(t,x){send(t,x);};
+})();
+</script>
 <!-- build 2026-06-03b: titoli leggibili + goccia dorata -->
 <title>SUPER YAC WORLD — Spezza le catene. Break the Mold.</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
