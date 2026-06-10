@@ -1793,14 +1793,15 @@ export class GameScene extends Phaser.Scene {
   }
 
   // ============== Scena "LA DIFFERENZA YAC" (dopo i fuochi, prima della vittoria) ==============
-  // L'eroe SCELTO dal giocatore (anche custom da foto) "presenta" come YAC batte il vizio del mondo
-  // appena liberato: titolo + poche righe + immagine prodotto + CTA verso yacstore.it (tracciata).
-  // In-engine (niente video): leggera, offline-friendly, stessa estetica del finale. Skippabile.
+  // SCENETTA animata (stile sequenza finale): l'eroe scelto entra di corsa → compare il "caos"
+  // della produzione di massa (scatoloni grigi) → l'eroe lo spazza via (shake+SFX) → il prodotto
+  // YAC esplode in scena col messaggio + CTA verso yacstore.it (tracciata). In-engine, skippabile.
   showYacDifference(done) {
     const YF = this.level.yacFact;
     if (!YF || this._yacShown) { done(); return; }
     this._yacShown = true; this._yacSceneActive = true;
     const W = this.scale.width, H = this.scale.height, cx = W / 2;
+    const cam = this.cameras.main;
     const layer = [];
     let over = false;
     const fin = () => {
@@ -1809,89 +1810,105 @@ export class GameScene extends Phaser.Scene {
       layer.forEach((o) => { try { this.tweens.killTweensOf(o); o.destroy(); } catch (e) {} });
       done();
     };
+    const add = (o) => { layer.push(o); return o.setScrollFactor(0); };
 
-    // velo scuro brand sopra tutto (sopra i fuochi, depth 210+)
-    const veil = this.add.rectangle(cx, H / 2, W, H, 0x16121A, 0).setScrollFactor(0).setDepth(210);
-    layer.push(veil);
-    this.tweens.add({ targets: veil, fillAlpha: 0.93, duration: 450 });
+    // --- velo scuro brand + header (Beat 0) ---
+    const veil = add(this.add.rectangle(cx, H / 2, W, H, 0x16121A, 0)).setDepth(210);
+    this.tweens.add({ targets: veil, fillAlpha: 0.94, duration: 400 });
+    cam.flash(260, 20, 16, 26);
+    const header = add(this.add.text(cx, 38, '—  LA DIFFERENZA YAC  —', {
+      fontFamily: 'Syne, sans-serif', fontStyle: '800', fontSize: '15px', color: '#F2C53D', letterSpacing: 3,
+    })).setOrigin(0.5).setDepth(214).setAlpha(0);
+    this.tweens.add({ targets: header, alpha: 1, y: 44, duration: 400, delay: 250 });
 
-    // header dorato
-    const header = this.add.text(cx, 40, '—  LA DIFFERENZA YAC  —', {
-      fontFamily: 'Syne, sans-serif', fontStyle: '800', fontSize: '16px', color: '#F2C53D', letterSpacing: 3,
-    }).setOrigin(0.5).setScrollFactor(0).setDepth(212).setAlpha(0);
-    layer.push(header);
-    this.tweens.add({ targets: header, alpha: 1, y: 46, duration: 450, delay: 300 });
+    // --- Beat 1: il CAOS della produzione di massa (scatoloni grigi che traballano) ---
+    const clutter = [];
+    for (let i = 0; i < 7; i++) {
+      const rx = cx + 40 + (Math.random() * W * 0.30 - W * 0.06);
+      const ry = H * 0.46 + (Math.random() * 150 - 75);
+      const b = add(this.add.rectangle(rx, ry, 30, 30, 0x6b7079, 1)).setStrokeStyle(2, 0x2c3036).setDepth(211).setAlpha(0).setAngle(Math.random() * 30 - 15);
+      clutter.push(b);
+      this.tweens.add({ targets: b, alpha: 1, scale: 1, duration: 280, delay: 450 + i * 70, ease: 'Back.easeOut' });
+      this.tweens.add({ targets: b, angle: b.angle + (Math.random() < 0.5 ? 10 : -10), yoyo: true, repeat: -1, duration: 480 + Math.random() * 280, delay: 800 });
+    }
 
-    // l'EROE SCELTO entra da sinistra (slide + leggero "respiro")
+    // --- Beat 2: l'EROE SCELTO entra di CORSA da sinistra ---
     const heroTex = this.textures.exists(this.heroKey) ? this.heroKey : 'hero_memento';
     const src = this.textures.get(heroTex).getSourceImage() || { width: 244, height: 380 };
-    const hero = this.add.image(-120, H * 0.60, heroTex).setScrollFactor(0).setDepth(212);
-    hero.setScale(170 / (src.height || 380));
-    layer.push(hero);
-    this.tweens.add({ targets: hero, x: W * 0.18, duration: 650, delay: 350, ease: 'Back.easeOut' });
-    this.tweens.add({ targets: hero, y: '-=7', yoyo: true, repeat: -1, duration: 950, delay: 1050, ease: 'Sine.easeInOut' });
+    const hero = add(this.add.image(-120, H * 0.66, heroTex)).setDepth(213);
+    hero.setScale(165 / (src.height || 380));
+    this.tweens.add({ targets: hero, x: W * 0.20, duration: 800, delay: 350, ease: 'Quad.easeOut' });
+    this.tweens.add({ targets: hero, y: '-=9', yoyo: true, repeat: 4, duration: 150, delay: 350 });   // saltelli di corsa
 
-    // immagine PRODOTTO a destra (pop con rimbalzo) + alone caldo dietro
-    if (YF.productKey && this.textures.exists(YF.productKey)) {
-      const glow = this.add.circle(W * 0.80, H * 0.52, 86, 0xF2C53D, 0.13).setScrollFactor(0).setDepth(211).setScale(0);
-      const psrc = this.textures.get(YF.productKey).getSourceImage() || { width: 200, height: 400 };
-      const prod = this.add.image(W * 0.80, H * 0.52, YF.productKey).setScrollFactor(0).setDepth(212);
-      prod.setScale(0).setAngle(-5);
-      layer.push(glow, prod);
-      const ps = 190 / (psrc.height || 400);
-      this.time.delayedCall(750, () => {
-        AUDIO.sfx('star');
-        this.tweens.add({ targets: prod, scale: ps, angle: 0, duration: 520, ease: 'Back.easeOut' });
-        this.tweens.add({ targets: glow, scale: 1, alpha: 0.13, duration: 520, ease: 'Quad.easeOut' });
-        this.tweens.add({ targets: glow, scale: 1.12, yoyo: true, repeat: -1, duration: 1200, delay: 600, ease: 'Sine.easeInOut' });
-      });
-    }
-
-    // titolo + righe (centro)
-    const title = this.add.text(cx, H * 0.30, YF.title || '', {
-      fontFamily: 'Syne, sans-serif', fontStyle: '800', fontSize: '24px', color: '#FFFFFF',
-      stroke: '#16121A', strokeThickness: 5, align: 'center', wordWrap: { width: Math.min(W * 0.55, 480) },
-    }).setOrigin(0.5).setScrollFactor(0).setDepth(212).setAlpha(0);
-    layer.push(title);
-    this.time.delayedCall(650, () => { AUDIO.sfx('letter_get'); this.tweens.add({ targets: title, alpha: 1, y: H * 0.28, duration: 420, ease: 'Quad.easeOut' }); });
-    (YF.lines || []).forEach((ln, i) => {
-      const t = this.add.text(cx, H * 0.45 + i * 24, ln, {
-        fontFamily: 'DM Sans, sans-serif', fontStyle: '600', fontSize: '15px', color: '#F7E7C8',
-        align: 'center', wordWrap: { width: Math.min(W * 0.6, 520) },
-      }).setOrigin(0.5).setScrollFactor(0).setDepth(212).setAlpha(0);
-      layer.push(t);
-      this.tweens.add({ targets: t, alpha: 0.95, duration: 420, delay: 1000 + i * 350 });
+    // --- Beat 3: l'eroe SPAZZA VIA il caos (shake + SFX, gli scatoloni volano via) ---
+    this.time.delayedCall(1450, () => {
+      if (over) return;
+      cam.shake(260, 0.011); AUDIO.sfx('boss_defeat');
+      clutter.forEach((b, i) => this.tweens.add({
+        targets: b, x: b.x + 300, y: b.y + 240, angle: b.angle + 220, alpha: 0,
+        duration: 600, delay: i * 35, ease: 'Quad.easeIn', onComplete: () => { try { b.destroy(); } catch (e) {} },
+      }));
     });
 
-    // CTA verso lo store (tracciata con Memento Studio) — non skippa la scena
-    if (YF.cta) {
-      const cta = this.add.text(cx, H * 0.68, YF.cta, {
-        fontFamily: 'Syne, sans-serif', fontStyle: '800', fontSize: '15px', color: '#1A121F',
-        backgroundColor: '#F2C53D', padding: { x: 16, y: 8 },
-      }).setOrigin(0.5).setScrollFactor(0).setDepth(213).setAlpha(0);
-      layer.push(cta);
-      this.tweens.add({ targets: cta, alpha: 1, duration: 420, delay: 1700 });
-      cta.setInteractive({ useHandCursor: true }).on('pointerdown', (pointer, lx, ly, event) => {
-        if (event && event.stopPropagation) event.stopPropagation();
-        try { if (window.msTrack) window.msTrack('event', { meta: { name: 'yac_store_click', mondo: state.worldId } }); } catch (e) {}
-        try { window.open(YF.url || 'https://www.yacstore.it', '_blank', 'noopener'); } catch (e) {}
-      });
-    }
-
-    // "Continua →" + tap ovunque per saltare (dopo 1.5s, per evitare tap accidentali residui)
-    const cont = this.add.text(W - 16, H - 16, 'Continua →', {
-      fontFamily: 'DM Sans, sans-serif', fontStyle: '700', fontSize: '14px', color: '#F2C53D',
-    }).setOrigin(1).setScrollFactor(0).setDepth(213).setAlpha(0);
-    layer.push(cont);
-    this.tweens.add({ targets: cont, alpha: 0.95, duration: 400, delay: 1500 });
-    this.tweens.add({ targets: cont, alpha: 0.5, yoyo: true, repeat: -1, duration: 800, delay: 2000 });
-    this.time.delayedCall(1500, () => {
+    // --- Beat 4: il PRODOTTO YAC esplode in scena + titolo + righe ---
+    const px = W * 0.66, py = H * 0.44;
+    this.time.delayedCall(2050, () => {
       if (over) return;
+      cam.flash(220, 242, 197, 61); AUDIO.sfx('star');
+      const ring = add(this.add.circle(px, py, 18, 0xF2C53D, 0).setStrokeStyle(5, 0xF2C53D, 0.9)).setDepth(211);
+      this.tweens.add({ targets: ring, radius: 120, alpha: 0, duration: 650, ease: 'Cubic.easeOut', onComplete: () => { try { ring.destroy(); } catch (e) {} } });
+      if (YF.productKey && this.textures.exists(YF.productKey)) {
+        const glow = add(this.add.circle(px, py, 80, 0xF2C53D, 0.14)).setDepth(211).setScale(0);
+        const psrc = this.textures.get(YF.productKey).getSourceImage() || { width: 200, height: 400 };
+        const prod = add(this.add.image(px, py, YF.productKey)).setDepth(213).setScale(0).setAngle(-8);
+        const ps = 140 / (psrc.height || 400);
+        this.tweens.add({ targets: prod, scale: ps, angle: 0, duration: 540, ease: 'Back.easeOut' });
+        this.tweens.add({ targets: glow, scale: 1, duration: 540 });
+        this.tweens.add({ targets: [prod, glow], y: py - 8, yoyo: true, repeat: -1, duration: 1100, delay: 700, ease: 'Sine.easeInOut' });
+        this.tweens.add({ targets: glow, scale: 1.15, yoyo: true, repeat: -1, duration: 1200, delay: 700, ease: 'Sine.easeInOut' });
+      }
+      // titolo (in alto, sopra la scena)
+      const title = add(this.add.text(cx, H * 0.16, YF.title || '', {
+        fontFamily: 'Syne, sans-serif', fontStyle: '800', fontSize: '22px', color: '#FFFFFF',
+        stroke: '#16121A', strokeThickness: 5, align: 'center', wordWrap: { width: Math.min(W * 0.8, 560) },
+      })).setOrigin(0.5).setDepth(214).setAlpha(0);
+      AUDIO.sfx('letter_get');
+      this.tweens.add({ targets: title, alpha: 1, y: H * 0.14, duration: 420, ease: 'Quad.easeOut' });
+      // righe (sotto)
+      (YF.lines || []).forEach((ln, i) => {
+        const t = add(this.add.text(cx, H * 0.74 + i * 24, ln, {
+          fontFamily: 'DM Sans, sans-serif', fontStyle: '600', fontSize: '15px', color: '#F7E7C8',
+          align: 'center', wordWrap: { width: Math.min(W * 0.82, 600) },
+        })).setOrigin(0.5).setDepth(214).setAlpha(0);
+        this.tweens.add({ targets: t, alpha: 0.96, duration: 380, delay: 350 + i * 300 });
+      });
+    });
+
+    // --- Beat 5: CTA store (tracciata) + Continua + skip ---
+    this.time.delayedCall(3100, () => {
+      if (over) return;
+      if (YF.cta) {
+        const cta = add(this.add.text(cx, H * 0.90, YF.cta, {
+          fontFamily: 'Syne, sans-serif', fontStyle: '800', fontSize: '15px', color: '#1A121F',
+          backgroundColor: '#F2C53D', padding: { x: 16, y: 8 },
+        })).setOrigin(0.5).setDepth(215).setAlpha(0);
+        this.tweens.add({ targets: cta, alpha: 1, y: H * 0.88, duration: 380 });
+        cta.setInteractive({ useHandCursor: true }).on('pointerdown', (pointer, lx, ly, ev) => {
+          if (ev && ev.stopPropagation) ev.stopPropagation();
+          try { if (window.msTrack) window.msTrack('event', { meta: { name: 'yac_store_click', mondo: state.worldId } }); } catch (e) {}
+          try { window.open(YF.url || 'https://www.yacstore.it', '_blank', 'noopener'); } catch (e) {}
+        });
+      }
+      const cont = add(this.add.text(W - 14, H - 12, 'Continua →', {
+        fontFamily: 'DM Sans, sans-serif', fontStyle: '700', fontSize: '14px', color: '#F2C53D',
+      })).setOrigin(1).setDepth(215).setAlpha(0);
+      this.tweens.add({ targets: cont, alpha: 0.9, duration: 350 });
+      this.tweens.add({ targets: cont, alpha: 0.45, yoyo: true, repeat: -1, duration: 800, delay: 600 });
       cont.setInteractive({ useHandCursor: true }).on('pointerdown', fin);
-      veil.setInteractive().on('pointerdown', fin);
+      veil.setInteractive().on('pointerdown', fin);   // tap ovunque per saltare
     });
     // auto-avanza comunque (nessun blocco possibile)
-    this.time.delayedCall(10000, fin);
+    this.time.delayedCall(11000, fin);
   }
 
   runToSalone(done) {
