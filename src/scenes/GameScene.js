@@ -31,6 +31,19 @@ export class GameScene extends Phaser.Scene {
     if (S.spam) this.load.image('spam', S.spam);                 // Etichetta-Spam volante (Mondo 3)
     if (S.lakitu) this.load.image('lakitu', S.lakitu);           // Spruzzabot / Lakitu (Mondo 4)
     if (S.spiny) this.load.image('spiny', S.spiny);              // Goccia Corrosiva / Spiny (Mondo 4)
+    // RICCARDO: versioni "col deambulatore" dei nemici. Per ogni sprite-base che ha un file
+    // <nome>_walker.webp, carico la texture 'walker_<key>' e la mappo alla texture-base, così
+    // quando il potere colpisce un nemico posso sostituirne lo sprite (vale in ogni mondo).
+    this.walkerTexByKey = {};
+    const HAS_WALKER = new Set(['soldato.webp', 'enemy_scatolotto.webp', 'koopa.webp',
+      'enemy_tubetto_walk.webp', 'enemy_promoter.webp', 'enemy_goccia_corrosiva.webp']);
+    ['enemy', 'koopa', 'koopawalk', 'promoter', 'spiny'].forEach((key) => {
+      const src = S[key]; if (!src) return;
+      if (!HAS_WALKER.has(src.split('/').pop())) return;
+      const wkey = 'walker_' + key;
+      this.load.image(wkey, src.replace(/\.webp$/, '_walker.webp'));
+      this.walkerTexByKey[key] = wkey;
+    });
     this.load.image('brick', S.brick);            // mattone/solido
     this.load.image('qblock', S.qblock);          // blocco "?"
     this.load.image('blockempty', S.blockempty);  // blocco "?" esaurito
@@ -54,7 +67,7 @@ export class GameScene extends Phaser.Scene {
     this.load.image('hero_yuri', './assets/char_yuri.webp');
     this.load.image('hero_carmine', './assets/char_carmine.webp');
     this.load.image('hero_andrea', './assets/char_andrea.webp');
-    this.load.image('hero_riccardo', './assets/char_riccardo2.webp');
+    this.load.image('hero_riccardo', './assets/char_riccardo3.webp');
     // EROE PERSONALIZZATO: sprite = avatar generato dalla foto (Fase 2, data-URL) oppure il volto
     // base scelto. Rimuovo prima l'eventuale texture vecchia così carica sempre l'avatar corrente.
     if (state.selectedKey === 'custom' && state.cfg) {
@@ -243,6 +256,33 @@ export class GameScene extends Phaser.Scene {
     const fw = bodyW / sc, fh = bodyH / sc;     // px sorgente → corpo world = bodyW × bodyH
     s.body.setSize(fw, fh);
     s.body.setOffset((s.width - fw) / 2, s.height - fh);
+  }
+
+  // RICCARDO: sostituisce lo sprite del nemico con la sua versione "col deambulatore".
+  // Mantiene la stessa altezza a schermo (niente distorsione, AR preservato) e NON tocca il
+  // corpo fisico/collisione. Ritorna true se lo swap è avvenuto (texture walker disponibile).
+  applyWalkerSprite(e) {
+    if (e._walkerOn) return true;
+    const wkey = this.walkerTexByKey && this.walkerTexByKey[e.texture.key];
+    if (!wkey || !this.textures.exists(wkey)) return false;
+    e._walkerOn = true;
+    e._walkerKey = wkey;
+    e._origTexKey = e.texture.key;
+    e._origScale = e.scaleX;
+    const oh = e.displayHeight;
+    e.setTexture(wkey);
+    e.setScale(oh / e.height);   // stessa altezza, larghezza secondo l'AR del nuovo sprite
+    return true;
+  }
+
+  removeWalkerSprite(e) {
+    if (!e._walkerOn) return;
+    e._walkerOn = false;
+    // Ripristino solo se nel frattempo nulla ha già cambiato lo sprite (es. stomp → guscio).
+    if (e.texture.key === e._walkerKey && e._origTexKey && this.textures.exists(e._origTexKey)) {
+      e.setTexture(e._origTexKey);
+      if (e._origScale) e.setScale(e._origScale);
+    }
   }
 
   buildBackdrop() {
@@ -2297,7 +2337,8 @@ export class GameScene extends Phaser.Scene {
         if (e.x < camL - 60 || e.x > camR + 60) return;
         e.walkerDebuff = true;
         e.walkerDebuffEnd = this.time.now + 6000;
-        e.setTint(0xd11f1f);
+        // Sprite "col deambulatore" se esiste per questo nemico, altrimenti tinta rossa.
+        if (!this.applyWalkerSprite(e)) e.setTint(0xd11f1f);
       });
     } else if (s === 'magnet') {
       // CALAMITA: attira e raccoglie le Gocce vicine per ~5s (usa this.grab per la raccolta reale)
@@ -2571,7 +2612,7 @@ export class GameScene extends Phaser.Scene {
       if (!e || !e.body || e.dead) return;
       if (e.y > this.H + 140) { e.destroy(); return; }   // nemico caduto nel vuoto → rimuovi
       // walkerDebuff (Riccardo): alla scadenza il nemico torna normale (niente più rosso)
-      if (e.walkerDebuff && this.time.now > e.walkerDebuffEnd) { e.walkerDebuff = false; e.clearTint(); }
+      if (e.walkerDebuff && this.time.now > e.walkerDebuffEnd) { e.walkerDebuff = false; this.removeWalkerSprite(e); e.clearTint(); }
       // fuori schermo → fermo (niente movimento/logica): riprende quando rientra nella vista
       if (e.x < ecamL || e.x > ecamR) { e.setVelocity(0, 0); return; }
       // i nemici volanti hanno checkCollision.none (passano tra le piattaforme): l'overlap di Phaser
