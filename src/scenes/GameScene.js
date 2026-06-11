@@ -1231,9 +1231,11 @@ export class GameScene extends Phaser.Scene {
     if (e.kind === 'spiny') { this.hurtPlayer(); return; }
     // Stomp robusto anche sui nemici VOLANTI (senza collisione solida: il player "affonda" e
     // superava i 14px del controllo, venendo contato come contatto laterale → danno ingiusto).
-    // Ora è stomp se stai SCENDENDO e arrivi DALL'ALTO (atterraggio preciso a terra OPPURE centro
-    // del player sopra il centro del nemico).
-    const stomp = p.body.velocity.y > 40 && (p.body.bottom <= e.body.top + 14 || p.body.center.y < e.body.center.y);
+    // È stomp se sei in aria e i tuoi PIEDI sono sopra il centro del nemico (arrivi dall'alto),
+    // a meno che tu non stia salendo con forza DENTRO di lui dal basso. Niente più soglia rigida
+    // su velocity.y: così conta anche all'APICE del salto (dove la velocità verticale è ~0).
+    const fromAbove = p.body.bottom <= e.body.center.y + 8;
+    const stomp = !p.body.blocked.down && fromAbove && p.body.velocity.y > -140;
     if (stomp) {
       p.setVelocityY(-330); AUDIO.sfx('stomp');
       if (e.kind === 'flyer') {            // Tubetto Alato: 1° stomp → perde le ali, cade come tubo a terra

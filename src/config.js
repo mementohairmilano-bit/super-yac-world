@@ -33,8 +33,8 @@ export const CHARACTERS = {
     body: 0xF2C53D, accent: PAL.magenta, jumps: 1, speed: 188, jump: 650, special: 'slowmo',
   },
   riccardo: {
-    name: 'Riccardo', role: 'Tenace', power: 'Deambulatore', pdesc: 'rallenta tutti i nemici sullo schermo per qualche secondo',
-    hint: 'Riccardo · Z (da GRANDE): Deambulatore — tutti i nemici in schermo diventano rossi e rallentano per 6 secondi',
+    name: 'Riccardo', role: 'Tenace', power: 'Deambulatore', pdesc: 'si libera del deambulatore e lo rifila ai nemici in schermo, che rallentano per qualche secondo',
+    hint: 'Riccardo · Z (da GRANDE): Deambulatore — ti liberi del deambulatore e lo rifili ai nemici in schermo, che rallentano per 6 secondi',
     card: '#CC2222',
     body: 0x1a0505, accent: 0xcc2222, jumps: 2, speed: 195, jump: 650, special: 'walker', heroScale: 1.12,
   },
