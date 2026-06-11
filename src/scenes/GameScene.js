@@ -31,6 +31,19 @@ export class GameScene extends Phaser.Scene {
     if (S.spam) this.load.image('spam', S.spam);                 // Etichetta-Spam volante (Mondo 3)
     if (S.lakitu) this.load.image('lakitu', S.lakitu);           // Spruzzabot / Lakitu (Mondo 4)
     if (S.spiny) this.load.image('spiny', S.spiny);              // Goccia Corrosiva / Spiny (Mondo 4)
+    // RICCARDO: versioni "col deambulatore" dei nemici. Per ogni sprite-base che ha un file
+    // <nome>_walker.webp, carico la texture 'walker_<key>' e la mappo alla texture-base, così
+    // quando il potere colpisce un nemico posso sostituirne lo sprite (vale in ogni mondo).
+    this.walkerTexByKey = {};
+    const HAS_WALKER = new Set(['soldato.webp', 'enemy_scatolotto.webp', 'koopa.webp',
+      'enemy_tubetto_walk.webp', 'enemy_promoter.webp', 'enemy_goccia_corrosiva.webp']);
+    ['enemy', 'koopa', 'koopawalk', 'promoter', 'spiny'].forEach((key) => {
+      const src = S[key]; if (!src) return;
+      if (!HAS_WALKER.has(src.split('/').pop())) return;
+      const wkey = 'walker_' + key;
+      this.load.image(wkey, src.replace(/\.webp$/, '_walker.webp'));
+      this.walkerTexByKey[key] = wkey;
+    });
     this.load.image('brick', S.brick);            // mattone/solido
     this.load.image('qblock', S.qblock);          // blocco "?"
     this.load.image('blockempty', S.blockempty);  // blocco "?" esaurito
@@ -54,7 +67,10 @@ export class GameScene extends Phaser.Scene {
     this.load.image('hero_yuri', './assets/char_yuri.webp');
     this.load.image('hero_carmine', './assets/char_carmine.webp');
     this.load.image('hero_andrea', './assets/char_andrea.webp');
-    this.load.image('hero_riccardo', './assets/char_riccardo2.webp');
+    // RICCARDO: di base cammina COL deambulatore (char_riccardo). Quando attiva il superpotere
+    // si libera del deambulatore e corre (char_riccardo3) per la durata dell'effetto.
+    this.load.image('hero_riccardo', './assets/char_riccardo.webp');
+    this.load.image('hero_riccardo_free', './assets/char_riccardo3.webp');
     // EROE PERSONALIZZATO: sprite = avatar generato dalla foto (Fase 2, data-URL) oppure il volto
     // base scelto. Rimuovo prima l'eventuale texture vecchia così carica sempre l'avatar corrente.
     if (state.selectedKey === 'custom' && state.cfg) {
@@ -81,6 +97,9 @@ export class GameScene extends Phaser.Scene {
     if (this.heroKey === 'hero_custom' && !this.textures.exists('hero_custom')) {
       this.heroKey = 'hero_' + ((this.cfg && this.cfg.baseLook) || 'memento');
     }
+    // RICCARDO: texture "senza deambulatore" usata SOLO mentre il superpotere è attivo.
+    this.heroKeyFree = this.textures.exists(this.heroKey + '_free') ? this.heroKey + '_free' : null;
+    this.heroFreeActive = false;
     this.W = this.level.width; this.H = 506;
     this.lives = 3; this.gocce = 0;
     this.score = state.runScore || 0;   // punteggio CUMULATIVO della partita (si porta tra i mondi)
@@ -243,6 +262,46 @@ export class GameScene extends Phaser.Scene {
     const fw = bodyW / sc, fh = bodyH / sc;     // px sorgente → corpo world = bodyW × bodyH
     s.body.setSize(fw, fh);
     s.body.setOffset((s.width - fw) / 2, s.height - fh);
+  }
+
+  // RICCARDO: sostituisce lo sprite del nemico con la sua versione "col deambulatore".
+  // Mantiene la stessa altezza a schermo (niente distorsione, AR preservato) e NON tocca il
+  // corpo fisico/collisione. Ritorna true se lo swap è avvenuto (texture walker disponibile).
+  applyWalkerSprite(e) {
+    if (e._walkerOn) return true;
+    const wkey = this.walkerTexByKey && this.walkerTexByKey[e.texture.key];
+    if (!wkey || !this.textures.exists(wkey)) return false;
+    e._walkerOn = true;
+    e._walkerKey = wkey;
+    e._origTexKey = e.texture.key;
+    e._origScale = e.scaleX;
+    // memorizzo il corpo fisico originale (in px-sorgente) per ripristinarlo poi
+    e._origBody = { w: e.body.width, h: e.body.height, ox: e.body.offset.x, oy: e.body.offset.y };
+    // scatola di collisione in unità WORLD: la mantengo identica così il gameplay non cambia
+    const bwWorld = e.body.width * e.scaleX, bhWorld = e.body.height * e.scaleY;
+    const oh = e.displayHeight;
+    e.setTexture(wkey);
+    const sc = oh / e.height;    // stessa altezza a schermo; larghezza secondo l'AR del nuovo sprite
+    e.setScale(sc);
+    // riadatto il corpo al nuovo frame, ANCORATO in basso-centro (i "piedi") → resta a pavimento
+    const fw = bwWorld / sc, fh = bhWorld / sc;
+    e.body.setSize(fw, fh);
+    e.body.setOffset((e.width - fw) / 2, e.height - fh);
+    return true;
+  }
+
+  removeWalkerSprite(e) {
+    if (!e._walkerOn) return;
+    e._walkerOn = false;
+    // Ripristino solo se nel frattempo nulla ha già cambiato lo sprite (es. stomp → guscio).
+    if (e.texture.key === e._walkerKey && e._origTexKey && this.textures.exists(e._origTexKey)) {
+      e.setTexture(e._origTexKey);
+      if (e._origScale) e.setScale(e._origScale);
+      if (e._origBody) {
+        e.body.setSize(e._origBody.w, e._origBody.h);
+        e.body.setOffset(e._origBody.ox, e._origBody.oy);
+      }
+    }
   }
 
   buildBackdrop() {
@@ -781,9 +840,15 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
+  // texture eroe corrente: Riccardo mostra la versione "libera" (senza deambulatore)
+  // solo finché il superpotere è attivo, altrimenti lo sprite di base.
+  activeHeroTex() {
+    return (this.heroFreeActive && this.heroKeyFree) ? this.heroKeyFree : this.heroKey;
+  }
+
   sizePlayer(big) {
     const p = this.player; p.big = big;
-    p.setTexture(this.heroKey);
+    p.setTexture(this.activeHeroTex());
     // heroScale (opzionale, per-eroe): ingrandisce solo lo sprite, NON la hitbox → gameplay equo
     const k = (this.cfg && this.cfg.heroScale) || 1;
     if (big) this.fitSprite(p, 68 * k, 24, 56); else this.fitSprite(p, 48 * k, 20, 40);
@@ -1166,9 +1231,11 @@ export class GameScene extends Phaser.Scene {
     if (e.kind === 'spiny') { this.hurtPlayer(); return; }
     // Stomp robusto anche sui nemici VOLANTI (senza collisione solida: il player "affonda" e
     // superava i 14px del controllo, venendo contato come contatto laterale → danno ingiusto).
-    // Ora è stomp se stai SCENDENDO e arrivi DALL'ALTO (atterraggio preciso a terra OPPURE centro
-    // del player sopra il centro del nemico).
-    const stomp = p.body.velocity.y > 40 && (p.body.bottom <= e.body.top + 14 || p.body.center.y < e.body.center.y);
+    // È stomp se sei in aria e i tuoi PIEDI sono sopra il centro del nemico (arrivi dall'alto),
+    // a meno che tu non stia salendo con forza DENTRO di lui dal basso. Niente più soglia rigida
+    // su velocity.y: così conta anche all'APICE del salto (dove la velocità verticale è ~0).
+    const fromAbove = p.body.bottom <= e.body.center.y + 8;
+    const stomp = !p.body.blocked.down && fromAbove && p.body.velocity.y > -140;
     if (stomp) {
       p.setVelocityY(-330); AUDIO.sfx('stomp');
       if (e.kind === 'flyer') {            // Tubetto Alato: 1° stomp → perde le ali, cade come tubo a terra
@@ -2291,13 +2358,23 @@ export class GameScene extends Phaser.Scene {
       this.cameras.main.flash(200, 204, 34, 34);
       AUDIO.sfx('boss_defeat');
       this.popText(p.x, p.y - 42, 'DEAMBULATORE! 🦽');
+      // Riccardo si libera del deambulatore mentre il potere è attivo (6s), poi lo riprende.
+      if (this.heroKeyFree) {
+        this.heroFreeActive = true;
+        this.sizePlayer(p.big);   // riapplica lo sprite (versione libera) mantenendo la taglia
+        this.time.delayedCall(6000, () => {
+          this.heroFreeActive = false;
+          if (this.player && this.player.active) this.sizePlayer(this.player.big);
+        });
+      }
       const camL = this.cameras.main.scrollX, camR = camL + this.scale.width;
       this.enemies.getChildren().forEach(e => {
         if (!e || !e.active || e.dead) return;
         if (e.x < camL - 60 || e.x > camR + 60) return;
         e.walkerDebuff = true;
         e.walkerDebuffEnd = this.time.now + 6000;
-        e.setTint(0xd11f1f);
+        // Sprite "col deambulatore" se esiste per questo nemico, altrimenti tinta rossa.
+        if (!this.applyWalkerSprite(e)) e.setTint(0xd11f1f);
       });
     } else if (s === 'magnet') {
       // CALAMITA: attira e raccoglie le Gocce vicine per ~5s (usa this.grab per la raccolta reale)
@@ -2571,7 +2648,7 @@ export class GameScene extends Phaser.Scene {
       if (!e || !e.body || e.dead) return;
       if (e.y > this.H + 140) { e.destroy(); return; }   // nemico caduto nel vuoto → rimuovi
       // walkerDebuff (Riccardo): alla scadenza il nemico torna normale (niente più rosso)
-      if (e.walkerDebuff && this.time.now > e.walkerDebuffEnd) { e.walkerDebuff = false; e.clearTint(); }
+      if (e.walkerDebuff && this.time.now > e.walkerDebuffEnd) { e.walkerDebuff = false; this.removeWalkerSprite(e); e.clearTint(); }
       // fuori schermo → fermo (niente movimento/logica): riprende quando rientra nella vista
       if (e.x < ecamL || e.x > ecamR) { e.setVelocity(0, 0); return; }
       // i nemici volanti hanno checkCollision.none (passano tra le piattaforme): l'overlap di Phaser
