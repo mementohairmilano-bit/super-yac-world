@@ -9,5 +9,6 @@ export const POWERS = [
   { id: 'magnet',    special: 'magnet',    name: 'Calamita',     emoji: '🧲', desc: 'attira le Gocce vicine per qualche secondo' },
   { id: 'shield',    special: 'shield',    name: 'Scudo',        emoji: '🛡️', desc: 'assorbe un colpo senza rimpicciolire' },
   { id: 'superjump', special: 'superjump', name: 'Super-salto',  emoji: '🦘', desc: 'un balzo altissimo' },
+  { id: 'walker',    special: 'walker',    name: 'Deambulatore', emoji: '🦽', desc: 'rallenta tutti i nemici sullo schermo per 6s' },
 ];
 export function powerById(id) { return POWERS.find((p) => p.id === id) || POWERS[0]; }

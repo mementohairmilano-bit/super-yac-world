@@ -12,22 +12,22 @@ import mementoImg from '../assets/Memento_card.webp';
 import yuriImg from '../assets/Yuri_card.webp';
 import carmineImg from '../assets/carmine_card.webp';
 import andreaImg from '../assets/andrea_card.webp';
+import riccardoImg from '../assets/Riccardo_card.webp';
 // sprite chibi (gli stessi del gioco): stile coerente con il gameplay, usati per la crew sul badge
 import mementoArt from '../assets/char_memento.webp';
 import yuriArt from '../assets/char_yuri.webp';
 import carmineArt from '../assets/char_carmine.webp';
 import andreaArt from '../assets/char_andrea.webp';
+import riccardoArt from '../assets/char_riccardo.webp';
 
-const CARD_IMG = { memento: mementoImg, yuri: yuriImg, carmine: carmineImg, andrea: andreaImg };
-const HERO_ART = { memento: mementoArt, yuri: yuriArt, carmine: carmineArt, andrea: andreaArt };
-// Inquadratura del volto nella card: zoom (background-size) + posizione verticale (Y%).
-// Y% più basso = mostra parte più alta dell'immagine (volto più in basso nella cornice).
-// Ritratti chibi (testa intera, quadrato centrato) → 'contain' center: volto SEMPRE intero, mai tagliato
+const CARD_IMG = { memento: mementoImg, yuri: yuriImg, carmine: carmineImg, andrea: andreaImg, riccardo: riccardoImg };
+const HERO_ART = { memento: mementoArt, yuri: yuriArt, carmine: carmineArt, andrea: andreaArt, riccardo: riccardoArt };
 const CARD_FRAME = {
-  memento: { zoom: 'contain', x: 'center', y: 'center' },
-  yuri:    { zoom: 'contain', x: 'center', y: 'center' },
-  carmine: { zoom: 'contain', x: 'center', y: 'center' },
-  andrea:  { zoom: 'contain', x: 'center', y: 'center' },
+  memento:  { zoom: 'contain', x: 'center', y: 'center' },
+  yuri:     { zoom: 'contain', x: 'center', y: 'center' },
+  carmine:  { zoom: 'contain', x: 'center', y: 'center' },
+  andrea:   { zoom: 'contain', x: 'center', y: 'center' },
+  riccardo: { zoom: 'contain', x: 'center', y: 'center' },
 };
 
 let SELECTED = 'memento';

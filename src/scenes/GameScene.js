@@ -54,6 +54,7 @@ export class GameScene extends Phaser.Scene {
     this.load.image('hero_yuri', './assets/char_yuri.webp');
     this.load.image('hero_carmine', './assets/char_carmine.webp');
     this.load.image('hero_andrea', './assets/char_andrea.webp');
+    this.load.image('hero_riccardo', './assets/char_riccardo.webp');
     // EROE PERSONALIZZATO: sprite = avatar generato dalla foto (Fase 2, data-URL) oppure il volto
     // base scelto. Rimuovo prima l'eventuale texture vecchia così carica sempre l'avatar corrente.
     if (state.selectedKey === 'custom' && state.cfg) {
@@ -2282,6 +2283,24 @@ export class GameScene extends Phaser.Scene {
       const ring = this.add.circle(p.x, p.y, 30, 0x8fd3ff, 0.16).setStrokeStyle(3, 0x8fd3ff, 0.85).setDepth(6);
       this.shieldEv = this.time.addEvent({ delay: 16, loop: true, callback: () => { if (ring.active && p.active) ring.setPosition(p.x, p.y - 2); } });
       this.time.delayedCall(4500, () => { if (p.active) p.invuln = false; if (this.shieldEv) { this.shieldEv.remove(); this.shieldEv = null; } if (ring.active) ring.destroy(); });
+    } else if (s === 'walker') {
+      // RICCARDO: Deambulatore — tutti i nemici on-screen rallentano drasticamente per 6s
+      cd = 8000;
+      this.cameras.main.flash(200, 204, 34, 34);
+      AUDIO.sfx('boss_defeat');
+      this.popText(p.x, p.y - 42, 'DEAMBULATORE! 🦽');
+      const camL = this.cameras.main.scrollX, camR = camL + this.scale.width;
+      this.enemies.getChildren().forEach(e => {
+        if (!e || !e.active || e.dead) return;
+        if (e.x < camL - 60 || e.x > camR + 60) return;
+        e.walkerDebuff = true;
+        e.walkerDebuffEnd = this.time.now + 6000;
+        e.setTint(0xcc2222);
+        const icon = this.add.text(e.x, e.y - 30, '🦽', { fontSize: '18px' })
+          .setDepth(50).setOrigin(0.5).setScrollFactor(1);
+        this.tweens.add({ targets: icon, y: e.y - 75, alpha: 0, duration: 1200,
+          onComplete: () => { if (icon.active) icon.destroy(); } });
+      });
     } else if (s === 'magnet') {
       // CALAMITA: attira e raccoglie le Gocce vicine per ~5s (usa this.grab per la raccolta reale)
       cd = 9000; AUDIO.sfx('coin');
@@ -2560,16 +2579,20 @@ export class GameScene extends Phaser.Scene {
       if (e.kind === 'lakitu') { this.updateLakitu(e); return; }                // Spruzzabot: insegue dall'alto e dropga
       if (e.kind === 'bullet') { e.setFlipX(e.body.velocity.x > 0); return; }   // Spray-Bill: vola dritto
       if (e.kind === 'promoter') { this.updatePromoter(e); return; }            // Hammer Bro
+      // walkerDebuff (Riccardo): rallenta il singolo nemico per 6s; alla scadenza clearTint
+      if (e.walkerDebuff) {
+        if (this.time.now > e.walkerDebuffEnd) { e.walkerDebuff = false; e.clearTint(); }
+      }
       if (e.kind === 'flyer' || e.kind === 'floater' || e.kind === 'spam') {   // volanti con oscillazione
         if (e.x <= e.minX) e.dir = 1; else if (e.x >= e.maxX) e.dir = -1;
-        const fspd = this.slowActive ? 18 : 72;
+        const fspd = e.walkerDebuff ? 11 : (this.slowActive ? 18 : 72);
         e.setVelocityX(fspd * e.dir); e.setFlipX(e.dir < 0);
-        const amp = e.kind === 'floater' ? 88 : 44;   // i Flaconi ondeggiano più ampio
-        e.setVelocityY(Math.cos(this.time.now / 360 + (e.phase || 0)) * amp * (this.slowActive ? 0.4 : 1));
+        const amp = e.kind === 'floater' ? 88 : 44;
+        e.setVelocityY(Math.cos(this.time.now / 360 + (e.phase || 0)) * amp * (e.walkerDebuff ? 0.15 : this.slowActive ? 0.4 : 1));
         return;
       }
       if (e.kind === 'chaser') {   // Spugnotto: insegue lentamente il player
-        const csp = this.slowActive ? 14 : 46;
+        const csp = e.walkerDebuff ? 7 : (this.slowActive ? 14 : 46);
         const dx = p.x - e.x, dy = p.y - e.y, d = Math.hypot(dx, dy) || 1;
         e.setVelocity(csp * dx / d, csp * dy / d); e.setFlipX(dx < 0);
         return;
@@ -2588,7 +2611,7 @@ export class GameScene extends Phaser.Scene {
         }
         return;
       }
-      const spd = this.slowActive ? 14 : 62;
+      const spd = e.walkerDebuff ? 11 : (this.slowActive ? 14 : 62);
       // inverte ai limiti del percorso E quando sbatte contro un ostacolo (niente nemici fermi)
       if (e.x <= e.minX || e.body.blocked.left) e.dir = 1;
       if (e.x >= e.maxX || e.body.blocked.right) e.dir = -1;
