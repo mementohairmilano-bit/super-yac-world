@@ -98,8 +98,6 @@ export class GameScene extends Phaser.Scene {
     this.officina = !!this.level.officina;   // Mondo 0: anti-livello caldo (dietro le quinte)
     this.noTimer = !!this.level.noTimer;     // niente conto alla rovescia
 
-    this.makeWalkerTexture();   // deambulatore rosso (potere di Riccardo), generato una volta
-
     this.physics.world.setBounds(0, 0, this.W, this.H + 600);
     this.physics.world.setBoundsCollision(true, true, true, false);
     this.physics.world.gravity.y = this.water ? 360 : 1150;   // sott'acqua: gravità ridotta (galleggi)
@@ -245,27 +243,6 @@ export class GameScene extends Phaser.Scene {
     const fw = bodyW / sc, fh = bodyH / sc;     // px sorgente → corpo world = bodyW × bodyH
     s.body.setSize(fw, fh);
     s.body.setOffset((s.width - fw) / 2, s.height - fh);
-  }
-
-  // Deambulatore rosso (vettoriale) per il potere di Riccardo: generato UNA volta come texture e
-  // riusato su ogni nemico (niente bisogno di rifare gli sprite di tutti i nemici).
-  makeWalkerTexture() {
-    if (this.textures.exists('walkertex')) return;
-    const g = this.make.graphics({ x: 0, y: 0, add: false });
-    const RED = 0xd11f1f, DARK = 0x16121A;
-    g.lineStyle(5, RED, 1);
-    g.beginPath();
-    g.moveTo(8, 6); g.lineTo(5, 34);     // montante posteriore (alto)
-    g.moveTo(30, 10); g.lineTo(33, 40);  // montante anteriore (verso le ruote)
-    g.moveTo(8, 6); g.lineTo(30, 10);    // barra dei manici (in alto)
-    g.moveTo(6, 22); g.lineTo(32, 25);   // traversa centrale
-    g.strokePath();
-    g.fillStyle(DARK, 1);
-    g.fillCircle(33, 42, 5); g.fillCircle(7, 38, 4);   // ruota anteriore + piedino posteriore
-    g.fillStyle(RED, 1);
-    g.fillCircle(8, 6, 3); g.fillCircle(30, 10, 3);    // impugnature
-    g.generateTexture('walkertex', 40, 48);
-    g.destroy();
   }
 
   buildBackdrop() {
@@ -1219,8 +1196,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   killEnemy(e) {
-    e.dead = true; e.body.checkCollision.none = true; e.setVelocity(0, 0).setAngle(0).setTint(0x556068);
-    if (e.walkerIcon) { e.walkerIcon.destroy(); e.walkerIcon = null; }   // toglie il deambulatore se il nemico muore
+    e.dead = true; e.body.checkCollision.none = true; e.setVelocity(0, 0).setTint(0x556068);
     this.tweens.add({ targets: e, scaleY: 0.2, alpha: 0, duration: 160, onComplete: () => e.destroy() });
   }
 
@@ -2310,8 +2286,7 @@ export class GameScene extends Phaser.Scene {
       this.shieldEv = this.time.addEvent({ delay: 16, loop: true, callback: () => { if (ring.active && p.active) ring.setPosition(p.x, p.y - 2); } });
       this.time.delayedCall(4500, () => { if (p.active) p.invuln = false; if (this.shieldEv) { this.shieldEv.remove(); this.shieldEv = null; } if (ring.active) ring.destroy(); });
     } else if (s === 'walker') {
-      // RICCARDO: Deambulatore — rende "disabili" i nemici on-screen: prendono un deambulatore 🦽,
-      // zoppicano e rallentano per 6s. Riccardo, invece, cammina normale (è il giocatore).
+      // RICCARDO: Deambulatore — i nemici on-screen diventano rossi e rallentano per 6s.
       cd = 8000;
       this.cameras.main.flash(200, 204, 34, 34);
       AUDIO.sfx('boss_defeat');
@@ -2322,13 +2297,7 @@ export class GameScene extends Phaser.Scene {
         if (e.x < camL - 60 || e.x > camR + 60) return;
         e.walkerDebuff = true;
         e.walkerDebuffEnd = this.time.now + 6000;
-        e.setTint(0xcc2222);
-        // deambulatore rosso PERSISTENTE attaccato alla base del nemico: lo segue per tutta la durata
-        if (e.walkerIcon) e.walkerIcon.destroy();
-        const wScale = Math.max(0.7, (e.displayWidth || 36) / 36);
-        e.walkerIcon = this.add.image(e.x, e.y + (e.displayHeight || 30) / 2 + 2, 'walkertex')
-          .setDepth(7).setOrigin(0.5, 1).setScrollFactor(1).setScale(wScale * 0.2);
-        this.tweens.add({ targets: e.walkerIcon, scale: wScale, duration: 240, ease: 'Back.out' });
+        e.setTint(0xd11f1f);
       });
     } else if (s === 'magnet') {
       // CALAMITA: attira e raccoglie le Gocce vicine per ~5s (usa this.grab per la raccolta reale)
@@ -2601,18 +2570,10 @@ export class GameScene extends Phaser.Scene {
     this.enemies.children.iterate(e => {
       if (!e || !e.body || e.dead) return;
       if (e.y > this.H + 140) { e.destroy(); return; }   // nemico caduto nel vuoto → rimuovi
-      // walkerDebuff (Riccardo): alla scadenza togli tint/zoppìa/deambulatore (anche se fuori schermo)
-      if (e.walkerDebuff && this.time.now > e.walkerDebuffEnd) {
-        e.walkerDebuff = false; e.clearTint(); e.setAngle(0);
-        if (e.walkerIcon) { e.walkerIcon.destroy(); e.walkerIcon = null; }
-      }
+      // walkerDebuff (Riccardo): alla scadenza il nemico torna normale (niente più rosso)
+      if (e.walkerDebuff && this.time.now > e.walkerDebuffEnd) { e.walkerDebuff = false; e.clearTint(); }
       // fuori schermo → fermo (niente movimento/logica): riprende quando rientra nella vista
       if (e.x < ecamL || e.x > ecamR) { e.setVelocity(0, 0); return; }
-      // il deambulatore SEGUE il nemico + lo fa zoppicare (solo on-screen)
-      if (e.walkerDebuff) {
-        if (e.walkerIcon) e.walkerIcon.setPosition(e.x, e.y + (e.displayHeight || 30) / 2 + 2);
-        e.setAngle(Math.sin(this.time.now / 80 + (e.phase || 0)) * 7);
-      }
       // i nemici volanti hanno checkCollision.none (passano tra le piattaforme): l'overlap di Phaser
       // verso il player viene soppresso → controllo il contatto a mano e chiamo touchEnemy
       if (e.kind === 'flyer' || e.kind === 'floater' || e.kind === 'chaser' || e.kind === 'spam' || e.kind === 'bullet' || e.kind === 'lakitu') {
