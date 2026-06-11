@@ -54,7 +54,7 @@ export class GameScene extends Phaser.Scene {
     this.load.image('hero_yuri', './assets/char_yuri.webp');
     this.load.image('hero_carmine', './assets/char_carmine.webp');
     this.load.image('hero_andrea', './assets/char_andrea.webp');
-    this.load.image('hero_riccardo', './assets/char_riccardo.webp');
+    this.load.image('hero_riccardo', './assets/char_riccardo2.webp');
     // EROE PERSONALIZZATO: sprite = avatar generato dalla foto (Fase 2, data-URL) oppure il volto
     // base scelto. Rimuovo prima l'eventuale texture vecchia così carica sempre l'avatar corrente.
     if (state.selectedKey === 'custom' && state.cfg) {
@@ -97,6 +97,8 @@ export class GameScene extends Phaser.Scene {
     this.dark = !!this.level.dark;     // livello al buio con alone di luce (3-2)?
     this.officina = !!this.level.officina;   // Mondo 0: anti-livello caldo (dietro le quinte)
     this.noTimer = !!this.level.noTimer;     // niente conto alla rovescia
+
+    this.makeWalkerTexture();   // deambulatore rosso (potere di Riccardo), generato una volta
 
     this.physics.world.setBounds(0, 0, this.W, this.H + 600);
     this.physics.world.setBoundsCollision(true, true, true, false);
@@ -243,6 +245,27 @@ export class GameScene extends Phaser.Scene {
     const fw = bodyW / sc, fh = bodyH / sc;     // px sorgente → corpo world = bodyW × bodyH
     s.body.setSize(fw, fh);
     s.body.setOffset((s.width - fw) / 2, s.height - fh);
+  }
+
+  // Deambulatore rosso (vettoriale) per il potere di Riccardo: generato UNA volta come texture e
+  // riusato su ogni nemico (niente bisogno di rifare gli sprite di tutti i nemici).
+  makeWalkerTexture() {
+    if (this.textures.exists('walkertex')) return;
+    const g = this.make.graphics({ x: 0, y: 0, add: false });
+    const RED = 0xd11f1f, DARK = 0x16121A;
+    g.lineStyle(5, RED, 1);
+    g.beginPath();
+    g.moveTo(8, 6); g.lineTo(5, 34);     // montante posteriore (alto)
+    g.moveTo(30, 10); g.lineTo(33, 40);  // montante anteriore (verso le ruote)
+    g.moveTo(8, 6); g.lineTo(30, 10);    // barra dei manici (in alto)
+    g.moveTo(6, 22); g.lineTo(32, 25);   // traversa centrale
+    g.strokePath();
+    g.fillStyle(DARK, 1);
+    g.fillCircle(33, 42, 5); g.fillCircle(7, 38, 4);   // ruota anteriore + piedino posteriore
+    g.fillStyle(RED, 1);
+    g.fillCircle(8, 6, 3); g.fillCircle(30, 10, 3);    // impugnature
+    g.generateTexture('walkertex', 40, 48);
+    g.destroy();
   }
 
   buildBackdrop() {
@@ -2300,11 +2323,12 @@ export class GameScene extends Phaser.Scene {
         e.walkerDebuff = true;
         e.walkerDebuffEnd = this.time.now + 6000;
         e.setTint(0xcc2222);
-        // deambulatore PERSISTENTE attaccato alla base del nemico: lo segue per tutta la durata
+        // deambulatore rosso PERSISTENTE attaccato alla base del nemico: lo segue per tutta la durata
         if (e.walkerIcon) e.walkerIcon.destroy();
-        e.walkerIcon = this.add.text(e.x, e.y + (e.displayHeight || 30) / 2 - 4, '🦽', { fontSize: '20px' })
-          .setDepth(7).setOrigin(0.5, 1).setScrollFactor(1).setScale(0.2);
-        this.tweens.add({ targets: e.walkerIcon, scale: 1, duration: 220, ease: 'Back.out' });
+        const wScale = Math.max(0.7, (e.displayWidth || 36) / 36);
+        e.walkerIcon = this.add.image(e.x, e.y + (e.displayHeight || 30) / 2 + 2, 'walkertex')
+          .setDepth(7).setOrigin(0.5, 1).setScrollFactor(1).setScale(wScale * 0.2);
+        this.tweens.add({ targets: e.walkerIcon, scale: wScale, duration: 240, ease: 'Back.out' });
       });
     } else if (s === 'magnet') {
       // CALAMITA: attira e raccoglie le Gocce vicine per ~5s (usa this.grab per la raccolta reale)
@@ -2586,7 +2610,7 @@ export class GameScene extends Phaser.Scene {
       if (e.x < ecamL || e.x > ecamR) { e.setVelocity(0, 0); return; }
       // il deambulatore SEGUE il nemico + lo fa zoppicare (solo on-screen)
       if (e.walkerDebuff) {
-        if (e.walkerIcon) e.walkerIcon.setPosition(e.x, e.y + (e.displayHeight || 30) / 2 - 4);
+        if (e.walkerIcon) e.walkerIcon.setPosition(e.x, e.y + (e.displayHeight || 30) / 2 + 2);
         e.setAngle(Math.sin(this.time.now / 80 + (e.phase || 0)) * 7);
       }
       // i nemici volanti hanno checkCollision.none (passano tra le piattaforme): l'overlap di Phaser
