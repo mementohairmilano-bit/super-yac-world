@@ -4,7 +4,7 @@
 // cross-origin (Supabase/classifica) NON vengono toccate → la classifica resta "live" (richiede
 // rete; offline mostra l'ultima cache). BUILD cambia a ogni deploy: il SW si re-installa e
 // ri-precacha SOLO i file nuovi (gli asset con hash invariato non vengono riscaricati = poca banda).
-const CACHE = 'syw-pwa';
+const CACHE = 'syw-pwa-2';   // bump: sprite Riccardo/nemici con sfondo trasparente → forza il refresh
 const BUILD = '__BUILD__';   // sostituito dal build (vite.config) → forza l'aggiornamento del SW
 
 self.addEventListener('install', (e) => {
