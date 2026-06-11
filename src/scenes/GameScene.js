@@ -784,7 +784,9 @@ export class GameScene extends Phaser.Scene {
   sizePlayer(big) {
     const p = this.player; p.big = big;
     p.setTexture(this.heroKey);
-    if (big) this.fitSprite(p, 68, 24, 56); else this.fitSprite(p, 48, 20, 40);
+    // heroScale (opzionale, per-eroe): ingrandisce solo lo sprite, NON la hitbox → gameplay equo
+    const k = (this.cfg && this.cfg.heroScale) || 1;
+    if (big) this.fitSprite(p, 68 * k, 24, 56); else this.fitSprite(p, 48 * k, 20, 40);
     this.updateHUD();
   }
 
