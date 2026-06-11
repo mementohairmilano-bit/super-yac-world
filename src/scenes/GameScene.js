@@ -1196,7 +1196,8 @@ export class GameScene extends Phaser.Scene {
   }
 
   killEnemy(e) {
-    e.dead = true; e.body.checkCollision.none = true; e.setVelocity(0, 0).setTint(0x556068);
+    e.dead = true; e.body.checkCollision.none = true; e.setVelocity(0, 0).setAngle(0).setTint(0x556068);
+    if (e.walkerIcon) { e.walkerIcon.destroy(); e.walkerIcon = null; }   // toglie il deambulatore se il nemico muore
     this.tweens.add({ targets: e, scaleY: 0.2, alpha: 0, duration: 160, onComplete: () => e.destroy() });
   }
 
@@ -2286,7 +2287,8 @@ export class GameScene extends Phaser.Scene {
       this.shieldEv = this.time.addEvent({ delay: 16, loop: true, callback: () => { if (ring.active && p.active) ring.setPosition(p.x, p.y - 2); } });
       this.time.delayedCall(4500, () => { if (p.active) p.invuln = false; if (this.shieldEv) { this.shieldEv.remove(); this.shieldEv = null; } if (ring.active) ring.destroy(); });
     } else if (s === 'walker') {
-      // RICCARDO: Deambulatore — tutti i nemici on-screen rallentano drasticamente per 6s
+      // RICCARDO: Deambulatore — rende "disabili" i nemici on-screen: prendono un deambulatore 🦽,
+      // zoppicano e rallentano per 6s. Riccardo, invece, cammina normale (è il giocatore).
       cd = 8000;
       this.cameras.main.flash(200, 204, 34, 34);
       AUDIO.sfx('boss_defeat');
@@ -2298,10 +2300,11 @@ export class GameScene extends Phaser.Scene {
         e.walkerDebuff = true;
         e.walkerDebuffEnd = this.time.now + 6000;
         e.setTint(0xcc2222);
-        const icon = this.add.text(e.x, e.y - 30, '🦽', { fontSize: '18px' })
-          .setDepth(50).setOrigin(0.5).setScrollFactor(1);
-        this.tweens.add({ targets: icon, y: e.y - 75, alpha: 0, duration: 1200,
-          onComplete: () => { if (icon.active) icon.destroy(); } });
+        // deambulatore PERSISTENTE attaccato alla base del nemico: lo segue per tutta la durata
+        if (e.walkerIcon) e.walkerIcon.destroy();
+        e.walkerIcon = this.add.text(e.x, e.y + (e.displayHeight || 30) / 2 - 4, '🦽', { fontSize: '20px' })
+          .setDepth(7).setOrigin(0.5, 1).setScrollFactor(1).setScale(0.2);
+        this.tweens.add({ targets: e.walkerIcon, scale: 1, duration: 220, ease: 'Back.out' });
       });
     } else if (s === 'magnet') {
       // CALAMITA: attira e raccoglie le Gocce vicine per ~5s (usa this.grab per la raccolta reale)
@@ -2568,9 +2571,24 @@ export class GameScene extends Phaser.Scene {
 
     if (this.neonList) this.updateNeon();   // piattaforme-neon lampeggianti
 
+    // PERF: i nemici ben fuori dalla vista non vengono aggiornati (meno lavoro per-frame sui livelli
+    // con tanti nemici sparsi, es. il Mondo 2-2 ad acqua → niente più scatti).
+    const ecamL = this.cameras.main.scrollX - 200, ecamR = this.cameras.main.scrollX + this.scale.width + 200;
     this.enemies.children.iterate(e => {
       if (!e || !e.body || e.dead) return;
       if (e.y > this.H + 140) { e.destroy(); return; }   // nemico caduto nel vuoto → rimuovi
+      // walkerDebuff (Riccardo): alla scadenza togli tint/zoppìa/deambulatore (anche se fuori schermo)
+      if (e.walkerDebuff && this.time.now > e.walkerDebuffEnd) {
+        e.walkerDebuff = false; e.clearTint(); e.setAngle(0);
+        if (e.walkerIcon) { e.walkerIcon.destroy(); e.walkerIcon = null; }
+      }
+      // fuori schermo → fermo (niente movimento/logica): riprende quando rientra nella vista
+      if (e.x < ecamL || e.x > ecamR) { e.setVelocity(0, 0); return; }
+      // il deambulatore SEGUE il nemico + lo fa zoppicare (solo on-screen)
+      if (e.walkerDebuff) {
+        if (e.walkerIcon) e.walkerIcon.setPosition(e.x, e.y + (e.displayHeight || 30) / 2 - 4);
+        e.setAngle(Math.sin(this.time.now / 80 + (e.phase || 0)) * 7);
+      }
       // i nemici volanti hanno checkCollision.none (passano tra le piattaforme): l'overlap di Phaser
       // verso il player viene soppresso → controllo il contatto a mano e chiamo touchEnemy
       if (e.kind === 'flyer' || e.kind === 'floater' || e.kind === 'chaser' || e.kind === 'spam' || e.kind === 'bullet' || e.kind === 'lakitu') {
@@ -2581,10 +2599,6 @@ export class GameScene extends Phaser.Scene {
       if (e.kind === 'lakitu') { this.updateLakitu(e); return; }                // Spruzzabot: insegue dall'alto e dropga
       if (e.kind === 'bullet') { e.setFlipX(e.body.velocity.x > 0); return; }   // Spray-Bill: vola dritto
       if (e.kind === 'promoter') { this.updatePromoter(e); return; }            // Hammer Bro
-      // walkerDebuff (Riccardo): rallenta il singolo nemico per 6s; alla scadenza clearTint
-      if (e.walkerDebuff) {
-        if (this.time.now > e.walkerDebuffEnd) { e.walkerDebuff = false; e.clearTint(); }
-      }
       if (e.kind === 'flyer' || e.kind === 'floater' || e.kind === 'spam') {   // volanti con oscillazione
         if (e.x <= e.minX) e.dir = 1; else if (e.x >= e.maxX) e.dir = -1;
         const fspd = e.walkerDebuff ? 11 : (this.slowActive ? 18 : 72);
