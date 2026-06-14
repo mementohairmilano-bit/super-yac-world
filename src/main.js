@@ -34,6 +34,20 @@ let SELECTED = 'memento';
 let WORLD_ID = 1;
 let GAME = null;
 
+// Distrugge il gioco LIBERANDO esplicitamente il contesto WebGL. Su iPhone (WebKit) il solo
+// GAME.destroy() non fa rilasciare subito la memoria GPU: ricreando il motore a ogni cambio mondo
+// i contesti/la VRAM si accumulano → scatti crescenti "dal 3° livello in poi". Chiamare
+// loseContext() forza il driver a riprendersi la GPU all'istante, azzerando l'accumulo.
+function disposeGame() {
+  if (!GAME) return;
+  try {
+    const gl = GAME.renderer && GAME.renderer.gl;
+    if (gl) { const ext = gl.getExtension('WEBGL_lose_context'); if (ext) ext.loseContext(); }
+  } catch (e) {}
+  try { GAME.destroy(true); } catch (e) {}
+  GAME = null;
+}
+
 function isTouch() {
   return matchMedia('(hover:none),(pointer:coarse)').matches;
 }
@@ -78,7 +92,7 @@ function startGame(key, worldId = 1, opts = {}) {
     const sc = GAME.scene.getScene('Game');
     if (sc) { sc.scene.restart(); return; }
   }
-  if (GAME) { GAME.destroy(true); GAME = null; }
+  disposeGame();
 
   GAME = window._GAME = new Phaser.Game({
     type: Phaser.AUTO,
@@ -104,7 +118,7 @@ function startGame(key, worldId = 1, opts = {}) {
 function restart() { startGame(SELECTED, WORLD_ID); }
 
 function toMenu() {
-  if (GAME) { GAME.destroy(true); GAME = null; }
+  disposeGame();
   document.body.classList.remove('in-game');
   document.getElementById('touch').classList.add('hidden');
   document.getElementById('pausebtn').classList.add('hidden');
@@ -793,7 +807,7 @@ document.getElementById('btn-board-win').addEventListener('click', () => openBoa
 document.getElementById('btn-board-close').addEventListener('click', closeBoard);
 // "✨ Crea il tuo eroe" sulla card del finale → apre il creatore (sblocco già fatto dalla scena)
 const creatorWinBtn = document.getElementById('btn-creator-win');
-if (creatorWinBtn) creatorWinBtn.addEventListener('click', () => { if (GAME) { GAME.destroy(true); GAME = null; } document.body.classList.remove('in-game'); document.getElementById('touch').classList.add('hidden'); document.getElementById('pausebtn').classList.add('hidden'); openCreator(); });
+if (creatorWinBtn) creatorWinBtn.addEventListener('click', () => { disposeGame(); document.body.classList.remove('in-game'); document.getElementById('touch').classList.add('hidden'); document.getElementById('pausebtn').classList.add('hidden'); openCreator(); });
 // esposto alla GameScene per mostrare i pulsanti "Classifica" e "Crea il tuo eroe" sulla card del finale
 window._gameShowBoardBtn = (show) => {
   document.getElementById('btn-board-win').classList.toggle('hidden', !show);

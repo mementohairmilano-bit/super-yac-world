@@ -43,7 +43,8 @@
     /* in PWA (già a schermo intero) il tasto schermo-intero è inutile */
     @media (display-mode: standalone) { #fsbtn { display: none; } }
     #game { width: 100%; height: 100%; position: relative; }
-    canvas { display: block; margin: 0 auto; }
+    /* il canvas gestisce da sé i tocchi: niente gesti del browser (zoom a pizzico/doppio-tap) sopra al gioco */
+    canvas { display: block; margin: 0 auto; touch-action: none; }
 
     /* OVERLAYS */
     .overlay { position: absolute; inset: 0; z-index: 30; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; text-align: center; }
@@ -212,13 +213,19 @@
 </head>
 <body>
 <script>
-  // iOS Safari ignora user-scalable=no → blocco lo zoom a pizzico e il doppio-tap via JS.
-  document.addEventListener('gesturestart', function (e) { e.preventDefault(); }, { passive: false });
-  document.addEventListener('gesturechange', function (e) { e.preventDefault(); }, { passive: false });
-  document.addEventListener('gestureend', function (e) { e.preventDefault(); }, { passive: false });
-  // pinch con due dita: blocca lo zoom (non tocca i tap singoli né i campi input).
-  // Il doppio-tap-zoom è già disattivato da touch-action:manipulation nel CSS.
-  document.addEventListener('touchmove', function (e) { if (e.touches && e.touches.length > 1) e.preventDefault(); }, { passive: false });
+  // iOS Safari/PWA ignora user-scalable=no → blocco lo zoom a pizzico e il doppio-tap via JS.
+  // capture:true → questi gestori girano PRIMA di Phaser, così lo zoom non sfugge anche quando il
+  // tocco parte sul canvas del gioco (che altrimenti "cattura" l'evento).
+  var noZoom = function (e) { e.preventDefault(); };
+  document.addEventListener('gesturestart', noZoom, { passive: false, capture: true });
+  document.addEventListener('gesturechange', noZoom, { passive: false, capture: true });
+  document.addEventListener('gestureend', noZoom, { passive: false, capture: true });
+  // pinch a due dita: blocco lo zoom sia all'inizio (touchstart) sia durante (touchmove). Uso solo
+  // preventDefault (NON stopPropagation), quindi i comandi a due pollici (direzionale + salto) e i
+  // campi input continuano a funzionare: blocco solo il gesto di zoom del browser, non il tocco.
+  var blockMulti = function (e) { if (e.touches && e.touches.length > 1) e.preventDefault(); };
+  document.addEventListener('touchstart', blockMulti, { passive: false, capture: true });
+  document.addEventListener('touchmove', blockMulti, { passive: false, capture: true });
 </script>
 <div id="wrap">
   <div id="game">
