@@ -309,12 +309,9 @@ const MONDO2_2 = {
     { x: 700,  y: 180, minX: 400,  maxX: 1200, kind: 'floater' },  // alto
     { x: 1000, y: 425, minX: 600,  maxX: 1400, kind: 'floater' },  // BASSO
     { x: 1700, y: 300, minX: 1450, maxX: 2150, kind: 'floater' },  // medio
-    { x: 2000, y: 440, minX: 1700, maxX: 2400, kind: 'floater' },  // BASSO
     { x: 2200, y: 250, minX: 1900, maxX: 2700, kind: 'chaser' },
     { x: 2650, y: 190, minX: 2350, maxX: 3050, kind: 'floater' },  // alto
-    { x: 3050, y: 420, minX: 2750, maxX: 3500, kind: 'floater' },  // BASSO
     { x: 3700, y: 285, minX: 3400, maxX: 4250, kind: 'floater' },  // medio
-    { x: 3900, y: 240, minX: 3600, maxX: 4300, kind: 'chaser' },
     { x: 4350, y: 435, minX: 4050, maxX: 4850, kind: 'floater' },  // BASSO
   ],
 
@@ -1042,7 +1039,7 @@ const MONDO5_1 = {
   sub: 'La Sala Trading',
   width: 6000,
   next: 12,
-  timeLimit: 240,   // Mondo 5: la pressione sale
+  timeLimit: 300,   // Mondo 5: la pressione sale
 
   bg: { surface: A + 'bg_m5_surface.webp', under: null },
   bgUnder: null,
@@ -1129,7 +1126,7 @@ const MONDO5_2 = {
   width: 5200,
   next: 13,
   dark: true,
-  timeLimit: 230,
+  timeLimit: 290,
 
   bg: { surface: A + 'bg_m5_vault.webp', under: null },
   bgUnder: null,
@@ -1209,7 +1206,7 @@ const MONDO5_3 = {
   sub: "La Direzione / L'Attico",
   width: 5800,
   next: 14,   // → Mondo 6 (non esiste): "prossimo" nascosto, finale del Mondo 5
-  timeLimit: 280,
+  timeLimit: 320,
 
   bg: { surface: A + 'bg_m5_penthouse.webp', under: null },
   bgUnder: null,
@@ -1336,7 +1333,7 @@ const MONDO6_1 = {
   width: 6400,
   next: 15,
   night: true,
-  timeLimit: 230,
+  timeLimit: 290,
 
   bg: { surface: A + 'bg_m6_plaza.webp', under: null },
   bgUnder: null,
@@ -1388,8 +1385,6 @@ const MONDO6_1 = {
     { x: 2800, y: 448, minX: 2480, maxX: 3720, kind: 'koopa' },
     { x: 3300, y: 430, minX: 2900, maxX: 3700, kind: 'spiny' },
     { x: 4200, y: 448, minX: 3830, maxX: 5070, kind: 'goomba' },
-    { x: 4800, y: 300, minX: 4500, maxX: 5080, kind: 'spam' },
-    { x: 5400, y: 430, minX: 5220, maxX: 5680, kind: 'spiny' },
     { x: 5900, y: 448, minX: 5230, maxX: 6280, kind: 'koopa' },
   ],
 
@@ -1418,7 +1413,7 @@ const MONDO6_2 = {
   width: 5600,
   next: 16,
   dark: true,
-  timeLimit: 220,
+  timeLimit: 280,
 
   bg: { surface: A + 'bg_m6_foundations.webp', under: null },
   bgUnder: null,
@@ -1498,7 +1493,7 @@ const MONDO6_3 = {
   width: 6000,
   next: 17,   // non esiste → fine del gioco
   night: true,
-  timeLimit: 320,
+  timeLimit: 360,
 
   bg: { surface: A + 'bg_m6_ascent.webp', under: null },
   bgUnder: null,

@@ -101,13 +101,13 @@ export class GameScene extends Phaser.Scene {
     this.heroKeyFree = this.textures.exists(this.heroKey + '_free') ? this.heroKey + '_free' : null;
     this.heroFreeActive = false;
     this.W = this.level.width; this.H = 506;
-    this.lives = 3; this.gocce = 0;
+    this.lives = 5; this.gocce = 0;
     this.score = state.runScore || 0;   // punteggio CUMULATIVO della partita (si porta tra i mondi)
     this.specialReady = true; this.slowActive = false; this.piping = false;
     this.invincible = false; this.shootMode = false;   // Yuri / Memento speciali
     this.won = false; this.onPipe = null; this.paused = false;
     this.state = 'intro'; this.checkpointX = (this.level.spawn && this.level.spawn.x) || 110;
-    this.timeLimit = this.level.timeLimit || 300; this.timeLeft = this.timeLimit;   // Mondo 5: timer più stretti
+    this.timeLimit = this.level.timeLimit || 340; this.timeLeft = this.timeLimit;   // Mondo 5: timer più stretti
     this.tutShown = false; this.combo = 0;
     this.bossStarted = false; this.bossActive = false; this.bossDefeated = false;
     this.boss = null; this.bossInvuln = false;
@@ -1018,7 +1018,7 @@ export class GameScene extends Phaser.Scene {
     e.setVelocityY(Phaser.Math.Clamp((ty - e.y) * 4, -220, 220) * (this.slowActive ? 0.4 : 1));
     e.setFlipX(p.x > e.x);
     if (this.time.now > e.nextDrop && Math.abs(p.x - e.x) < 340) {
-      this.dropGoccia(e); e.nextDrop = this.time.now + (this.slowActive ? 4200 : 2200);
+      this.dropGoccia(e); e.nextDrop = this.time.now + (this.slowActive ? 4200 : 3000);
     }
   }
 
@@ -2265,7 +2265,10 @@ export class GameScene extends Phaser.Scene {
   over() {
     this.state = 'over';
     if (this.timerEv) this.timerEv.paused = true;
-    setBest(this.score); clearRun();   // la partita finisce: salva il record, chiudi la run in corso
+    // Salva il record e TIENI la partita al mondo corrente: dopo il game over si può "Continua" da
+    // qui (con vite fresche) invece di ripartire dal Mondo 1 → molti più giocatori arrivano in fondo.
+    setBest(this.score);
+    saveRun({ world: state.worldId, char: state.selectedKey, runScore: state.runScore || this.score || 0 });
     // in classifica va il record personale (lo stesso valore mostrato nella home), non solo l'ultima run
     window._runResult = { score: getBest(), world: state.worldId };
     if (window._autoSubmitScore) window._autoSubmitScore();   // salva subito in classifica (nickname obbligatorio)
@@ -2663,14 +2666,14 @@ export class GameScene extends Phaser.Scene {
       if (e.kind === 'promoter') { this.updatePromoter(e); return; }            // Hammer Bro
       if (e.kind === 'flyer' || e.kind === 'floater' || e.kind === 'spam') {   // volanti con oscillazione
         if (e.x <= e.minX) e.dir = 1; else if (e.x >= e.maxX) e.dir = -1;
-        const fspd = e.walkerDebuff ? 11 : (this.slowActive ? 18 : 72);
+        const fspd = e.walkerDebuff ? 11 : (this.slowActive ? 18 : 60);
         e.setVelocityX(fspd * e.dir); e.setFlipX(e.dir < 0);
         const amp = e.kind === 'floater' ? 88 : 44;
         e.setVelocityY(Math.cos(this.time.now / 360 + (e.phase || 0)) * amp * (e.walkerDebuff ? 0.15 : this.slowActive ? 0.4 : 1));
         return;
       }
       if (e.kind === 'chaser') {   // Spugnotto: insegue lentamente il player
-        const csp = e.walkerDebuff ? 7 : (this.slowActive ? 14 : 46);
+        const csp = e.walkerDebuff ? 7 : (this.slowActive ? 14 : 38);
         const dx = p.x - e.x, dy = p.y - e.y, d = Math.hypot(dx, dy) || 1;
         e.setVelocity(csp * dx / d, csp * dy / d); e.setFlipX(dx < 0);
         return;
