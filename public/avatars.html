@@ -69,12 +69,25 @@
             if (it.power_id) lines.push('⚡ ' + esc(it.power_id));
             if (it.created_at) lines.push('🕒 ' + esc(fmt(it.created_at)));
             if (!it.visible) lines.push('🚫 nascosto');
+            var curName = it.name || it.nickname || 'Eroe';
             card.innerHTML = '<div class="thumb" ' + (it.url ? ('style="background-image:url(\'' + it.url + '\')"') : '') + '></div>' +
-              '<div class="nm">' + esc(it.name || it.nickname || 'Eroe') + '</div>' +
+              '<div class="nm">' + esc(curName) + ' <button class="ren" title="Rinomina" style="background:none;border:none;cursor:pointer;color:#F2C53D;font-size:13px;padding:0 2px">✏️</button></div>' +
               '<div class="meta">' + lines.join('<br>') + '</div>' +
               (it.url ? ('<a class="dl" href="' + it.url + '" download target="_blank">⬇ Scarica</a> ') : '') +
-              '<button class="dl" style="background:none;border:none;cursor:pointer;color:' + (it.visible ? '#ff9b9b' : '#7CD992') + '">' + (it.visible ? '🚫 Nascondi dalla home' : '✓ Mostra nella home') + '</button>';
-            var btn = card.querySelector('button');
+              '<button class="dl vis" style="background:none;border:none;cursor:pointer;color:' + (it.visible ? '#ff9b9b' : '#7CD992') + '">' + (it.visible ? '🚫 Nascondi dalla home' : '✓ Mostra nella home') + '</button>';
+            var ren = card.querySelector('.ren');
+            ren.onclick = function () {
+              var next = prompt('Nuovo nome per questo eroe (max 24 caratteri):', curName);
+              if (next == null) return;                 // annullato
+              next = next.trim();
+              if (!next || next === curName) return;     // vuoto o invariato
+              ren.disabled = true; ren.textContent = '…';
+              fetch('/api/hero-rename', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: pw.value.trim(), id: it.id, name: next }) })
+                .then(function (r) { return r.ok; })
+                .then(function (ok) { if (ok) load(); else { ren.disabled = false; ren.textContent = '✏️'; alert('Rinomina fallita, riprova.'); } })
+                .catch(function () { ren.disabled = false; ren.textContent = '✏️'; alert('Errore di rete.'); });
+            };
+            var btn = card.querySelector('.vis');
             btn.onclick = function () {
               btn.disabled = true; btn.textContent = '…';
               fetch('/api/hero-visibility', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: pw.value.trim(), id: it.id, visible: !it.visible }) })
