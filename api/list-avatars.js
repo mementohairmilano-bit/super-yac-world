@@ -1,17 +1,15 @@
-// Elenco degli EROI pubblici (per la pagina admin /avatars.html): immagini + nick/email (privati,
-// uniti dalla tabella `avatars`) + stato visibile. Protetto da password (ADMIN_TOKEN).
-// Usa la service role key (lato server) per leggere anche i dati privati.
+// Elenco degli EROI della community (per la pagina admin /avatars.html): immagini + nick/email
+// (privati, uniti dalla tabella `avatars`) + stato visibile. Protetto da password: solo
+// nell'intestazione x-admin-token, mai nell'indirizzo. Usa la service role key (lato server).
+import { controllaAdmin } from './_comune.js';
+
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://ifboncpyzrtindfbnrbk.supabase.co';
 
 export default async function handler(req, res) {
-  const ADMIN = process.env.ADMIN_TOKEN;
   const KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!ADMIN) { res.status(503).json({ error: 'ADMIN_TOKEN non configurato sul server' }); return; }
-  if (!KEY) { res.status(503).json({ error: 'SUPABASE_SERVICE_ROLE_KEY non configurato' }); return; }
-  let token = '';
-  try { token = new URL(req.url, 'http://x').searchParams.get('token') || ''; } catch (_) {}
-  if (!token) token = (req.headers['x-admin-token'] || '').toString();
-  if (token !== ADMIN) { res.status(401).json({ error: 'Password errata' }); return; }
+  if (!KEY) { res.status(503).json({ error: 'Server non configurato' }); return; }
+  const ko = controllaAdmin(req);
+  if (ko) { res.status(ko.status).json({ error: ko.error }); return; }
 
   const H = { apikey: KEY, Authorization: 'Bearer ' + KEY };
   let heroes = [], avatars = [];

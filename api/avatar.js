@@ -6,9 +6,16 @@
 // qui non servono dipendenze native (sharp) e la funzione resta leggera.
 //
 // Privacy: la foto transita da Google solo per generare l'immagine; noi non la salviamo.
+// Ogni chiamata costa (API Google a pagamento): consenso ed età li controlla anche il server,
+// 3 generazioni l'ora per indirizzo e un tetto giornaliero per l'intera funzione.
+import { readBody, ipDi, limita } from './_comune.js';
 
 const MODEL = 'gemini-2.5-flash-image';
 const ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models/' + MODEL + ':generateContent';
+const MAX_ORA_PER_IP = 3;
+const MAX_GIORNO = 200;
+const GIORNO_MS = 24 * 60 * 60 * 1000;
+const MIME_OK = ['image/jpeg', 'image/png', 'image/webp'];
 
 // Verde chroma-key (#00E000): tinta satura assente nei volti/capelli → facile da togliere lato client.
 const PROMPT = [
@@ -24,29 +31,34 @@ const PROMPT = [
   'Do not use green for the clothes or hair.',
 ].join(' ');
 
-function readBody(req) {
-  // Vercel di solito popola req.body per application/json; fallback allo stream grezzo.
-  if (req.body && typeof req.body === 'object') return Promise.resolve(req.body);
-  return new Promise((resolve) => {
-    let d = '';
-    req.on('data', (c) => { d += c; });
-    req.on('end', () => { try { resolve(JSON.parse(d || '{}')); } catch (_) { resolve({}); } });
-    req.on('error', () => resolve({}));
-  });
-}
-
 export default async function handler(req, res) {
   if (req.method !== 'POST') { res.status(405).json({ error: 'Method not allowed' }); return; }
   const KEY = process.env.GEMINI_API_KEY;
-  if (!KEY) { res.status(500).json({ error: 'GEMINI_API_KEY non configurata sul server' }); return; }
+  if (!KEY) { res.status(503).json({ error: 'Il generatore di avatar non è disponibile al momento' }); return; }
 
   let body;
   try { body = await readBody(req); } catch (_) { body = {}; }
-  const image = body && body.image;            // base64 puro (senza prefisso data:)
-  const mime = (body && body.mime) || 'image/jpeg';
+  // il consenso (foto a Google) e l'età (14 anni o permesso di un genitore) si controllano anche qui:
+  // la casella nella pagina da sola non basta, la rotta è raggiungibile da chiunque
+  if (!body || body.consent !== true || body.eta !== true) {
+    res.status(400).json({ error: 'Per creare l’avatar devi spuntare il consenso e la casella sull’età' });
+    return;
+  }
+  const image = body.image;            // base64 puro (senza prefisso data:)
+  const mime = MIME_OK.includes(body.mime) ? body.mime : 'image/jpeg';
   if (!image || typeof image !== 'string') { res.status(400).json({ error: 'Foto mancante' }); return; }
   // limite difensivo: ~6MB di base64 (il client invia comunque una foto ridotta)
   if (image.length > 6 * 1024 * 1024) { res.status(413).json({ error: 'Foto troppo grande' }); return; }
+
+  // i limiti si contano prima di chiamare Google: anche un tentativo rifiutato dai filtri costa
+  if (!limita('avatar:' + ipDi(req), MAX_ORA_PER_IP)) {
+    res.status(429).json({ error: 'Puoi generare al massimo 3 avatar l’ora: riprova più tardi' });
+    return;
+  }
+  if (!limita('avatar:giorno', MAX_GIORNO, GIORNO_MS)) {
+    res.status(503).json({ error: 'Il generatore ha raggiunto il limite di oggi: riprova domani' });
+    return;
+  }
 
   const payload = {
     contents: [{
@@ -72,14 +84,12 @@ export default async function handler(req, res) {
   }
 
   if (!gres.ok) {
-    let detail = '';
-    try { detail = (await gres.json()).error?.message || ''; } catch (_) {}
-    // 400 spesso = foto rifiutata dai filtri di sicurezza; lo segnaliamo in modo comprensibile
+    // 400 spesso = foto rifiutata dai filtri di sicurezza; lo segnaliamo in modo comprensibile.
+    // Il testo dell'errore di Google resta qui: a chi chiama non serve e direbbe troppo sul servizio.
     res.status(gres.status === 400 ? 422 : 502).json({
       error: gres.status === 400
         ? 'Non sono riuscito a generare un avatar da questa foto. Prova con una foto diversa (volto ben visibile, niente contenuti sensibili).'
         : 'Generazione non riuscita, riprova tra poco.',
-      detail,
     });
     return;
   }
