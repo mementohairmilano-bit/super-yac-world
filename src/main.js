@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { CHARACTERS } from './config.js';
-import { state, loadRun, clearRun, getBest, getNick, setNick, getEmail, setEmail, resetLetters, isGameCompleted, setGameCompleted, getCustomHero, setCustomHero, clearCustomHero, hasCreatedHero, setCreatedHero, clearCreatedHero, isPerf, setPerf, seenIntro, setSeenIntro } from './state.js';
+import { state, loadRun, clearRun, getBest, getNick, setNick, getEmail, setEmail, resetLetters, isGameCompleted, setGameCompleted, getCustomHero, setCustomHero, clearCustomHero, hasCreatedHero, setCreatedHero, clearCreatedHero, isPerf, setPerf, seenIntro, setSeenIntro, getPubblicazione, setPubblicazione, clearPubblicazione } from './state.js';
 import { POWERS, powerById } from './powers.js';
 import { LEVELS } from './levels.js';
 import { submitScore, topScores, sanitizeNick, submitLead, validateEmail, fetchPublicHeroes } from './leaderboard.js';
@@ -419,19 +419,26 @@ async function generateAvatar(file) {
 }
 // pubblica l'eroe (sprite + ritratto + config) e allega nick/email per il team (privati). Solo col
 // consenso alla pubblicazione. L'eroe nasce NASCOSTO: compare nella home di tutti dopo l'ok dalla pagina
-// admin. Best-effort: non blocca il gioco.
+// admin; intanto il menu lo dice al giocatore (refreshPubblicazione), altrimenti crederebbe che non
+// abbia funzionato. Best-effort: non blocca il gioco.
 function saveAvatarSocial() {
   try {
     const power = powerById(creatorSel.power);
+    const nome = sanitizeNick(creatorName.value) || 'Eroe';
+    const esito = (p) => { setPubblicazione({ ...p, nome, at: Date.now() }); refreshPubblicazione(); };
     fetch('/api/save-avatar', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         consent: true,
         sprite: creatorSel.avatarUrl || null, profile: creatorSel.profileUrl || null,
-        name: sanitizeNick(creatorName.value) || 'Eroe', color: creatorSel.color, powerId: creatorSel.power,
+        name: nome, color: creatorSel.color, powerId: creatorSel.power,
         power: power.name, nick: getNick() || '', email: getEmail() || '',
       }),
-    }).then((r) => r && r.ok && setTimeout(refreshCommunity, 600)).catch(() => {});
+    }).then(async (r) => {
+      const j = await r.json().catch(() => ({}));
+      if (r.ok && j && j.ok) esito({ stato: 'attesa', url: j.profile_url || j.sprite_url || '' });
+      else esito({ stato: 'errore', messaggio: (j && j.error) || (j && j.skipped ? 'la pubblicazione degli eroi non è disponibile al momento' : 'riprova più tardi') });
+    }).catch(() => esito({ stato: 'errore', messaggio: 'sei offline o il servizio non risponde' }));
   } catch (_) {}
 }
 if (creatorPhotoBtn) creatorPhotoBtn.onclick = () => {
@@ -446,10 +453,11 @@ if (document.getElementById('creator-close')) document.getElementById('creator-c
 if (document.getElementById('creator-play')) document.getElementById('creator-play').onclick = () => {
   const hero = { name: sanitizeNick(creatorName.value) || 'Eroe', baseLook: creatorSel.look, color: creatorSel.color, powerId: creatorSel.power, avatarUrl: creatorSel.avatarUrl || null, profileUrl: creatorSel.profileUrl || null };
   CHARACTERS.custom = buildCustomCfg(hero);
-  // se l'eroe è pubblicato in community (consenso social) NON tengo anche la copia locale → niente
-  // card doppia nel menu. Salvo localmente solo se l'utente NON ha condiviso in community.
-  if (creatorSocial && creatorSocial.checked) { clearCustomHero(); saveAvatarSocial(); }   // pubblica coi valori FINALI
-  else setCustomHero(hero);
+  // la copia locale resta sempre: l'eroe pubblicato nasce nascosto e compare nella home di tutti solo
+  // dopo un controllo del team; quando lo vedo tra gli eroi della community tolgo la copia locale
+  // (refreshPubblicazione), così non c'è mai la card doppia ma il giocatore non resta senza eroe.
+  setCustomHero(hero);
+  if (creatorSocial && creatorSocial.checked) saveAvatarSocial();   // pubblica coi valori FINALI
   setCreatedHero();   // l'utente ha creato il suo eroe → la card "Crea eroe" sparisce
   startGame('custom', 1, { newRun: true });
 };
@@ -527,9 +535,29 @@ function buildCommunityCards() {
     cardsEl.appendChild(card);
   });
 }
+// avviso nel menu sull'eroe mandato in pubblicazione: «in attesa» finché non compare tra gli eroi
+// della community (a quel punto tolgo la copia locale), «errore» se il server ha detto di no. Scade da
+// solo dopo 30 giorni, così non resta per sempre se il team non approva l'eroe.
+const heroNoticeEl = document.getElementById('hero-notice');
+function refreshPubblicazione() {
+  if (!heroNoticeEl) return;
+  const p = getPubblicazione();
+  if (!p || Date.now() - (p.at || 0) > 30 * 24 * 60 * 60 * 1000) {
+    if (p) clearPubblicazione();
+    heroNoticeEl.classList.add('hidden'); return;
+  }
+  if (p.stato === 'attesa' && p.url && communityHeroes.some((h) => h.profile_url === p.url || h.sprite_url === p.url)) {
+    clearPubblicazione(); clearCustomHero(); heroNoticeEl.classList.add('hidden'); buildExtraCards(); return;
+  }
+  heroNoticeEl.textContent = p.stato === 'attesa'
+    ? '⏳ Il tuo eroe «' + p.nome + '» è in attesa di un controllo del team YAC: dopo l’ok comparirà nella home di tutti. Intanto puoi già giocarci.'
+    : '⚠️ Non siamo riusciti a pubblicare «' + p.nome + '»: ' + (p.messaggio || 'riprova più tardi') + '. L’eroe resta sul tuo dispositivo; per riprovare eliminalo con ✕ e crealo di nuovo.';
+  heroNoticeEl.classList.remove('hidden');
+}
 async function refreshCommunity() {
   try { communityHeroes = await fetchPublicHeroes(120); } catch (e) { communityHeroes = []; }
   buildCommunityCards();
+  refreshPubblicazione();
 }
 
 refreshMenu();
@@ -571,6 +599,23 @@ if (document.getElementById('intro-go')) document.getElementById('intro-go').onc
   maybeAskName();
 };
 startupFlow();
+
+// ===== Contatore partite (statistiche Memento Studio): parte solo dopo un «Va bene» =====
+// Lo snippet in index.html (window.sywStats) non manda nulla finché la scelta non è 'si'. Il riquadro
+// vive dentro il menu: resta visibile finché il giocatore non sceglie, sparisce da solo in partita e
+// sotto gli altri pannelli. La voce «Contatore partite» nel menu permette di cambiare idea.
+const statsAskEl = document.getElementById('stats-ask');
+const statsBtn = document.getElementById('btn-stats');
+function refreshStats() {
+  const s = window.sywStats ? window.sywStats.scelta() : 'no';
+  if (statsAskEl) statsAskEl.classList.toggle('hidden', !window.sywStats || !!s);
+  if (statsBtn) statsBtn.textContent = '📊 Contatore partite: ' + (s === 'si' ? 'acceso' : 'spento') + ' · cambia';
+}
+function rispondiStats(v) { if (window.sywStats) window.sywStats.imposta(v); refreshStats(); }
+if (document.getElementById('stats-si')) document.getElementById('stats-si').onclick = () => rispondiStats('si');
+if (document.getElementById('stats-no')) document.getElementById('stats-no').onclick = () => rispondiStats('no');
+if (statsBtn) statsBtn.onclick = () => rispondiStats('');
+refreshStats();
 
 // ===== Modalità prestazioni (toggle nel menu) =====
 const perfBtn = document.getElementById('btn-perf');
