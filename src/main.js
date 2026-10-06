@@ -192,6 +192,7 @@ const creatorAvatar = document.getElementById('creator-avatar');
 const creatorAiStatus = document.getElementById('creator-ai-status');
 const creatorConsent = document.getElementById('creator-consent');
 const creatorSocial = document.getElementById('creator-social');
+const creatorEta = document.getElementById('creator-eta');
 const creatorFile = document.getElementById('creator-file');
 const creatorPhotoBtn = document.getElementById('creator-photo-btn');
 const creatorPlay = document.getElementById('creator-play');
@@ -391,12 +392,13 @@ function setGenerating(on) {
 async function generateAvatar(file) {
   if (!navigator.onLine) { creatorAiStatus.style.color = '#ff9b9b'; creatorAiStatus.textContent = 'Sei offline: connettiti per generare l’avatar.'; return; }
   if (!creatorConsent || !creatorConsent.checked) { creatorAiStatus.style.color = '#ff9b9b'; creatorAiStatus.textContent = 'Spunta il consenso per inviare la foto.'; return; }
+  if (!creatorEta || !creatorEta.checked) { creatorAiStatus.style.color = '#ff9b9b'; creatorAiStatus.textContent = 'Conferma di avere almeno 14 anni (o il permesso di un genitore).'; return; }
   setGenerating(true);
   try {
     const b64 = await fileToScaledB64(file);
     const res = await fetch('/api/avatar', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ image: b64, mime: 'image/jpeg' }),
+      body: JSON.stringify({ image: b64, mime: 'image/jpeg', consent: true, eta: true }),   // il server li ricontrolla
     });
     const j = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(j.error || 'Generazione non riuscita');
@@ -415,8 +417,9 @@ async function generateAvatar(file) {
     creatorPhotoBtn.disabled = !navigator.onLine;
   }
 }
-// pubblica l'eroe (sprite + ritratto + config) così è giocabile da tutti, e allega nick/email per il
-// team (privati). Solo col consenso social. Best-effort: non blocca il gioco. Aggiorna poi la community.
+// pubblica l'eroe (sprite + ritratto + config) e allega nick/email per il team (privati). Solo col
+// consenso alla pubblicazione. L'eroe nasce NASCOSTO: compare nella home di tutti dopo l'ok dalla pagina
+// admin. Best-effort: non blocca il gioco.
 function saveAvatarSocial() {
   try {
     const power = powerById(creatorSel.power);
@@ -433,6 +436,7 @@ function saveAvatarSocial() {
 }
 if (creatorPhotoBtn) creatorPhotoBtn.onclick = () => {
   if (!creatorConsent || !creatorConsent.checked) { creatorAiStatus.style.color = '#ff9b9b'; creatorAiStatus.textContent = 'Prima spunta il consenso privacy qui sopra.'; return; }
+  if (!creatorEta || !creatorEta.checked) { creatorAiStatus.style.color = '#ff9b9b'; creatorAiStatus.textContent = 'Conferma di avere almeno 14 anni (o il permesso di un genitore).'; return; }
   creatorFile.click();
 };
 if (creatorFile) creatorFile.onchange = () => { const f = creatorFile.files && creatorFile.files[0]; if (f) generateAvatar(f); creatorFile.value = ''; };
@@ -449,6 +453,13 @@ if (document.getElementById('creator-play')) document.getElementById('creator-pl
   setCreatedHero();   // l'utente ha creato il suo eroe → la card "Crea eroe" sparisce
   startGame('custom', 1, { newRun: true });
 };
+
+// nome e immagine di una card: il nome come TESTO (mai dentro innerHTML: può arrivare dal database),
+// l'immagine come proprietà CSS con l'URL tra virgolette escapate
+function setCardFace(card, name, img) {
+  card.querySelector('.nm').textContent = name;
+  card.querySelector('.av').style.backgroundImage = 'url(' + JSON.stringify(String(img)) + ')';
+}
 
 // card extra nel menu: "Crea il tuo eroe" + l'eroe custom salvato (ricostruite a ogni refreshMenu)
 function buildExtraCards() {
@@ -471,8 +482,9 @@ function buildExtraCards() {
     const card = document.createElement('div');
     card.className = 'card card-extra'; card.tabIndex = 0; card.style.position = 'relative';
     card.style.setProperty('--c', cfg.card); card.style.setProperty('--c-border', cfg.card + '55'); card.style.setProperty('--c-glow', cfg.card + '40');
-    card.innerHTML = "<div class=\"av\" style=\"background-image:url('" + img + "');background-size:contain;background-position:center;background-repeat:no-repeat\"></div><div class=\"nm\">" + cfg.name + '</div><div class="rl">Il tuo eroe</div><div class="pw">' + pw.name + '</div><div class="abx">' + pw.emoji + ' ' + pw.desc + '</div>'
+    card.innerHTML = '<div class="av" style="background-size:contain;background-position:center;background-repeat:no-repeat"></div><div class="nm"></div><div class="rl">Il tuo eroe</div><div class="pw">' + pw.name + '</div><div class="abx">' + pw.emoji + ' ' + pw.desc + '</div>'
       + '<button class="card-del" title="Elimina questo eroe" aria-label="Elimina" style="position:absolute;top:6px;right:6px;width:26px;height:26px;border-radius:50%;border:none;background:#0009;color:#fff;font-size:14px;line-height:1;cursor:pointer;z-index:2">✕</button>';
+    setCardFace(card, cfg.name, img);
     const go = () => { CHARACTERS.custom = cfg; startGame('custom', 1, { newRun: true }); };
     card.onclick = go; card.onkeydown = (e) => { if (e.key === 'Enter') go(); };
     card.querySelector('.card-del').onclick = (e) => {
@@ -508,7 +520,8 @@ function buildCommunityCards() {
     const card = document.createElement('div');
     card.className = 'card card-community'; card.tabIndex = 0;
     card.style.setProperty('--c', cfg.card); card.style.setProperty('--c-border', cfg.card + '55'); card.style.setProperty('--c-glow', cfg.card + '40');
-    card.innerHTML = "<div class=\"av\" style=\"background-image:url('" + img + "');background-size:contain;background-position:center;background-repeat:no-repeat\"></div><div class=\"nm\">" + cfg.name + '</div><div class="rl">Community</div><div class="pw">' + pw.name + '</div><div class="abx">' + pw.emoji + ' ' + pw.desc + '</div>';
+    card.innerHTML = '<div class="av" style="background-size:contain;background-position:center;background-repeat:no-repeat"></div><div class="nm"></div><div class="rl">Community</div><div class="pw">' + pw.name + '</div><div class="abx">' + pw.emoji + ' ' + pw.desc + '</div>';
+    setCardFace(card, cfg.name, img);
     const go = () => { CHARACTERS.custom = cfg; startGame('custom', 1, { newRun: true }); };
     card.onclick = go; card.onkeydown = (e) => { if (e.key === 'Enter') go(); };
     cardsEl.appendChild(card);
@@ -774,7 +787,7 @@ if (boardBadgeBtn) boardBadgeBtn.onclick = async () => {
   boardBadgeBtn.disabled = true; boardBadgeBtn.textContent = 'Genero il badge…';
   boardBadgeMsg.style.color = '#c4b8c2'; boardBadgeMsg.textContent = '';
   // il salvataggio del lead va in coda (riprova da solo se offline) e non blocca il badge
-  queueLead({ nickname: nick, email, score: target.score, world: target.world, tier: tier.title }); flushPending();
+  queueLead({ nickname: nick, email, score: target.score, world: target.world, tier: tier.title, consent: saved ? true : !!(boardConsent && boardConsent.checked) }); flushPending();
   try {
     // la crew completa (in ordine), così il badge disegna tutti gli eroi evidenziando il tuo.
     // L'eroe personalizzato usa l'avatar generato (o, in fallback, l'art del volto base scelto).
