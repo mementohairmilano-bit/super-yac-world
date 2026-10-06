@@ -19,12 +19,13 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Yac World">
+  <meta name="apple-mobile-web-app-title" content="YAC World">
   <link rel="apple-touch-icon" href="/apple-touch-icon-180.png">
   <link rel="icon" type="image/png" href="/icon-192.png">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
   <style>
+    /* caratteri serviti da casa (public/fonts, licenza OFL): nessuna chiamata a Google all'apertura */
+    @font-face { font-family: 'Syne'; src: url('/fonts/syne.woff2') format('woff2'); font-weight: 400 800; font-display: swap; }
+    @font-face { font-family: 'DM Sans'; src: url('/fonts/dm-sans.woff2') format('woff2'); font-weight: 100 1000; font-display: swap; }
     :root {
       --yellow: #F2C53D; --gold: #C9A227; --peach: #F2994A;
       --rose: #C97B84; --magenta: #D96BA0;
@@ -247,6 +248,7 @@
       <button class="btn ghost hidden" id="btn-install" style="margin-top:6px">📲 Installa l'app</button>
       <button class="btn ghost" id="btn-perf" style="margin-top:6px;font-size:13px">⚡ Modalità prestazioni: OFF</button>
       <div class="tag" style="margin-top:4px;font-size:10.5px;opacity:.7;max-width:300px">Attivala solo se il gioco va a scatti (es. da app su iPhone): riduce gli effetti grafici.</div>
+      <a href="./privacy.html" target="_blank" rel="noopener" style="margin-top:6px;font-size:10.5px;color:#c4b8c2;opacity:.7;text-decoration:underline">Informativa privacy</a>
       <div class="pick">▸ Scegli il tuo eroe ◂</div>
       <div class="cards" id="cards"></div>
       <div class="legend">
@@ -307,6 +309,7 @@
         <input id="board-nick" maxlength="16" placeholder="il tuo nickname" autocomplete="off"
           style="font-family:'Syne',sans-serif;font-weight:700;font-size:15px;text-align:center;padding:9px 14px;border-radius:999px;border:2px solid #ffffff33;background:#1a121f;color:#fff;outline:none;width:220px">
         <button class="btn" id="board-send" style="margin-top:2px">Invia in classifica</button>
+        <p class="tag" style="margin:0;font-size:11px;opacity:.75;max-width:280px">Il nickname e il punteggio sono pubblici: non usare il tuo nome vero. Per toglierli scrivi a <a href="mailto:info@hairchangers.com" style="color:var(--yellow)">info@hairchangers.com</a>.</p>
 
         <!-- ===== Badge YAC Hero (lead gen) ===== -->
         <!-- L'email è OPZIONALE e sblocca un badge digitale personalizzato (dato a tutti gli
@@ -342,7 +345,7 @@
 
     <!-- ===== Disclaimer iniziale (una volta sola) ===== -->
     <div id="intro" class="overlay hidden" style="background:radial-gradient(120% 120% at 50% 0%,#2a1626,#0c0810f7);justify-content:flex-start;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-top:max(20px,env(safe-area-inset-top));padding-bottom:max(24px,env(safe-area-inset-bottom));z-index:64">
-      <div class="big" style="margin-top:6px">🎮 Benvenuto in Super Yac World!</div>
+      <div class="big" style="margin-top:6px">🎮 Benvenuto in Super YAC World!</div>
       <div style="text-align:left;max-width:min(360px,90vw);font-family:'DM Sans',sans-serif;color:#F7F1E8;line-height:1.5;font-size:14px;margin-top:10px">
         <p style="margin:0 0 10px"><b>📲 Aggiungilo alla Home</b><br>Per giocare a schermo intero come un'app: tocca i <b>3 puntini</b> (o l'icona <b>Condividi</b>) del browser e scegli <b>"Aggiungi a schermata Home"</b>.</p>
         <p style="margin:0 0 10px"><b>💻 Si gioca al meglio da PC</b><br>Su computer è fluido e completo.</p>
@@ -363,7 +366,7 @@
     <!-- ===== Nickname obbligatorio (chiesto una volta sola, all'inizio) ===== -->
     <div id="nameask" class="overlay hidden" style="background:radial-gradient(120% 120% at 50% 0%,#2a1626,#0c0810f7);z-index:60">
       <div class="big">👋 Come ti chiami?</div>
-      <p class="tag" style="max-width:300px">Scegli un nickname: comparirà nella classifica con il tuo punteggio.</p>
+      <p class="tag" style="max-width:300px">Scegli un nickname: comparirà nella classifica con il tuo punteggio. È pubblico: non usare il tuo nome vero.</p>
       <input id="nameask-input" maxlength="16" placeholder="il tuo nickname" autocomplete="off" enterkeyhint="go"
         style="font-family:'Syne',sans-serif;font-weight:700;font-size:16px;text-align:center;padding:11px 16px;border-radius:999px;border:2px solid #ffffff44;background:#1a121f;color:#fff;outline:none;width:260px;margin-top:8px">
       <p class="tag" id="nameask-hint" style="min-height:14px;font-size:11.5px;color:#ff9b9b;margin-top:6px"></p>
@@ -383,11 +386,15 @@
       <p class="tag" id="creator-ai-status" style="margin:8px 0 0;font-size:11px;min-height:14px;opacity:.85"></p>
       <label style="display:flex;align-items:flex-start;gap:7px;max-width:300px;margin-top:8px;font-size:11px;line-height:1.35;text-align:left;cursor:pointer;opacity:.92">
         <input type="checkbox" id="creator-consent" style="margin-top:2px;flex:none">
-        <span>Acconsento all'invio della mia foto per creare il mio supereroe. La foto non viene salvata. <a href="./privacy.html" target="_blank" style="color:var(--yellow)">Privacy</a></span>
+        <span>Acconsento a inviare la mia foto a Google (Gemini, negli Stati Uniti) per creare il mio supereroe. Noi non la conserviamo. <a href="./privacy.html" target="_blank" rel="noopener" style="color:var(--yellow)">Privacy</a></span>
+      </label>
+      <label style="display:flex;align-items:flex-start;gap:7px;max-width:300px;margin-top:6px;font-size:11px;line-height:1.35;text-align:left;cursor:pointer;opacity:.92">
+        <input type="checkbox" id="creator-eta" style="margin-top:2px;flex:none">
+        <span>Ho almeno 14 anni, oppure ho il permesso di un genitore.</span>
       </label>
       <label style="display:flex;align-items:flex-start;gap:7px;max-width:300px;margin-top:6px;font-size:11px;line-height:1.35;text-align:left;cursor:pointer;opacity:.92">
         <input type="checkbox" id="creator-social" style="margin-top:2px;flex:none">
-        <span>(Facoltativo) Acconsento all'uso del mio avatar nei contenuti social di YAC.</span>
+        <span>(Facoltativo) Il mio avatar viene pubblicato nel gioco, visibile a tutti, e può essere usato nei social di YAC.</span>
       </label>
       <input type="file" id="creator-file" accept="image/*" style="display:none">
       <button class="btn ghost" id="creator-photo-btn" style="margin-top:8px;font-size:13px">📷 Genera avatar dalla foto</button>
