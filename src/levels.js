@@ -1,4 +1,4 @@
-// Definizione dei MONDI di Super Yac World.
+// Definizione dei MONDI di Super YAC World.
 // Ogni mondo è puro DATO: la GameScene legge questo oggetto e costruisce il livello.
 // Aggiungere un mondo = aggiungere una voce qui (+ eventuali meccaniche nuove nel motore).
 //
@@ -1577,7 +1577,7 @@ const MONDO6_3 = {
 
   win: {
     title: 'HAI BATTUTO IL SISTEMA! 🎉👑',
-    tag: 'The Conglomerate è caduto: i loghi freddi si staccano e tutta la torre diventa YAC. Hai vinto Super Yac World!',
+    tag: 'The Conglomerate è caduto: i loghi freddi si staccano e tutta la torre diventa YAC. Hai vinto Super YAC World!',
   },
 
   // Il vizio del Mondo 6 è IL SISTEMA (un colosso che possiede tutti i marchi) → la risposta YAC è l'alternativa.

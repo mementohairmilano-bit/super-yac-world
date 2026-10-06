@@ -1,6 +1,6 @@
-# Super Yac World — Landing page
+# Super YAC World — Landing page
 
-Landing page promozionale del gioco **Super Yac World**, in stile gioco e coerente
+Landing page promozionale del gioco **Super YAC World**, in stile gioco e coerente
 con il brand YAC (palette oro/pesca/rosa, font Syne + DM Sans, tagline *Break the Mold*).
 
 ## Cosa contiene la pagina

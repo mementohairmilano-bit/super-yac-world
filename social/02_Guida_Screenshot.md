@@ -1,4 +1,4 @@
-# GUIDA — Come catturare screenshot belli di Super Yac World 📸
+# GUIDA — Come catturare screenshot belli di Super YAC World 📸
 
 Gli screenshot reali del gioco li devi fare tu (bastano 10 minuti): qui c'è esattamente
 **cosa riprendere** e **come**, sia mobile che PC.

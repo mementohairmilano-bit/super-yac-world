@@ -6,7 +6,8 @@
 // La CHIAVE service role vive solo qui (env Vercel). Niente dati personali nella tabella pubblica.
 //
 // Difese: consenso obbligatorio, solo PNG veri (firma dei byte) fino a 300 kB e 512 px per lato,
-// nome ripulito come nella rinomina, al massimo 3 pubblicazioni l'ora per indirizzo.
+// nome ripulito come nella rinomina, al massimo 10 pubblicazioni l'ora per indirizzo (contatore in
+// memoria, per istanza: ferma uno script senza bloccare un salone col Wi-Fi condiviso).
 //
 // Env: SUPABASE_SERVICE_ROLE_KEY  (+ SUPABASE_URL opzionale).
 import { readBody, ipDi, limita, cleanName } from './_comune.js';
@@ -66,7 +67,7 @@ export default async function handler(req, res) {
 
   let body; try { body = await readBody(req); } catch (_) { body = {}; }
   if (!body || body.consent !== true) { res.status(400).json({ error: 'Consenso mancante' }); return; }
-  if (!limita('eroe:' + ipDi(req), 3)) { res.status(429).json({ error: 'Hai già pubblicato 3 eroi nell\'ultima ora: riprova più tardi' }); return; }
+  if (!limita('eroe:' + ipDi(req), 10)) { res.status(429).json({ error: 'troppe pubblicazioni da questa rete nell\'ultima ora, riprova più tardi' }); return; }
 
   const sp = pngDaBase64(body.sprite);
   const pr = pngDaBase64(body.profile || body.image);   // image = compat vecchio client

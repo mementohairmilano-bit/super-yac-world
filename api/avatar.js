@@ -7,12 +7,15 @@
 //
 // Privacy: la foto transita da Google solo per generare l'immagine; noi non la salviamo.
 // Ogni chiamata costa (API Google a pagamento): consenso ed età li controlla anche il server,
-// 3 generazioni l'ora per indirizzo e un tetto giornaliero per l'intera funzione.
+// 10 generazioni l'ora per indirizzo (un salone o un evento con Wi-Fi condiviso ha UN solo IP:
+// con 3 si bloccavano tutti i presenti) e un tetto giornaliero per istanza della funzione.
+// I contatori vivono in memoria (vedi _comune.js): fermano uno script, non sono un tetto sui
+// costi. Quello vero è la quota giornaliera con l'avviso di spesa impostati su Google Cloud.
 import { readBody, ipDi, limita } from './_comune.js';
 
 const MODEL = 'gemini-2.5-flash-image';
 const ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models/' + MODEL + ':generateContent';
-const MAX_ORA_PER_IP = 3;
+const MAX_ORA_PER_IP = 10;
 const MAX_GIORNO = 200;
 const GIORNO_MS = 24 * 60 * 60 * 1000;
 const MIME_OK = ['image/jpeg', 'image/png', 'image/webp'];
@@ -52,7 +55,7 @@ export default async function handler(req, res) {
 
   // i limiti si contano prima di chiamare Google: anche un tentativo rifiutato dai filtri costa
   if (!limita('avatar:' + ipDi(req), MAX_ORA_PER_IP)) {
-    res.status(429).json({ error: 'Puoi generare al massimo 3 avatar l’ora: riprova più tardi' });
+    res.status(429).json({ error: 'Da questa rete sono già stati generati 10 avatar nell’ultima ora: riprova più tardi' });
     return;
   }
   if (!limita('avatar:giorno', MAX_GIORNO, GIORNO_MS)) {

@@ -230,7 +230,7 @@ export function downloadBadge(dataUrl, filename = 'yac-hero-badge.png') {
 }
 
 // condivide il badge: Web Share API con file dove supportata, altrimenti scarica.
-export async function shareBadge(dataUrl, text = 'Sono un YAC HERO in Super Yac World! 🏅 Gioca su superyacworld.it') {
+export async function shareBadge(dataUrl, text = 'Sono un YAC HERO in Super YAC World! 🏅 Gioca su superyacworld.it') {
   try {
     const file = dataUrlToFile(dataUrl, 'yac-hero-badge.png');
     if (navigator.canShare && navigator.canShare({ files: [file] })) {

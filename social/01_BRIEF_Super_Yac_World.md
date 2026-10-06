@@ -1,8 +1,8 @@
-# BRIEF — Super Yac World 🎮
+# BRIEF — Super YAC World 🎮
 *Documento per creare contenuti social. Copia/incolla le parti utili nei tuoi prompt.*
 
 ## In una riga
-**Super Yac World** è il videogioco platform gratuito del brand **YAC / Memento Hair Milano**: corri, salti e schiacci i nemici per liberare i saloni dall'industria di massa — e ora **puoi diventare tu il supereroe del gioco** caricando una tua foto.
+**Super YAC World** è il videogioco platform gratuito del brand **YAC / Memento Hair Milano**: corri, salti e schiacci i nemici per liberare i saloni dall'industria di massa — e ora **puoi diventare tu il supereroe del gioco** caricando una tua foto.
 
 - **Dove si gioca:** https://www.superyacworld.it (gratis, dal browser; installabile come app — PWA)
 - **Stile:** platform 2D arcade, ispirato ai grandi classici (Super Mario), grafica colorata e brandizzata YAC

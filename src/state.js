@@ -85,6 +85,14 @@ export function isPerf() {
 }
 export function setPerf(on) { try { localStorage.setItem(PFKEY, on ? '1' : '0'); } catch (e) {} }
 
+// eroe mandato in pubblicazione: nasce NASCOSTO nella home di tutti e compare dopo un controllo del
+// team. Qui ricordo cosa dire nel menu finché non lo vedo tra gli eroi della community.
+// { stato: 'attesa' | 'errore', nome, url (ritratto pubblicato), messaggio, at }
+const PUBKEY = 'syw_eroe_pubblicazione';
+export function getPubblicazione() { try { const v = JSON.parse(localStorage.getItem(PUBKEY)); return (v && v.stato) ? v : null; } catch (e) { return null; } }
+export function setPubblicazione(p) { try { localStorage.setItem(PUBKEY, JSON.stringify(p)); } catch (e) {} }
+export function clearPubblicazione() { try { localStorage.removeItem(PUBKEY); } catch (e) {} }
+
 // disclaimer iniziale mostrato una volta sola
 const INKEY = 'syw_intro';
 export function seenIntro() { try { return localStorage.getItem(INKEY) === '1'; } catch (e) { return false; } }

@@ -1,4 +1,6 @@
--- Classifica e lista email di Super YAC World: scrittura solo tramite funzioni controllate.
+-- Classifica e lista email di Super YAC World: aggiornamenti della classifica e iscrizioni email
+-- solo tramite funzioni controllate (l'inserimento diretto di righe nuove in scores resta aperto
+-- per ora, vedi «Compatibilità»).
 --
 -- Cosa fa:
 --   1) crea public.invia_punteggio(p_nickname, p_punteggio, p_mondo): aggiorna la riga del nickname
@@ -17,9 +19,14 @@
 -- tutti (rilievi INIEZIONI-11, DB-16, EXTRA1-10) e inserire email altrui con consent=true (EXTRA1-11).
 --
 -- Compatibilità: il gioco prova prima la funzione e, se risponde 404 (non ancora creata), ripiega
--- sull'upsert/insert diretto di oggi. La regola «insert pubblico» su scores resta: serve ai giocatori
--- che hanno ancora in cache la versione vecchia del gioco (PWA) finché non si aggiorna; si può togliere
--- più avanti. Non si cancella nessuna riga.
+-- sull'upsert/insert diretto di oggi. La regola «insert pubblico» su scores RESTA: serve ai giocatori
+-- che hanno ancora in cache la versione vecchia del gioco (PWA) finché non si aggiorna. Vuol dire che
+-- chiunque, con la chiave pubblica, può ancora inserire righe NUOVE direttamente (nickname non
+-- ripulito dal server, punteggio a piacere entro i vincoli della tabella) e che con invia_punteggio
+-- può alzare il punteggio di un nickname altrui: è la stessa apertura di oggi, non una regressione,
+-- e la classifica va presa per quello che è, un gioco senza premi. Quando le PWA vecchie si sono
+-- aggiornate (qualche settimana dopo il deploy) una migrazione successiva toglie «insert pubblico»
+-- e revoca INSERT su scores ad anon. Non si cancella nessuna riga.
 --
 -- I parametri hanno il prefisso p_ per non confondersi con le colonne omonime dentro plpgsql.
 
