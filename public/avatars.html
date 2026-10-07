@@ -2,7 +2,7 @@
 <html lang="it">
 <head>
   <meta charset="utf-8">
-  <title>Avatar raccolti · Super Yac World</title>
+  <title>Eroi della community · Super YAC World</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex">
   <style>
@@ -25,8 +25,8 @@
   </style>
 </head>
 <body>
-  <h1>🖼️ Eroi pubblici (community)</h1>
-  <p class="sub">Gli eroi creati col consenso social, visibili nella home di tutti. Puoi nasconderne qualcuno (moderazione). Pagina privata, protetta da password.</p>
+  <h1>🖼️ Eroi della community</h1>
+  <p class="sub">Gli eroi creati col consenso alla pubblicazione. Nascono <b>nascosti</b>: guardali e premi «Mostra nella home» per pubblicarli. Pagina privata, protetta da password.</p>
   <div class="bar">
     <input id="pw" type="password" placeholder="password admin" autocomplete="current-password">
     <button id="go">Apri</button>
@@ -40,41 +40,60 @@
     var msg = document.getElementById('msg');
     var grid = document.getElementById('grid');
     var logout = document.getElementById('logout');
-    var saved = localStorage.getItem('syw_admin') || '';
+    // la password resta solo per la scheda aperta (sessionStorage): chiusa la scheda, sparisce
+    var saved = '';
+    try { saved = sessionStorage.getItem('syw_admin') || ''; } catch (e) {}
     if (saved) pw.value = saved;
 
-    function esc(s) { return (s == null ? '' : String(s)).replace(/[<>&"]/g, function (c) { return { '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c]; }); }
+    function esc(s) { return (s == null ? '' : String(s)).replace(/[<>&"']/g, function (c) { return { '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', "'": '&#39;' }[c]; }); }
     function fmt(d) { try { return new Date(d).toLocaleString('it-IT'); } catch (e) { return ''; } }
+    // la password viaggia SOLO nell'intestazione: mai nell'indirizzo (cronologia, registri)
+    function headersAdmin(json) {
+      var h = { 'x-admin-token': pw.value.trim() };
+      if (json) h['Content-Type'] = 'application/json';
+      return h;
+    }
+    function erroreDi(o) {
+      if (o.s === 401) return 'Password errata.';
+      if (o.s === 429) return 'Troppi tentativi: riprova tra un\'ora.';
+      return esc((o.j && o.j.error) || 'Errore') + (o.j && o.j.detail ? (' — ' + esc(o.j.detail)) : '');
+    }
 
     function load() {
       var token = pw.value.trim();
       if (!token) { msg.innerHTML = '<span class="warn">Inserisci la password.</span>'; return; }
       msg.textContent = 'Carico…'; grid.innerHTML = '';
-      fetch('/api/list-avatars?token=' + encodeURIComponent(token) + '&t=' + Date.now(), { cache: 'no-store' })
-        .then(function (r) { return r.json().then(function (j) { return { s: r.status, j: j }; }); })
+      fetch('/api/list-avatars?t=' + Date.now(), { cache: 'no-store', headers: headersAdmin(false) })
+        .then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { return { s: r.status, j: j }; }); })
         .then(function (o) {
-          if (o.s === 401) { msg.innerHTML = '<span class="bad">Password errata.</span>'; return; }
-          if (o.s !== 200) { msg.innerHTML = '<span class="bad">' + esc(o.j.error || 'Errore') + (o.j.detail ? (' — ' + esc(o.j.detail)) : '') + '</span>'; return; }
-          localStorage.setItem('syw_admin', token); logout.style.display = '';
-          if (!o.j.items || !o.j.items.length) { msg.innerHTML = '<span class="warn">Ancora nessun avatar raccolto. Appena qualcuno ne genera uno con il consenso social, comparirà qui.</span>'; return; }
-          msg.innerHTML = '<span class="ok">' + o.j.count + ' eroi.</span>';
-          if (!o.j.items.length) { grid.innerHTML = '<span class="warn">Ancora nessun eroe pubblico. Appena qualcuno ne crea uno col consenso social, comparirà qui (e nella home di tutti).</span>'; return; }
+          if (o.s !== 200) { msg.innerHTML = '<span class="bad">' + erroreDi(o) + '</span>'; return; }
+          try { sessionStorage.setItem('syw_admin', token); } catch (e) {}
+          logout.style.display = '';
+          if (!o.j.items || !o.j.items.length) { msg.innerHTML = '<span class="warn">Ancora nessun eroe. Appena qualcuno ne crea uno col consenso alla pubblicazione, comparirà qui.</span>'; return; }
+          var nascosti = o.j.items.filter(function (it) { return !it.visible; }).length;
+          msg.innerHTML = '<span class="ok">' + o.j.count + ' eroi' + (nascosti ? ', <b>' + nascosti + ' da approvare</b>' : '') + '.</span>';
           grid.innerHTML = '';
           o.j.items.forEach(function (it) {
             var card = document.createElement('div'); card.className = 'card';
-            if (!it.visible) card.style.opacity = '.45';
+            if (!it.visible) card.style.opacity = '.6';
             var lines = [];
             if (it.nickname) lines.push('👤 ' + esc(it.nickname));
             if (it.email) lines.push('✉️ ' + esc(it.email));
             if (it.power_id) lines.push('⚡ ' + esc(it.power_id));
             if (it.created_at) lines.push('🕒 ' + esc(fmt(it.created_at)));
-            if (!it.visible) lines.push('🚫 nascosto');
+            if (!it.visible) lines.push('🚫 nascosto (non ancora in home)');
             var curName = it.name || it.nickname || 'Eroe';
-            card.innerHTML = '<div class="thumb" ' + (it.url ? ('style="background-image:url(\'' + it.url + '\')"') : '') + '></div>' +
-              '<div class="nm">' + esc(curName) + ' <button class="ren" title="Rinomina" style="background:none;border:none;cursor:pointer;color:#F2C53D;font-size:13px;padding:0 2px">✏️</button></div>' +
+            card.innerHTML = '<div class="thumb"></div>' +
+              '<div class="nm"><span class="nm-txt"></span> <button class="ren" title="Rinomina" style="background:none;border:none;cursor:pointer;color:#F2C53D;font-size:13px;padding:0 2px">✏️</button></div>' +
               '<div class="meta">' + lines.join('<br>') + '</div>' +
-              (it.url ? ('<a class="dl" href="' + it.url + '" download target="_blank">⬇ Scarica</a> ') : '') +
+              (it.url ? ('<a class="dl" download target="_blank" rel="noopener">⬇ Scarica</a> ') : '') +
               '<button class="dl vis" style="background:none;border:none;cursor:pointer;color:' + (it.visible ? '#ff9b9b' : '#7CD992') + '">' + (it.visible ? '🚫 Nascondi dalla home' : '✓ Mostra nella home') + '</button>';
+            // nome e URL dal database: li scrivo come testo/proprietà, mai dentro l'HTML
+            card.querySelector('.nm-txt').textContent = curName;
+            if (it.url) {
+              card.querySelector('.thumb').style.backgroundImage = 'url(' + JSON.stringify(String(it.url)) + ')';
+              card.querySelector('a.dl').href = it.url;
+            }
             var ren = card.querySelector('.ren');
             ren.onclick = function () {
               var next = prompt('Nuovo nome per questo eroe (max 24 caratteri):', curName);
@@ -82,7 +101,7 @@
               next = next.trim();
               if (!next || next === curName) return;     // vuoto o invariato
               ren.disabled = true; ren.textContent = '…';
-              fetch('/api/hero-rename', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: pw.value.trim(), id: it.id, name: next }) })
+              fetch('/api/hero-rename', { method: 'POST', headers: headersAdmin(true), body: JSON.stringify({ id: it.id, name: next }) })
                 .then(function (r) { return r.ok; })
                 .then(function (ok) { if (ok) load(); else { ren.disabled = false; ren.textContent = '✏️'; alert('Rinomina fallita, riprova.'); } })
                 .catch(function () { ren.disabled = false; ren.textContent = '✏️'; alert('Errore di rete.'); });
@@ -90,7 +109,7 @@
             var btn = card.querySelector('.vis');
             btn.onclick = function () {
               btn.disabled = true; btn.textContent = '…';
-              fetch('/api/hero-visibility', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: pw.value.trim(), id: it.id, visible: !it.visible }) })
+              fetch('/api/hero-visibility', { method: 'POST', headers: headersAdmin(true), body: JSON.stringify({ id: it.id, visible: !it.visible }) })
                 .then(function (r) { return r.ok; })
                 .then(function (ok) { if (ok) load(); else { btn.disabled = false; btn.textContent = 'Errore, riprova'; } })
                 .catch(function () { btn.disabled = false; btn.textContent = 'Errore di rete'; });
@@ -98,12 +117,12 @@
             grid.appendChild(card);
           });
         })
-        .catch(function () { msg.innerHTML = '<span class="bad">Errore di rete. Il deploy è attivo? Le env ADMIN_TOKEN e SUPABASE_SERVICE_ROLE_KEY sono impostate?</span>'; });
+        .catch(function () { msg.innerHTML = '<span class="bad">Errore di rete. Il deploy è attivo e le variabili del server sono impostate?</span>'; });
     }
 
     document.getElementById('go').onclick = load;
     pw.addEventListener('keydown', function (e) { if (e.key === 'Enter') load(); });
-    logout.onclick = function () { localStorage.removeItem('syw_admin'); pw.value = ''; grid.innerHTML = ''; msg.textContent = ''; logout.style.display = 'none'; };
+    logout.onclick = function () { try { sessionStorage.removeItem('syw_admin'); } catch (e) {} pw.value = ''; grid.innerHTML = ''; msg.textContent = ''; logout.style.display = 'none'; };
     if (saved) load();
   </script>
 </body>

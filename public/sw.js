@@ -1,4 +1,4 @@
-// Service worker di Super Yac World (PWA) — con PRECACHE per il gioco OFFLINE.
+// Service worker di Super YAC World (PWA) — con PRECACHE per il gioco OFFLINE.
 // All'installazione scarica e mette in cache TUTTI i file del gioco (lista in precache.json,
 // generata dal build) → dopo la prima visita il gioco è giocabile senza rete. Le chiamate
 // cross-origin (Supabase/classifica) NON vengono toccate → la classifica resta "live" (richiede

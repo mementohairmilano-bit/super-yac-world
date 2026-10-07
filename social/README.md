@@ -1,4 +1,4 @@
-# 📦 Super Yac World — Pacchetto contenuti social (Instagram)
+# 📦 Super YAC World — Pacchetto contenuti social (Instagram)
 
 Tutto il materiale per sponsorizzare il gioco, organizzato. Tono: gioco + brand.
 

@@ -1,8 +1,8 @@
-# IDEE CONTENUTI + PROMPT PRONTI — Super Yac World
+# IDEE CONTENUTI + PROMPT PRONTI — Super YAC World
 
 ## 🎬 Idee di post (mix per un piano editoriale)
 1. **Reveal "Diventa il supereroe"** (Reel/TikTok): video — apri il gioco → "Crea il tuo eroe" → allega foto → appare l'avatar → giochi con te stesso. Testo: *"Allega una foto e diventi un supereroe 🦸"*.
-2. **Annuncio gioco** (carosello): cos'è Super Yac World, gratis, gioca dal browser, 4 eroi YAC.
+2. **Annuncio gioco** (carosello): cos'è Super YAC World, gratis, gioca dal browser, 4 eroi YAC.
 3. **Sfida classifica**: *"Riesci a battere il record? 🏆"* + screenshot classifica.
 4. **Dietro al tema**: "Break the Mold" — libera i saloni dall'industria di massa (storia del gioco = valori del salone).
 5. **UGC / community**: ripubblica gli eroi creati dai clienti (con consenso) → *"I nuovi eroi di YAC siete VOI"*.
@@ -10,8 +10,8 @@
 7. **Badge YAC Hero**: *"Finisci il gioco e sblocca il tuo badge da campione, da condividere."*
 
 ## ✍️ Caption pronte (esempi)
-- *"Benvenuti a Super Yac World 🎮 Corri, salta e libera i saloni dall'industria di massa. Gioca gratis 👉 superyacworld.it"*
-- *"E se il supereroe fossi TU? 🦸 Allega una foto e crea il tuo personaggio. Solo su Super Yac World → superyacworld.it"*
+- *"Benvenuti a Super YAC World 🎮 Corri, salta e libera i saloni dall'industria di massa. Gioca gratis 👉 superyacworld.it"*
+- *"E se il supereroe fossi TU? 🦸 Allega una foto e crea il tuo personaggio. Solo su Super YAC World → superyacworld.it"*
 - *"Catena di montaggio? No grazie. Break the Mold. 💥 #SuperYacWorld"*
 - *"Scala la classifica e sblocca il tuo Badge YAC Hero 🏅 Quanti punti fai? superyacworld.it"*
 
@@ -29,7 +29,7 @@
 Incolla questo, allegando i tuoi screenshot:
 
 ```
-Sei un social media manager. Crea contenuti per promuovere "Super Yac World", il videogioco
+Sei un social media manager. Crea contenuti per promuovere "Super YAC World", il videogioco
 platform gratuito del brand YAC / Memento Hair Milano (parrucchiere a Milano), giocabile su
 https://www.superyacworld.it (anche come app installabile).
 
