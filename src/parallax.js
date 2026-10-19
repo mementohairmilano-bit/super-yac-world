@@ -26,10 +26,12 @@ export function themeFor(level) {
 // ---- piano medio: ARREDI DEL SOFFITTO per tema (travi, lampade, catene, tubi, cavi, insegne),
 // disegnati su una strip ripetibile e appesi al bordo alto: danno profondità senza coprire il gioco. ----
 const SIL_W = 1600, SIL_H = 210;
+const SIL_PAD = 6;   // righe trasparenti in cima: evitano che il bordo basso (wrap) prenda il colore della trave
 function drawSilhouette(ctx, theme, W, H) {
   const rnd = mulberry(theme.length * 977 + 13);
   const R = (a, b) => a + rnd() * (b - a);
   ctx.clearRect(0, 0, W, H);
+  ctx.save(); ctx.translate(0, SIL_PAD);
   const wrap = (fn) => { fn(0); fn(-W); fn(W); };   // il disegno si ripete senza cuciture
   const base = { factory: '#3a4652', warehouse: '#4b3b2e', neon: '#120c22', lab: '#2b3b36', finance: '#2b3442', tower: '#0d1018', water: '#0f2a33' }[theme] || '#334';
   const rect = (x, y, w, h, c) => { ctx.fillStyle = c || base; ctx.fillRect(x, y, w, h); };
@@ -110,6 +112,8 @@ function drawSilhouette(ctx, theme, W, H) {
       for (let i = 0; i < 6; i++) { ctx.fillStyle = 'rgba(205,243,255,0.10)'; ctx.beginPath(); ctx.ellipse(o + 130 + i * 260, 40 + (i % 2) * 50, 70, 14, 0.3, 0, Math.PI * 2); ctx.fill(); }   // riflessi
     });
   }
+  ctx.restore();
+  ctx.clearRect(0, 0, W, SIL_PAD); ctx.clearRect(0, H - SIL_PAD, W, SIL_PAD);   // bordi puliti
 }
 function gear(ctx, cx, cy, r, teeth, color) {
   ctx.fillStyle = color; ctx.beginPath();
@@ -183,7 +187,7 @@ export function buildParallax(scene) {
       drawSilhouette(t.getContext(), theme, SIL_W, SIL_H); t.refresh();
     }
     const dark = L.dark || L.night || theme === 'water' || theme === 'tower' || theme === 'neon';
-    mid = scene.add.tileSprite(0, 0, VW(), SIL_H, skey).setOrigin(0, 0).setAlpha(dark ? 0.6 : 0.34);
+    mid = scene.add.tileSprite(0, -SIL_PAD, VW(), SIL_H, skey).setOrigin(0, 0).setAlpha(dark ? 0.6 : 0.34);
     layer.add(mid);
   }
 

@@ -125,9 +125,10 @@ export class Hud {
     const s = this.s, p = s.player;
     const big = p && p.big;
     const power = (s.cfg && s.cfg.power) || '';
-    if (!big) this.drawChip('Z · ' + power.toUpperCase() + ' · serve Boccetta', 0x2c2038, DIM);
-    else if (s.specialReady) this.drawChip('Z · ' + power.toUpperCase() + ' · PRONTA', 0xF2C53D, INK);
-    else this.drawChip('Z · ' + power.toUpperCase() + ' · ricarica', 0x4a3850, '#d7ccda');
+    const narrow = s.VW < 680;   // schermi stretti (4:3, telefoni piccoli): chip corta, lo stato lo dice il colore
+    if (!big) this.drawChip('Z · ' + power.toUpperCase() + (narrow ? '' : ' · serve Boccetta'), 0x2c2038, DIM);
+    else if (s.specialReady) this.drawChip('Z · ' + power.toUpperCase() + (narrow ? '' : ' · PRONTA'), 0xF2C53D, INK);
+    else this.drawChip('Z · ' + power.toUpperCase() + (narrow ? '' : ' · ricarica'), 0x4a3850, '#d7ccda');
     this.bigGlow.setStrokeStyle(big ? 3 : 0, this.col, 0.35);
     // cuori
     const lives = Math.max(0, s.lives);

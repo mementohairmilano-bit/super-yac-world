@@ -1786,7 +1786,7 @@ export class GameScene extends Phaser.Scene {
     const b = this.boss;
     if (!this.bossActive || this.bossDefeated || this.bossInvuln || !b) return;
     b.hp--; this.score += 200; this.updateHUD(); this.updateBossBar();
-    this.fx.hitStop(80); this.fx.burst(b.x, b.body.center.y, 0xffffff, 18, 1.4); this.fx.squash(b, 1.14, 0.86, 240, 'Back.easeOut');
+    this.fx.hitStop(80); this.fx.burst(b.x, b.body.center.y, 0xffffff, 18, 1.4);
     if (b.hp <= 0) { this.defeatBoss(); return; }
     // The Conglomerate: passaggio di fase su soglie di hp (9→ fase1 / 6→ fase2 / 3→ fase3)
     if (this.level.boss.type === 'conglomerate') {
@@ -1798,7 +1798,9 @@ export class GameScene extends Phaser.Scene {
     this.cameras.main.shake(120, 0.006);
     // LAMPO DI DANNO via TINT (colore), NON via alpha (trasparenza): così il boss non può MAI
     // diventare invisibile, qualunque cosa accada ai tween. Lampeggia rosso/normale per ~0,6s.
-    this.tweens.killTweensOf(b); b.setAlpha(1);
+    this.tweens.killTweensOf(b); b.setAlpha(1); b.setAngle(0);
+    // "incassa" il colpo con un'oscillazione (la rotazione NON tocca il corpo fisico: niente scale sul boss vivo)
+    this.tweens.add({ targets: b, angle: { from: -7, to: 7 }, duration: 55, yoyo: true, repeat: 3, onComplete: () => { if (b.active) b.setAngle(0); } });
     if (this.bossHitEv) this.bossHitEv.remove();
     let blink = 0;
     this.bossHitEv = this.time.addEvent({ delay: 70, repeat: 7, callback: () => {

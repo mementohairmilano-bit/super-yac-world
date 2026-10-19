@@ -1,0 +1,20 @@
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+const { chromium } = require('playwright-core');
+const out = process.argv[2] || './teatro'; import { mkdirSync } from 'fs'; mkdirSync(out, { recursive: true });
+const browser = await chromium.launch({ executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', headless: true, args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--mute-audio'] });
+const page = await (await browser.newContext({ viewport: { width: 1280, height: 720 }, deviceScaleFactor: 1 })).newPage();
+const errors = []; page.on('pageerror', e => errors.push('PAGEERROR ' + e.message + '\n' + (e.stack || '').split('\n').slice(0, 5).join('\n'))); page.on('console', m => { if (m.type() === 'error') errors.push('console: ' + m.text()); });
+await page.goto('http://localhost:3000/prototipi/teatro-2-5d.html', { waitUntil: 'networkidle' });
+await page.waitForTimeout(2500);
+await page.screenshot({ path: out + '/01-intro.png' });
+await page.evaluate(() => document.getElementById('go').click());
+await page.waitForTimeout(800);
+await page.screenshot({ path: out + '/02-scene.png' });
+await page.keyboard.down('ArrowRight');
+for (let i = 0; i < 6; i++) { await page.waitForTimeout(700); await page.keyboard.down('Space'); await page.waitForTimeout(160); await page.keyboard.up('Space'); if (i === 2 || i === 5) await page.screenshot({ path: out + `/0${3 + (i === 5 ? 1 : 0)}-run.png` }); }
+await page.keyboard.up('ArrowRight');
+const info = await page.evaluate(() => window._TEATRO ? ({ x: +window._TEATRO.hero.position.x.toFixed(1), y: +window._TEATRO.hero.position.y.toFixed(2), gocce: window._TEATRO.gocce }) : { err: 'no _TEATRO' });
+console.log(JSON.stringify(info));
+if (errors.length) console.log('ERRORS:\n' + errors.slice(0, 8).join('\n'));
+await browser.close();

@@ -17,3 +17,10 @@ node tools/prova/telefono.mjs ./telefono
 `?r=N` forza la densità di resa (1 = veloce per i test; senza parametro il gioco sceglie da solo).
 Livelli: 1 … 17 (17 = L'Officina). Nel browser senza finestra la GPU è software: gli fps sono
 indicativi, gli errori e le schermate sono veri.
+
+Prototipi delle direzioni B e C (vedi `prototipi/`):
+```bash
+node tools/prova/rush.mjs ./rush        # YAC Rush (telefono verticale, touch)
+node tools/prova/teatro.mjs ./teatro    # Teatro 2.5D (Three.js)
+node tools/prova/boss-traccia.mjs       # traccia posizione/scala del boss durante i colpi
+```

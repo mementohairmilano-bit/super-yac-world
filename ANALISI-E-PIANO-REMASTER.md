@@ -83,6 +83,15 @@ node tools/prova/gioca.mjs "http://localhost:3000/?r=1" ./out memento 1 6
 - Su iPhone la densità è 1,5 in modalità prestazioni (predefinita sui telefoni): nitidezza migliore di prima ma non al massimo. Da provare dal vivo sul suo telefono prima di alzare il tetto.
 - Prestazioni misurate solo nel browser senza finestra (GPU software): su hardware vero sono migliori; vanno comunque provate su un iPhone reale.
 
+## 3b. Prototipi giocabili delle direzioni B e C (stessa sera)
+
+Antonio ha chiesto di vederle «almeno graficamente»: sono due pagine autonome, con l'arte del gioco, servite insieme al gioco (anche nell'anteprima Vercel).
+
+- **B · YAC Rush** → `/prototipi/yac-rush.html`. Verticale 9:16, un pollice: tocca per saltare (due volte = doppio salto), tieni premuto per planare. Corsa automatica che accelera, percorso generato (buchi, pedane, blocchi, nemici da schiacciare), cambio di mondo ogni 300 m con dissolvenza del fondale (6 mondi), tre cuori, record locale, «Condividi». Scelta dell'eroe fra i quattro.
+- **C · Teatro di carta 2.5D** → `/prototipi/teatro-2-5d.html`. Three.js: un pezzo del Mondo 1 in tre dimensioni. Eroe, nemici e gocce sono sagome ritagliate con ombre proiettate vere; blocchi, tubo, ingranaggi e tubature sono oggetti 3D illuminati; fondali su piani in profondità con nebbia; camera che anticipa, ondeggia e trema all'atterraggio; gocce che ruotano nello spazio. Frecce + Spazio (tasti touch sul telefono).
+
+Sono **prototipi di direzione**, non giochi finiti: servono a scegliere. Niente salvataggi in classifica, niente audio.
+
 ## 4. Note che vanno dette
 
 - **Etichetta IA.** Il `CLAUDE.md` del repo (regola del 29 agosto) chiede il bollino «Creato con IA» sui contenuti; la regola generale di Antonio del 9 ottobre dice il contrario per i suoi materiali. Non aggiungo etichette nel gioco; se vuole, allineo il file del repo.

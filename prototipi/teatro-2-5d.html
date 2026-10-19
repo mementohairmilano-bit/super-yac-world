@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<title>TEATRO 2.5D — prototipo</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#120e16">
+<link rel="icon" type="image/png" href="/icon-192.png">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root { --yellow:#F2C53D; --peach:#F2994A; --ink:#120E16; --paper:#F7F1E8; }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; background: #0c0810; color: var(--paper); font-family: 'DM Sans', sans-serif; overflow: hidden; user-select: none; -webkit-user-select: none; touch-action: none; }
+  canvas { display: block; position: fixed; inset: 0; }
+  #vignette { position: fixed; inset: 0; pointer-events: none; background: radial-gradient(120% 90% at 50% 45%, transparent 55%, #0c081099 100%); }
+  #hud { position: fixed; left: 0; right: 0; top: 0; padding: calc(12px + env(safe-area-inset-top)) 18px 0; display: flex; justify-content: space-between; align-items: flex-start; pointer-events: none; font-family: 'Syne', sans-serif; font-weight: 800; text-shadow: 0 2px 0 #16121A, 0 0 12px #0009; }
+  .tag { font-size: 10px; letter-spacing: 4px; color: var(--yellow); }
+  .ttl { font-size: 22px; color: #fff; line-height: 1.1; }
+  .gocce { font-size: 22px; color: var(--yellow); display: flex; align-items: center; gap: 8px; justify-content: flex-end; }
+  .gocce img { height: 22px; }
+  .hint { font-size: 11px; color: #e9dfee; opacity: .75; margin-top: 6px; text-align: right; letter-spacing: .5px; font-family: 'DM Sans', sans-serif; font-weight: 500; }
+  #msg { position: fixed; left: 50%; top: 40%; transform: translate(-50%, -50%) scale(.7); font-family: 'Syne', sans-serif; font-weight: 800; font-size: 40px; color: #fff; text-align: center; text-shadow: 0 4px 0 #2a1020, 0 0 30px #000; opacity: 0; transition: opacity .25s, transform .4s cubic-bezier(.2,1.4,.4,1); pointer-events: none; letter-spacing: 1px; }
+  #msg small { display: block; font-size: 12px; letter-spacing: 5px; color: var(--yellow); margin-bottom: 8px; }
+  #msg.show { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  #intro { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 24px; background: radial-gradient(120% 100% at 50% 0%, #2a1626ee, #0c0810f5); z-index: 5; transition: opacity .4s; }
+  #intro.hidden { opacity: 0; pointer-events: none; }
+  .title { font-family: 'Syne', sans-serif; font-weight: 800; font-size: clamp(40px, 8vw, 72px); line-height: .9; background: linear-gradient(180deg, #FFE07A, #F2C53D 40%, #F2994A 75%, #E14B3A); -webkit-background-clip: text; background-clip: text; color: transparent; -webkit-text-stroke: 2px #2a1020; paint-order: stroke fill; filter: drop-shadow(0 4px 0 #2a1020) drop-shadow(0 10px 18px #0008); }
+  .sub { margin-top: 14px; font-size: 15px; color: #e9dfee; max-width: 460px; line-height: 1.5; }
+  .proto { margin-top: 10px; font-size: 12px; color: #c4b8c2; max-width: 460px; line-height: 1.45; }
+  .btn { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 18px; background: var(--yellow); color: #2a1020; border: none; border-radius: 999px; padding: 16px 40px; margin-top: 24px; cursor: pointer; box-shadow: 0 8px 24px #0008; letter-spacing: 1px; }
+  #touch { position: fixed; left: 0; right: 0; bottom: 0; display: none; justify-content: space-between; padding: 0 20px calc(22px + env(safe-area-inset-bottom)); pointer-events: none; }
+  @media (hover: none) { #touch { display: flex; } }
+  #touch div { display: flex; gap: 14px; pointer-events: auto; }
+  .tb { width: 68px; height: 68px; border-radius: 50%; background: #ffffff22; border: 2px solid #ffffff55; color: #fff; font-size: 24px; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(3px); }
+  .tb.j { width: 92px; height: 92px; background: var(--yellow); color: #2a1020; border-color: #c9a227; }
+</style>
+</head>
+<body>
+<div id="vignette"></div>
+<div id="hud">
+  <div><div class="tag">PROTOTIPO · DIREZIONE C</div><div class="ttl">Teatro di carta 2.5D</div></div>
+  <div><div class="gocce"><img src="/assets/coin_goccia.webp" alt=""><span id="gocce">0</span></div><div class="hint" id="hint">← → muoviti · Spazio salta · R ricomincia</div></div>
+</div>
+<div id="msg"><small>MONDO 1</small>La Catena di Montaggio</div>
+<div id="intro">
+  <div class="tag" style="font-family:'Syne',sans-serif;font-weight:800;font-size:11px;letter-spacing:4px;color:var(--yellow)">PROTOTIPO · DIREZIONE C</div>
+  <div class="title">TEATRO<br>DI CARTA</div>
+  <div class="sub">Stessa partita, <b>mondo in profondità</b>: gli sprite del gioco diventano sagome illuminate su piani diversi, con luce vera, ombre proiettate, oggetti 3D e una camera che respira.</div>
+  <div class="proto">Un pezzo del Mondo 1 ricostruito in tre dimensioni con l'arte esistente (eroe, nemici, gocce, blocchi, fondale). Frecce per muoversi, Spazio per saltare.</div>
+  <button class="btn" id="go">ENTRA NEL TEATRO</button>
+</div>
+<div id="touch"><div><div class="tb" data-k="left">◀</div><div class="tb" data-k="right">▶</div></div><div><div class="tb j" data-k="jump">▲</div></div></div>
+
+<script type="module">
+// Three.js dal CDN (URL completo: Vite in sviluppo non passa dall'importmap)
+import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/three.module.min.js';
+
+const A = '/assets/';
+const $ = (id) => document.getElementById(id);
+const HERO = (new URLSearchParams(location.search).get('eroe')) || 'memento';
+
+// ===== renderer / scena / camera =====
+const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+renderer.setSize(innerWidth, innerHeight);
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+document.body.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.fog = new THREE.Fog(0xd8b79c, 20, 70);
+const camera = new THREE.PerspectiveCamera(38, innerWidth / innerHeight, 0.1, 100);
+const camTarget = new THREE.Vector3(), camPos = new THREE.Vector3(2, 2.8, 12);
+camera.position.copy(camPos);
+
+// ===== luci: cielo caldo + sole che proietta ombre + un paio di lampade =====
+scene.add(new THREE.HemisphereLight(0xfff3e0, 0x6a5064, 1.25));
+const sun = new THREE.DirectionalLight(0xffe8c4, 2.1);
+sun.position.set(6, 11, 9); sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048); sun.shadow.bias = -0.0006; sun.shadow.normalBias = 0.02;
+const sc = sun.shadow.camera; sc.near = 1; sc.far = 40; sc.left = -14; sc.right = 14; sc.top = 12; sc.bottom = -6;
+scene.add(sun); scene.add(sun.target);
+const lampA = new THREE.PointLight(0xF2C53D, 14, 9, 2); lampA.position.set(6, 4.2, -1.5); scene.add(lampA);
+const lampB = new THREE.PointLight(0xF2994A, 10, 9, 2); lampB.position.set(16, 4.2, -1.5); scene.add(lampB);
+
+// ===== texture =====
+const loader = new THREE.TextureLoader();
+const tex = (f, srgb = true) => { const t = loader.load(A + f); if (srgb) t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; return t; };
+const T = {
+  bg: tex('sfondomondo1.webp'), bg2: tex('sfondomondo2.webp'), ground: tex('ground_tile.webp'), brick: tex('blocco.webp'), q: tex('puntodomanda.webp'),
+  coin: tex('coin_goccia.webp'), hero: tex({ memento: 'char_memento.webp', yuri: 'char_yuri.webp', carmine: 'char_carmine.webp', andrea: 'char_andrea.webp' }[HERO] || 'char_memento.webp'),
+  enemy: tex('soldato.webp'), koopa: tex('koopa.webp'), pipe: tex('pipe.webp'), logo: tex('logo_yac.webp'), salon: tex('salon_yac.webp'),
+};
+T.ground.wrapS = T.ground.wrapT = THREE.RepeatWrapping;
+
+// ===== mondo (1 unità = ~40 px del gioco 2D) =====
+const world = new THREE.Group(); scene.add(world);
+const U = 1 / 40;
+
+// fondale: un piano grande lontano + un secondo piano semitrasparente più vicino (profondità del teatro)
+const bgGeo = new THREE.PlaneGeometry(120, 120 * 614 / 1100);
+const bgMat = new THREE.MeshBasicMaterial({ map: T.bg, color: 0xf2e8ea, fog: true });
+const bg = new THREE.Mesh(bgGeo, bgMat); bg.position.set(20, 14, -26); scene.add(bg);
+const bgMid = new THREE.Mesh(new THREE.PlaneGeometry(70, 70 * 614 / 1100), new THREE.MeshBasicMaterial({ map: T.bg2, transparent: true, opacity: 0.35, color: 0xe6d8e0, fog: true }));
+bgMid.position.set(30, 9, -12); scene.add(bgMid);
+
+// "quinte" di carta ai lati: pannelli scuri per il feeling di palcoscenico
+const wingMat = new THREE.MeshStandardMaterial({ color: 0x3a2a3e, roughness: 1 });
+for (const [x, z] of [[-11, 1.5], [49, 1.5]]) { const w = new THREE.Mesh(new THREE.BoxGeometry(2, 12, 3), wingMat); w.position.set(x, 6, z); w.castShadow = true; scene.add(w); }
+
+// pavimento a segmenti con buchi
+const segs = [[0, 14], [16.5, 10], [29, 14]];   // [x0, larghezza]
+const groundMat = new THREE.MeshStandardMaterial({ map: T.ground, roughness: 0.8, metalness: 0.05, color: 0xffffff });
+const floors = [];
+for (const [x0, w] of segs) {
+  const m = new THREE.Mesh(new THREE.BoxGeometry(w, 1.2, 6), groundMat.clone());
+  m.material.map = T.ground.clone(); m.material.map.needsUpdate = true; m.material.map.repeat.set(w / 1.2, 5); m.material.map.wrapS = m.material.map.wrapT = THREE.RepeatWrapping;
+  m.position.set(x0 + w / 2, -0.6, 0); m.receiveShadow = true; m.castShadow = true; world.add(m);
+  floors.push({ x0, x1: x0 + w });
+}
+// pedana rialzata + blocchi + tubo + pennone
+const blocks = [];
+function block(x, y, kind) {
+  const mat = new THREE.MeshStandardMaterial({ map: kind === 'q' ? T.q : T.brick, roughness: 0.65, metalness: 0.05 });
+  const b = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.8, 0.8), mat); b.position.set(x, y, 0); b.castShadow = b.receiveShadow = true; b.userData = { kind, used: false, baseY: y };
+  world.add(b); blocks.push(b); return b;
+}
+block(5, 2.4, 's'); block(5.8, 2.4, 'q'); block(6.6, 2.4, 's'); block(5.8, 4.4, 'q');
+block(20, 2.4, 'q'); block(31, 2.4, 's'); block(31.8, 2.4, 'q'); block(32.6, 2.4, 's');
+// gradini finali
+for (let s = 0; s < 4; s++) for (let h = 0; h <= s; h++) block(35 + s * 0.8, 0.4 + h * 0.8, 's');
+// tubo
+const pipe = new THREE.Mesh(new THREE.CylinderGeometry(0.75, 0.75, 2.4, 24), new THREE.MeshStandardMaterial({ color: 0x5fa895, roughness: 0.5, metalness: 0.1 }));
+pipe.position.set(11, 1.2, 0); pipe.castShadow = pipe.receiveShadow = true; world.add(pipe);
+const pipeRim = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 0.9, 0.5, 24), pipe.material); pipeRim.position.set(11, 2.4, 0); pipeRim.castShadow = true; world.add(pipeRim);
+// ingranaggi 3D che girano nel mezzo-piano
+const gears = [];
+function gear(x, y, z, r, teeth) {
+  const g = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(r, r, 0.25, 32), new THREE.MeshStandardMaterial({ color: 0xa9b6c4, roughness: 0.55, metalness: 0.2 }));
+  body.rotation.x = Math.PI / 2; g.add(body);
+  for (let i = 0; i < teeth; i++) { const t = new THREE.Mesh(new THREE.BoxGeometry(r * 0.28, r * 0.28, 0.25), body.material); const a = i / teeth * Math.PI * 2; t.position.set(Math.cos(a) * r, Math.sin(a) * r, 0); t.rotation.z = a; g.add(t); }
+  g.position.set(x, y, z); g.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } }); world.add(g); gears.push(g); return g;
+}
+gear(3, 3.6, -3.2, 1.1, 10); gear(4.9, 2.6, -3.3, 0.7, 8); gear(24, 4.2, -3.5, 1.4, 12); gear(40, 3.2, -3.2, 0.9, 9);
+// tubature sul fondo
+const pipeMat = new THREE.MeshStandardMaterial({ color: 0x9fb0bf, roughness: 0.45, metalness: 0.25 });
+for (const [x, y, len] of [[2, 6.5, 14], [20, 7.2, 18], [8, 5.6, 6]]) { const p = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, len, 12), pipeMat); p.rotation.z = Math.PI / 2; p.position.set(x + len / 2, y, -4.5); p.castShadow = true; world.add(p); }
+// pennone con logo YAC
+const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 5, 10), new THREE.MeshStandardMaterial({ color: 0xdfe8ee, metalness: 0.2, roughness: 0.4 })); pole.position.set(41.5, 2.5, 0); pole.castShadow = true; world.add(pole);
+const flag = new THREE.Mesh(new THREE.PlaneGeometry(1.1, 1.5), new THREE.MeshStandardMaterial({ map: T.logo, transparent: true, alphaTest: 0.5, side: THREE.DoubleSide, color: 0xffffff })); flag.position.set(42.15, 4.4, 0); flag.castShadow = true; world.add(flag);
+
+// sagome di carta: eroe / nemici / gocce (piani con alphaTest → ombre ritagliate)
+function cutout(t, w, h) {
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshStandardMaterial({ map: t, transparent: true, alphaTest: 0.5, side: THREE.DoubleSide, roughness: 0.9, metalness: 0 }));
+  m.castShadow = true; m.receiveShadow = false; m.geometry.translate(0, h / 2, 0);   // origine ai piedi
+  return m;
+}
+const hero = cutout(T.hero, 1.0, 1.55); hero.position.set(1.5, 0, 0); world.add(hero);
+const heroShadowDisc = new THREE.Mesh(new THREE.CircleGeometry(0.42, 24), new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.22 }));
+heroShadowDisc.rotation.x = -Math.PI / 2; heroShadowDisc.position.y = 0.01; world.add(heroShadowDisc);
+
+const enemies = [];
+for (const [x, a, b, kind] of [[7.5, 3.5, 12, 'enemy'], [19, 16.8, 26, 'koopa'], [33, 29.5, 34.5, 'enemy']]) {
+  const e = cutout(kind === 'koopa' ? T.koopa : T.enemy, kind === 'koopa' ? 0.8 : 1.0, kind === 'koopa' ? 1.5 : 1.3); e.position.set(x, 0, 0.02); e.userData = { minX: a, maxX: b, dir: -1, dead: false, kind }; world.add(e); enemies.push(e);
+}
+const coins = [];
+const coinGeo = new THREE.PlaneGeometry(0.42, 0.52);
+const coinMat = new THREE.MeshStandardMaterial({ map: T.coin, transparent: true, alphaTest: 0.5, side: THREE.DoubleSide, emissive: 0xF2C53D, emissiveIntensity: 0.35, emissiveMap: T.coin });
+function coin(x, y) { const c = new THREE.Mesh(coinGeo, coinMat); c.position.set(x, y, 0); c.castShadow = true; c.userData = { got: false, phase: x }; world.add(c); coins.push(c); }
+for (let i = 0; i < 4; i++) coin(4.8 + i * 0.7, 3.5);
+for (let i = 0; i < 5; i++) coin(14.6 + i * 0.6, 2.2 + Math.sin(i / 4 * Math.PI) * 1.2);   // arco sopra il buco
+for (let i = 0; i < 4; i++) coin(21 + i * 0.7, 1.4);
+for (let i = 0; i < 5; i++) coin(27.2 + i * 0.6, 2.4 + Math.sin(i / 4 * Math.PI) * 1.3);
+for (let i = 0; i < 3; i++) coin(31 + i * 0.8, 3.6);
+
+// ===== stato / input =====
+const keys = {}; addEventListener('keydown', (e) => { keys[e.code] = true; if (e.code === 'KeyR') reset(); if (e.code === 'Space') e.preventDefault(); }); addEventListener('keyup', (e) => { keys[e.code] = false; });
+document.querySelectorAll('#touch .tb').forEach((b) => { const k = b.dataset.k; const on = (e) => { e.preventDefault(); keys['T_' + k] = true; }; const off = () => { keys['T_' + k] = false; }; b.addEventListener('pointerdown', on); b.addEventListener('pointerup', off); b.addEventListener('pointercancel', off); b.addEventListener('pointerleave', off); });
+let vx = 0, vy = 0, onGround = false, jumpHeld = false, coyote = 0, gocce = 0, running = false, won = false, hurtT = 0, sq = { x: 1, y: 1 }, tSq = 0;
+const SPEED = 5.2, JUMP = 10.5, G = 26;
+
+function floorAt(x) { for (const f of floors) if (x > f.x0 - 0.3 && x < f.x1 + 0.3) return 0; return -Infinity; }
+function msg(small, big, ms = 1800) { const m = $('msg'); m.innerHTML = '<small>' + small + '</small>' + big; m.classList.add('show'); clearTimeout(msg.t); msg.t = setTimeout(() => m.classList.remove('show'), ms); }
+function reset() {
+  hero.position.set(1.5, 0, 0); vx = 0; vy = 0; won = false; gocce = 0; $('gocce').textContent = '0';
+  enemies.forEach((e) => { e.userData.dead = false; e.visible = true; e.rotation.set(0, 0, 0); e.material.opacity = 1; e.position.y = 0; });
+  coins.forEach((c) => { c.userData.got = false; c.visible = true; c.scale.set(1, 1, 1); });
+  blocks.forEach((b) => { b.userData.used = false; b.material.emissive && b.material.emissive.setHex(0x000000); });
+  msg('MONDO 1', 'La Catena di Montaggio');
+}
+$('go').onclick = () => { $('intro').classList.add('hidden'); running = true; reset(); };
+
+// ===== loop =====
+let last = performance.now(), camShake = 0;
+function tick(now) {
+  requestAnimationFrame(tick);
+  const dt = Math.min(0.033, (now - last) / 1000); last = now; const t = now / 1000;
+  gears.forEach((g, i) => { g.rotation.z += (i % 2 ? -1 : 1) * dt * 0.6; });
+  coins.forEach((c) => { if (!c.userData.got) { c.rotation.y = t * 3 + c.userData.phase; c.position.y += Math.sin(t * 2 + c.userData.phase) * 0.0025; } });
+
+  if (running && !won) {
+    const left = keys.ArrowLeft || keys.KeyA || keys.T_left, right = keys.ArrowRight || keys.KeyD || keys.T_right, jump = keys.Space || keys.ArrowUp || keys.KeyW || keys.T_jump;
+    const target = (right ? 1 : 0) - (left ? 1 : 0);
+    const acc = onGround ? 32 : 18;
+    vx += Math.max(-acc * dt, Math.min(acc * dt, target * SPEED - vx));
+    if (target !== 0) hero.scale.x = target > 0 ? 1 : -1;
+    // salto: coyote + taglio
+    if (onGround) coyote = 0.11; else coyote -= dt;
+    if (jump && !jumpHeld && coyote > 0) { vy = JUMP; coyote = 0; onGround = false; sq.x = 0.84; sq.y = 1.2; tSq = 0; }
+    jumpHeld = jump;
+    if (!jump && vy > 3) vy *= 0.9;
+    // gravità viva
+    vy -= (Math.abs(vy) < 1.5 ? G * 0.55 : vy < 0 ? G * 1.35 : G) * dt;
+    hero.position.x += vx * dt; hero.position.y += vy * dt;
+    // pavimento
+    const fy = floorAt(hero.position.x);
+    let landed = false;
+    if (hero.position.y <= fy && vy <= 0) { if (!onGround) landed = true; hero.position.y = fy; vy = 0; onGround = true; } else onGround = false;
+    // blocchi: appoggio sopra / colpo da sotto
+    for (const b of blocks) {
+      const dx = Math.abs(hero.position.x - b.position.x), top = b.position.y + 0.4, bot = b.position.y - 0.4;
+      if (dx < 0.72) {
+        if (vy <= 0 && hero.position.y >= top - 0.25 && hero.position.y <= top + 0.3) { if (!onGround) landed = true; hero.position.y = top; vy = 0; onGround = true; }
+        else if (vy > 0 && hero.position.y + 1.55 >= bot && hero.position.y + 1.55 <= bot + 0.35 && dx < 0.5) {
+          vy = -1; if (!b.userData.used) { b.userData.used = true; if (b.userData.kind === 'q') { gocce += 3; $('gocce').textContent = gocce; b.material = b.material.clone(); b.material.map = T.brick; b.material.color.setHex(0x8a8f96); } b.position.y = b.userData.baseY + 0.18; setTimeout(() => { b.position.y = b.userData.baseY; }, 90); }
+        }
+      }
+    }
+    if (landed) { sq.x = 1.22; sq.y = 0.8; tSq = 0; camShake = 0.04 + Math.min(0.08, Math.abs(vy) * 0.004); }
+    if (hero.position.y < -6) { hero.position.set(Math.max(1.5, hero.position.x - 4), 0, 0); vy = 0; vx = 0; msg('OPS', 'Si riprova', 900); }
+    // monete
+    for (const c of coins) if (!c.userData.got && Math.abs(c.position.x - hero.position.x) < 0.5 && c.position.y > hero.position.y - 0.2 && c.position.y < hero.position.y + 1.6) { c.userData.got = true; gocce++; $('gocce').textContent = gocce; const c2 = c; const y0 = c2.position.y; let k = 0; const iv = setInterval(() => { k += 0.08; c2.position.y = y0 + k * 1.2; c2.scale.setScalar(1 + k); if (k >= 1) { clearInterval(iv); c2.visible = false; c2.position.y = y0; } }, 16); }
+    // nemici
+    for (const e of enemies) {
+      const u = e.userData; if (u.dead) continue;
+      if (e.position.x <= u.minX) u.dir = 1; if (e.position.x >= u.maxX) u.dir = -1;
+      e.position.x += u.dir * 1.3 * dt; e.scale.x = u.dir < 0 ? 1 : -1; e.rotation.z = Math.sin(t * 8 + e.position.x) * 0.06;
+      const dx = Math.abs(e.position.x - hero.position.x), dy = hero.position.y - e.position.y;
+      if (dx < 0.55 && dy > -0.2 && dy < 1.3) {
+        if (vy < 0 && dy > 0.55) { u.dead = true; vy = 7.5; sq.x = 1.2; sq.y = 0.84; tSq = 0; const e2 = e; let k = 0; const iv = setInterval(() => { k += 0.07; e2.rotation.x = -k * Math.PI / 2; e2.material.opacity = 1 - k; e2.material.transparent = true; if (k >= 1) { clearInterval(iv); e2.visible = false; } }, 16); gocce += 0; }
+        else if (now - hurtT > 1200) { hurtT = now; camShake = 0.25; vx = -SPEED * 0.9 * (hero.position.x > e.position.x ? -1 : 1) * -1; vy = 5; msg('AHI', 'Colpito!', 700); }
+      }
+    }
+    // pennone
+    if (hero.position.x > 41.3 && !won) { won = true; msg('LIVELLO COMPLETATO', 'Teatro liberato!', 4000); setTimeout(() => { reset(); }, 4200); }
+  }
+  // animazione procedurale: falcata, salto, atterraggio
+  tSq += dt; const k = Math.min(1, tSq / 0.18); sq.x += (1 - sq.x) * k; sq.y += (1 - sq.y) * k;
+  const spd = Math.min(1, Math.abs(vx) / SPEED);
+  let ax = 1, ay = 1, lean = 0;
+  if (onGround && spd > 0.08) { const sn = Math.sin(t * 11 * Math.PI * 2 * (0.6 + 0.4 * spd)); ay = 1 + 0.05 * spd * sn; ax = 1 - 0.035 * spd * sn; lean = -(hero.scale.x > 0 ? 1 : -1) * (0.08 + 0.08 * spd); }
+  else if (onGround) { ay = 1 + 0.015 * Math.sin(t * 2.2 * Math.PI); }
+  else { if (vy > 2) { ay = 1.08; ax = 0.94; } else if (vy < -4) { ay = 1.05; ax = 0.95; } }
+  const dirS = hero.scale.x > 0 ? 1 : -1;
+  hero.scale.set(dirS * ax * sq.x, ay * sq.y, 1); hero.rotation.z = lean + (onGround ? 0 : -dirS * Math.min(0.15, Math.abs(vx) * 0.02));
+  heroShadowDisc.position.x = hero.position.x; heroShadowDisc.material.opacity = Math.max(0.05, 0.25 - hero.position.y * 0.03); heroShadowDisc.scale.setScalar(Math.max(0.5, 1 - hero.position.y * 0.08));
+
+  // camera: anticipo in base alla velocità, leggero dolly e yaw, scossa all'atterraggio
+  const look = Math.max(-2.2, Math.min(2.2, vx * 0.45));
+  camTarget.set(hero.position.x + 1.4 + look, 2.1 + Math.min(1.2, hero.position.y * 0.35), 0);
+  camPos.lerp(new THREE.Vector3(hero.position.x + 1.0 + look * 0.7, 2.9 + hero.position.y * 0.25, 11.5 - Math.abs(vx) * 0.15), 0.08);
+  camShake = Math.max(0, camShake - dt * 1.2);
+  camera.position.copy(camPos).add(new THREE.Vector3((Math.random() - 0.5) * camShake, (Math.random() - 0.5) * camShake, 0));
+  camera.lookAt(camTarget); camera.rotation.z = -vx * 0.004;
+  sun.position.set(hero.position.x + 6, 11, 9); sun.target.position.set(hero.position.x, 0, 0);
+  bg.position.x = 20 + hero.position.x * 0.3; bgMid.position.x = 30 + hero.position.x * 0.1;   // parallasse reale dei fondali
+  renderer.render(scene, camera);
+}
+requestAnimationFrame(tick);
+addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
+window._TEATRO = { hero, enemies, coins, get gocce() { return gocce; } };
+</script>
+</body>
+</html>
