@@ -1,0 +1,32 @@
+// Schermate da telefono (iPhone in orizzontale, touch): menu + gioco con joystick/tasti
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+const { chromium, devices } = require('playwright-core');
+const out = process.argv[2] || './mobile';
+import { mkdirSync } from 'fs'; mkdirSync(out, { recursive: true });
+const browser = await chromium.launch({ executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', headless: true, args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--mute-audio'] });
+const dev = devices['iPhone 13 landscape'];
+const ctx = await browser.newContext({ ...dev, deviceScaleFactor: 2 });
+const page = await ctx.newPage();
+const errors = [];
+page.on('pageerror', e => errors.push('PAGEERROR ' + e.message));
+await page.goto('http://localhost:3000/?r=1.5', { waitUntil: 'networkidle' });
+await page.waitForTimeout(1500);
+await page.screenshot({ path: out + '/01-menu.png' });
+await page.evaluate(() => document.getElementById('menu').scrollTo(0, 400));
+await page.screenshot({ path: out + '/02-menu-eroi.png' });
+await page.evaluate(() => window._startWorld('yuri', 1, { newRun: true }));
+await page.waitForFunction(() => { const g = window._GAME; const s = g && g.scene.getScene('Game'); return s && s.state === 'play'; }, null, { timeout: 15000 });
+// tocco il joystick (metà sinistra) e trascino a destra, poi tocco SALTA
+const vp = page.viewportSize();
+await page.touchscreen.tap(vp.width * 0.2, vp.height * 0.6);
+const cdp = await ctx.newCDPSession(page);
+await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: vp.width * 0.2, y: vp.height * 0.6, id: 1 }] });
+await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: vp.width * 0.2 + 40, y: vp.height * 0.6, id: 1 }] });
+await page.waitForTimeout(900);
+await page.screenshot({ path: out + '/03-gioco-joystick.png' });
+const st = await page.evaluate(() => ({ t: { ...window._touch }, x: Math.round(window._GAME.scene.getScene('Game').player.x) }));
+await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+console.log(JSON.stringify(st));
+if (errors.length) console.log('ERRORS:\n' + errors.join('\n'));
+await browser.close();

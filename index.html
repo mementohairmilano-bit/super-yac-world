@@ -167,27 +167,46 @@
       box-shadow: 0 0 0 4px #f2c53d66, 0 10px 26px #000a !important; }
     .card.gpfocus { transform: translateY(-4px); border-color: var(--yellow) !important; }
 
-    /* TOUCH CONTROLS */
+    /* TOUCH CONTROLS — joystick flottante a sinistra (appare dove tocchi) + due tasti grandi a destra */
     #touch {
       position: fixed; inset: auto 0 0 0; z-index: 25;
-      display: flex; justify-content: space-between; align-items: flex-end;
-      padding: 0 calc(18px + env(safe-area-inset-right)) calc(20px + env(safe-area-inset-bottom)) calc(18px + env(safe-area-inset-left));
+      display: flex; justify-content: flex-end; align-items: flex-end;
+      padding: 0 calc(22px + env(safe-area-inset-right)) calc(24px + env(safe-area-inset-bottom)) calc(18px + env(safe-area-inset-left));
       pointer-events: none;
     }
-    .pad { display: flex; gap: 22px; pointer-events: auto; align-items: flex-end; }
-    .pad.move { gap: 12px; }
+    .pad { display: flex; gap: 18px; pointer-events: auto; align-items: flex-end; }
     .tb {
-      width: 60px; height: 60px; border-radius: 50%;
-      background: #ffffff26; border: 1.5px solid #ffffff55; color: #fff;
+      width: 66px; height: 66px; border-radius: 50%;
+      background: #ffffff22; border: 2px solid #ffffff55; color: #fff;
       font-size: 22px; display: flex; align-items: center; justify-content: center;
-      user-select: none; -webkit-user-select: none; touch-action: none; opacity: .72; backdrop-filter: blur(3px);
-      position: relative;
+      user-select: none; -webkit-user-select: none; touch-action: none; opacity: .8; backdrop-filter: blur(3px);
+      position: relative; box-shadow: 0 6px 18px #0006;
     }
-    .tb:active { background: var(--peach); color: #2a1020; opacity: 1; transform: scale(.94); }
-    .tb.act { background: var(--peach); color: #2a1020; border-color: #f2994a; opacity: .9; font-size: 20px; }
-    .tb.jmp { background: var(--yellow); color: #2a1020; border-color: #c9a227; opacity: .9; width: 78px; height: 78px; font-size: 28px; }
-    .tb[data-lbl]::after { content: attr(data-lbl); position: absolute; left: 50%; transform: translateX(-50%); bottom: -15px; font-size: 9px; letter-spacing: .5px; color: #cdbfc9; opacity: .9; white-space: nowrap; }
-    @media (hover: hover) and (pointer: fine) { #touch { display: none; } }
+    .tb:active { opacity: 1; transform: scale(.92); }
+    .tb.act { background: var(--peach); color: #2a1020; border-color: #f2994a; }
+    .tb.jmp { background: var(--yellow); color: #2a1020; border-color: #c9a227; width: 92px; height: 92px; font-size: 30px; }
+    .tb[data-lbl]::after { content: attr(data-lbl); position: absolute; left: 50%; transform: translateX(-50%); bottom: -16px; font-family: 'Syne', sans-serif; font-weight: 800; font-size: 9px; letter-spacing: 1px; color: #e9dfee; opacity: .9; white-space: nowrap; }
+    #stick-zone { display: none; position: fixed; left: 0; top: 0; bottom: 0; width: 46%; z-index: 24; touch-action: none; }
+    body.in-game.touch-on #stick-zone { display: block; }
+    #stick-base {
+      position: absolute; width: 118px; height: 118px; margin: -59px 0 0 -59px; border-radius: 50%;
+      background: #ffffff14; border: 2px solid #ffffff44; opacity: 0; transition: opacity .12s; pointer-events: none;
+      backdrop-filter: blur(2px);
+    }
+    #stick-base.on { opacity: 1; }
+    #stick-knob {
+      position: absolute; left: 50%; top: 50%; width: 52px; height: 52px; border-radius: 50%;
+      background: var(--yellow); border: 2px solid #c9a227; box-shadow: 0 4px 14px #0008; transform: translate(-50%, -50%);
+    }
+    #stick-hint { position: absolute; left: 50%; bottom: calc(26px + env(safe-area-inset-bottom)); transform: translateX(-50%); font-family: 'Syne', sans-serif; font-weight: 800; font-size: 10px; letter-spacing: 1px; color: #e9dfee; opacity: .55; white-space: nowrap; pointer-events: none; }
+    @media (hover: hover) and (pointer: fine) { #touch, #stick-zone { display: none !important; } }
+
+    /* TOAST (avviso discreto, una riga, si chiude da solo) */
+    #toast { position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom)); transform: translate(-50%, 20px); z-index: 70;
+      background: #16121Af0; color: var(--paper); border: 1px solid #ffffff22; border-radius: 999px; padding: 10px 16px; font-size: 12.5px; line-height: 1.3;
+      max-width: min(92vw, 520px); text-align: center; opacity: 0; pointer-events: none; transition: opacity .3s, transform .3s; backdrop-filter: blur(6px); }
+    #toast.show { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; }
+    #toast b { color: var(--yellow); }
 
     /* Invito a ruotare: solo su touch, in verticale, DURANTE il gioco (il menu va bene in portrait) */
     #rotate {
@@ -378,17 +397,6 @@
       <button class="btn ghost" id="btn-board-close">Chiudi</button>
     </div>
 
-    <!-- ===== Disclaimer iniziale (una volta sola) ===== -->
-    <div id="intro" class="overlay hidden" style="background:radial-gradient(120% 120% at 50% 0%,#2a1626,#0c0810f7);justify-content:flex-start;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-top:max(20px,env(safe-area-inset-top));padding-bottom:max(24px,env(safe-area-inset-bottom));z-index:64">
-      <div class="big" style="margin-top:6px">🎮 Benvenuto in Super YAC World!</div>
-      <div style="text-align:left;max-width:min(360px,90vw);font-family:'DM Sans',sans-serif;color:#F7F1E8;line-height:1.5;font-size:14px;margin-top:10px">
-        <p style="margin:0 0 10px"><b>📲 Aggiungilo alla Home</b><br>Per giocare a schermo intero come un'app: tocca i <b>3 puntini</b> (o l'icona <b>Condividi</b>) del browser e scegli <b>"Aggiungi a schermata Home"</b>.</p>
-        <p style="margin:0 0 10px"><b>💻 Si gioca al meglio da PC</b><br>Su computer è fluido e completo.</p>
-        <p style="margin:0 0 10px"><b>📱 Su alcuni telefoni può rallentare</b><br>Niente paura: dal menu puoi attivare la <b>"Modalità prestazioni"</b> per renderlo più fluido (sui telefoni è già attiva).</p>
-      </div>
-      <button class="btn" id="intro-go" style="margin-top:10px">▸ Inizia!</button>
-    </div>
-
     <!-- ===== Test livelli (scegli eroe + livello singolo) — solo con ?livelli ===== -->
     <div id="levelsel" class="overlay hidden" style="background:radial-gradient(120% 120% at 50% 0%,#16223a,#0c0810);justify-content:flex-start;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-top:max(16px,env(safe-area-inset-top));padding-bottom:max(24px,env(safe-area-inset-bottom));z-index:62">
       <div class="big">🧪 Test livelli</div>
@@ -398,14 +406,15 @@
       <button class="btn ghost" id="levelsel-close" style="margin-top:14px">Chiudi</button>
     </div>
 
-    <!-- ===== Nickname obbligatorio (chiesto una volta sola, all'inizio) ===== -->
+    <!-- ===== Nickname: chiesto SOLO la prima volta che serve (classifica), mai all'avvio ===== -->
     <div id="nameask" class="overlay hidden" style="background:radial-gradient(120% 120% at 50% 0%,#2a1626,#0c0810f7);z-index:60">
       <div class="big">👋 Come ti chiami?</div>
       <p class="tag" style="max-width:300px">Scegli un nickname: comparirà nella classifica con il tuo punteggio. È pubblico: non usare il tuo nome vero.</p>
       <input id="nameask-input" maxlength="16" placeholder="il tuo nickname" autocomplete="off" enterkeyhint="go"
         style="font-family:'Syne',sans-serif;font-weight:700;font-size:16px;text-align:center;padding:11px 16px;border-radius:999px;border:2px solid #ffffff44;background:#1a121f;color:#fff;outline:none;width:260px;margin-top:8px">
       <p class="tag" id="nameask-hint" style="min-height:14px;font-size:11.5px;color:#ff9b9b;margin-top:6px"></p>
-      <button class="btn" id="nameask-go" style="margin-top:6px">▸ Inizia a giocare!</button>
+      <button class="btn" id="nameask-go" style="margin-top:6px">▸ Salva in classifica</button>
+      <button class="btn ghost" id="nameask-skip" style="margin-top:4px;font-size:13px">Più tardi</button>
     </div>
 
     <!-- ===== Crea il tuo eroe (sbloccato dopo aver finito il gioco) ===== -->
@@ -455,17 +464,17 @@
     <button id="mutebtn" aria-label="Mute audio">🔊</button>
     <button id="fsbtn" aria-label="Schermo intero (tasto F)">⛶</button>
 
+    <div id="stick-zone">
+      <div id="stick-base"><div id="stick-knob"></div></div>
+      <div id="stick-hint">TOCCA E TRASCINA PER MUOVERTI · GIÙ = TUBO</div>
+    </div>
     <div id="touch" class="hidden">
-      <div class="pad move">
-        <div class="tb" data-k="left">◀</div>
-        <div class="tb" data-k="right">▶</div>
-      </div>
       <div class="pad">
-        <div class="tb" data-k="down" data-lbl="TUBO">▼</div>
         <div class="tb act" data-k="special" data-lbl="SUPER">★</div>
         <div class="tb jmp" data-k="jump" data-lbl="SALTA">▲</div>
       </div>
     </div>
+    <div id="toast"></div>
 
     <div id="rotate">
       <div class="ic">📱</div>

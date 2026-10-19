@@ -7,6 +7,7 @@ import { submitScore, topScores, sanitizeNick, submitLead, validateEmail, fetchP
 import { generateBadge, tierFor, downloadBadge, shareBadge } from './badge.js';
 import { GameScene } from './scenes/GameScene.js';
 import { AUDIO } from './audio.js';
+import { installTouch, isTouchDevice, haptic } from './touch.js';
 // portrait con margine (NON ritagliati) così il volto si può centrare nel riquadro della card
 import mementoImg from '../assets/Memento_card.webp';
 import yuriImg from '../assets/Yuri_card.webp';
@@ -48,8 +49,16 @@ function disposeGame() {
   GAME = null;
 }
 
-function isTouch() {
-  return matchMedia('(hover:none),(pointer:coarse)').matches;
+function isTouch() { return isTouchDevice(); }
+window._haptic = haptic;   // la GameScene vibra sui colpi (dove il telefono lo permette)
+
+// avviso discreto in basso (una riga), si chiude da solo
+let toastT = 0;
+function toast(html, ms = 5000) {
+  const el = document.getElementById('toast'); if (!el) return;
+  el.innerHTML = html; el.classList.add('show');
+  clearTimeout(toastT); toastT = setTimeout(() => el.classList.remove('show'), ms);
+  el.onclick = () => el.classList.remove('show');
 }
 
 // Dimensione di gioco: altezza FISSA (506) e larghezza che RIEMPIE lo schermo all'aspect del
@@ -59,7 +68,15 @@ function gameSize() {
   const w = window.innerWidth || 1, h = window.innerHeight || 1;
   const H = 420;   // altezza di inquadratura più bassa del mondo (506) = ZOOM: elementi più grandi
   const W = Math.max(540, Math.min(1180, Math.round(H * (w / h))));
-  return { width: W, height: H };
+  // RESA NITIDA: il canvas ha R volte i pixel della vista logica W×H (la camera zooma di R in GameScene).
+  // R = pixel fisici disponibili per ogni pixel logico, con un tetto: 3 su PC, 1.5 in modalità prestazioni.
+  const dpr = Math.max(1, window.devicePixelRatio || 1);
+  const need = (h * dpr) / H;                    // quanto servirebbe per essere 1:1 col display
+  let R = Math.min(need, isPerf() ? 1.5 : 3);
+  const forced = parseFloat(new URLSearchParams(location.search).get('r'));   // test: ?r=1 forza la densità
+  if (forced > 0) R = forced;
+  window._R = Math.round(R * 100) / 100;
+  return { width: Math.round(W * window._R), height: Math.round(H * window._R) };
 }
 
 function startGame(key, worldId = 1, opts = {}) {
@@ -81,8 +98,8 @@ function startGame(key, worldId = 1, opts = {}) {
 
   ['menu', 'win', 'over', 'pause', 'creator'].forEach(id => document.getElementById(id).classList.add('hidden'));
   document.getElementById('pausebtn').classList.remove('hidden');
-  if (isTouch()) document.getElementById('touch').classList.remove('hidden');
-  document.body.classList.add('in-game');   // attiva l'invito "ruota il telefono" in portrait
+  if (isTouch()) { document.getElementById('touch').classList.remove('hidden'); document.body.classList.add('touch-on'); }
+  document.body.classList.add('in-game');   // attiva l'invito "ruota il telefono" in portrait e il joystick
 
   // RIUSO DEL MOTORE: ricreare l'intero Phaser.Game a ogni morte/restart su iPhone esauriva i
   // contesti WebGL (limite ~16) → il gioco si CONGELAVA e serviva ricaricare. Se il gioco è già
@@ -563,14 +580,17 @@ async function refreshCommunity() {
 refreshMenu();
 refreshCommunity();   // carica gli eroi della community nella home (per tutti i giocatori)
 
-// ===== Nickname obbligatorio (una volta sola, all'inizio) =====
+// ===== Nickname: chiesto SOLO quando serve (prima volta in classifica), mai all'avvio =====
+// Un gioco serio ti fa giocare subito: titolo → eroe → partita. Il nome arriva quando c'è un
+// punteggio da firmare. `then` viene eseguito dopo il salvataggio del nome (o subito se c'è già).
 const nameaskEl = document.getElementById('nameask');
 const nameaskInput = document.getElementById('nameask-input');
 const nameaskHint = document.getElementById('nameask-hint');
-function maybeAskName() {
-  if (!nameaskEl) return;
-  if (getNick()) return;                 // già impostato → non chiedere più
-  nameaskInput.value = '';
+let nameaskThen = null;
+function askNameThen(then) {
+  if (getNick() || !nameaskEl) { then && then(); return; }
+  nameaskThen = then || null;
+  nameaskInput.value = ''; nameaskHint.textContent = '';
   nameaskEl.classList.remove('hidden');
   setTimeout(() => { try { nameaskInput.focus(); } catch (e) {} }, 80);
 }
@@ -580,25 +600,17 @@ function submitName() {
   setNick(sanitizeNick(raw));
   nameaskHint.textContent = '';
   nameaskEl.classList.add('hidden');
+  const t = nameaskThen; nameaskThen = null; if (t) t();
 }
 if (document.getElementById('nameask-go')) document.getElementById('nameask-go').onclick = submitName;
+if (document.getElementById('nameask-skip')) document.getElementById('nameask-skip').onclick = () => { nameaskEl.classList.add('hidden'); const t = nameaskThen; nameaskThen = null; if (t) t(); };
 if (nameaskInput) nameaskInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') submitName(); });
 
-// Disclaimer iniziale (una volta sola), POI il nickname obbligatorio
-const introEl = document.getElementById('intro');
-function startupFlow() {
-  if (introEl && !seenIntro()) {
-    introEl.classList.remove('hidden');
-  } else {
-    maybeAskName();
-  }
-}
-if (document.getElementById('intro-go')) document.getElementById('intro-go').onclick = () => {
+// Primo avvio su telefono: un avviso di UNA riga al posto del vecchio pannello di benvenuto
+if (!seenIntro()) {
   setSeenIntro();
-  if (introEl) introEl.classList.add('hidden');
-  maybeAskName();
-};
-startupFlow();
+  if (isTouch()) setTimeout(() => toast('📱 Si gioca in <b>orizzontale</b> · per lo schermo intero aggiungi il gioco alla <b>Home</b> (tasto <b>Installa l\'app</b>)', 7000), 900);
+}
 
 // ===== Contatore partite (statistiche Memento Studio): parte solo dopo un «Va bene» =====
 // Lo snippet in index.html (window.sywStats) non manda nulla finché la scelta non è 'si'. Il riquadro
@@ -751,6 +763,8 @@ function openBoard(submit) {
   // altro momento (es. dal menu), il PROPRIO RECORD personale. Così il nome si può sempre mettere,
   // anche solo vincendo i livelli senza mai morire.
   const best = getBest();
+  // c'è un punteggio da firmare ma non ancora un nome → prima il nome (una volta sola), poi la classifica
+  if (!getNick() && (window._runResult || best > 0)) { askNameThen(() => openBoard(submit)); return; }
   const target = window._runResult || (best > 0 ? { score: best, world: state.worldId || null } : null);
   window._boardTarget = target;
   if (target) {
@@ -939,9 +953,9 @@ if (installGo) installGo.onclick = async () => {
 document.getElementById('btn-install-close').onclick = () => installHelp.classList.add('hidden');
 refreshInstallBtn();
 
-// All'AVVIO: mostra subito l'avviso di installazione (se l'app non è già installata).
-// L'utente lo chiude con "Chiudi" e gioca; può riaprirlo dal pulsante "📲 Installa l'app".
-if (!isStandalone()) setTimeout(() => { try { openInstallHelp(); } catch (e) {} }, 700);
+// Niente pannello di installazione all'avvio: il gioco parte subito. L'invito resta nel menu
+// ("📲 Installa l'app") e, su telefono, in una riga discreta al primo avvio (vedi toast).
+installTouch();   // joystick virtuale (solo su dispositivi touch: la zona è nascosta altrove)
 
 // Mobile: ricalcola la scala del canvas quando cambia la viewport (rotazione, barre di Safari).
 // Debounce: su iOS visualViewport.resize spamma → evitiamo di chiamare refresh in continuazione.

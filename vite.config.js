@@ -24,7 +24,7 @@ function pwaOffline() {
       if (existsSync('assets')) cpSync('assets', 'dist/assets', { recursive: true });
       if (!existsSync('dist')) return;
       // lista per il precache (esclude il SW stesso e il manifest)
-      const all = listFiles('dist', 'dist').filter((u) => u !== '/sw.js' && u !== '/precache.json');
+      const all = listFiles('dist', 'dist').filter((u) => u !== '/sw.js' && u !== '/precache.json' && !u.startsWith('/prototipi/'));
       writeFileSync('dist/precache.json', JSON.stringify(all));
       // versione di build nel service worker → si re-installa e ri-precacha a ogni deploy
       const sw = 'dist/sw.js';
@@ -42,6 +42,8 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     assetsInlineLimit: 0,
+    // pagine extra: i due prototipi delle direzioni B e C (vedi ANALISI-E-PIANO-REMASTER.md)
+    rollupOptions: { input: { main: 'index.html', rush: 'prototipi/yac-rush.html', teatro: 'prototipi/teatro-2-5d.html' } },
   },
   server: {
     port: 3000,
