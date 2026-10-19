@@ -3,6 +3,12 @@ import { PAL } from '../config.js';
 import { state, collectLetter, hasAllLetters, hasLetter, SECRET_WORD, saveRun, clearRun, setBest, getBest, setGameCompleted, isPerf } from '../state.js';
 import { AUDIO } from '../audio.js';
 import { LEVELS, OFFICINA_ID } from '../levels.js';
+import { buildParallax } from '../parallax.js';
+import { Juice } from '../juice.js';
+import { Hud, makeHudTextures } from '../hud.js';
+
+// avvicina v a target di al massimo step (accelerazione/attrito lineari)
+function approach(v, target, step) { return v < target ? Math.min(v + step, target) : Math.max(v - step, target); }
 
 export class GameScene extends Phaser.Scene {
   constructor() { super('Game'); }
@@ -11,6 +17,16 @@ export class GameScene extends Phaser.Scene {
     this.cfg = state.cfg;
     this.level = state.level || LEVELS[state.worldId || 1] || LEVELS[1];
   }
+
+  // --- coordinate della UI (oggetti con scrollFactor 0) con camera zoomata: la vista logica VW×VH
+  // sta al centro del canvas; un punto logico (lx,ly) va disegnato a (ux(lx), uy(ly)).
+  ux(lx) { return lx + (this.scale.width - this.VW) / 2; }
+  uy(ly) { return ly + (this.scale.height - this.VH) / 2; }
+  // testo rasterizzato alla densità del dispositivo (altrimenti con lo zoom sarebbe sfocato)
+  T(x, y, str, style) { return this.add.text(x, y, str, { ...(style || {}), resolution: this.R }); }
+  // contenitore a schermo fisso: i figli usano coordinate logiche (0..VW, 0..VH)
+  uiLayer(depth) { return this.add.container(this.ux(0), this.uy(0)).setScrollFactor(0).setDepth(depth || 50); }
+  onResizeView() { this.VW = this.scale.width / this.R; this.VH = this.scale.height / this.R; }
 
   preload() {
     const L = this.level, S = L.sprites;
@@ -62,6 +78,14 @@ export class GameScene extends Phaser.Scene {
     }
     // immagine prodotto per la scena "LA DIFFERENZA YAC" (solo livelli boss con yacFact)
     if (L.yacFact && L.yacFact.productImg) this.load.image(L.yacFact.productKey, L.yacFact.productImg);
+    // Ritratti (card) per il medaglione dell'HUD
+    const CARD = { memento: 'Memento_card.webp', yuri: 'Yuri_card.webp', carmine: 'carmine_card.webp', andrea: 'andrea_card.webp', riccardo: 'Riccardo_card.webp' };
+    Object.entries(CARD).forEach(([k, f]) => this.load.image('card_' + k, './assets/' + f));
+    if (state.selectedKey === 'custom' && state.cfg && state.cfg.profileUrl) {
+      const pu = state.cfg.profileUrl, remote = /^https?:/i.test(pu);
+      if (this.textures.exists('card_custom')) this.textures.remove('card_custom');
+      if (!(remote && !navigator.onLine)) this.load.image('card_custom', pu);
+    }
     // Eroi in VISTA LATERALE (sprite del giocatore)
     this.load.image('hero_memento', './assets/char_memento.webp');
     this.load.image('hero_yuri', './assets/char_yuri.webp');
@@ -101,6 +125,10 @@ export class GameScene extends Phaser.Scene {
     this.heroKeyFree = this.textures.exists(this.heroKey + '_free') ? this.heroKey + '_free' : null;
     this.heroFreeActive = false;
     this.W = this.level.width; this.H = 506;
+    // RESA NITIDA: il canvas ha R volte i pixel della vista logica (R = densità del dispositivo, max 3);
+    // la camera zooma di R, così il mondo resta in unità logiche (VW×VH) ma viene disegnato pieno.
+    this.R = Math.max(1, window._R || 1);
+    this.VW = this.scale.width / this.R; this.VH = this.scale.height / this.R;
     this.lives = 5; this.gocce = 0;
     this.score = state.runScore || 0;   // punteggio CUMULATIVO della partita (si porta tra i mondi)
     this.specialReady = true; this.slowActive = false; this.piping = false;
@@ -122,10 +150,12 @@ export class GameScene extends Phaser.Scene {
     this.physics.world.gravity.y = this.water ? 360 : 1150;   // sott'acqua: gravità ridotta (galleggi)
     // camera ANCORATA in basso (altezza limiti = altezza vista): niente scroll verticale, così
     // saltando in alto NON si perde di vista il pavimento (si salta "fuori" in alto, stile classico).
-    this.cameras.main.setBounds(0, this.H - this.scale.height, this.W, this.scale.height);
+    this.cameras.main.setZoom(this.R);
+    this.cameras.main.setBounds(0, this.H - this.VH, this.W, this.VH);
     this.cameras.main.setBackgroundColor(this.water ? '#0e2230' : '#1d2730');
 
     this.makeTextures();
+    this.fx = new Juice(this);      // particelle, hit-stop, squash & stretch, scosse
     this.buildBackdrop();
     this.buildLevel();
     this.buildPlayer();
@@ -258,7 +288,8 @@ export class GameScene extends Phaser.Scene {
   // scala un'immagine (sprite dinamico) a un'altezza target con corpo fisico
   // di dimensioni world fisse, ancorato in basso-centro (i "piedi")
   fitSprite(s, targetH, bodyW, bodyH) {
-    const sc = targetH / s.height; s.setScale(sc);
+    s.setOrigin(0.5, 1);   // origine ai PIEDI: squash & stretch e inclinazioni restano a terra
+    const sc = targetH / s.height; s.setScale(sc); s._bs = sc; s._bodyH = bodyH;   // _bodyH: altezza corpo in unità mondo (body.height si aggiorna solo al passo fisico successivo)
     const fw = bodyW / sc, fh = bodyH / sc;     // px sorgente → corpo world = bodyW × bodyH
     s.body.setSize(fw, fh);
     s.body.setOffset((s.width - fw) / 2, s.height - fh);
@@ -309,19 +340,17 @@ export class GameScene extends Phaser.Scene {
     // Sfondo come UNA sola immagine "cover" (riempie tutta la vista) e FISSA alla camera: niente
     // ripetizione → niente cucitura/banda (né verticale né orizzontale). L'immagine di fabbrica NON
     // è seamless, quindi il tiling mostrava la cucitura: meglio una copia che copre tutto.
-    const VW = Math.max(this.scale.width, 1280), VH = this.scale.height;
-    const src = this.textures.get('bg_surface').getSourceImage() || { width: 1100, height: 614 };
-    const cover = Math.max(VW / src.width, VH / src.height);
-    this.bgSurface = this.add.image(this.scale.width / 2, VH / 2, 'bg_surface')
-      .setOrigin(0.5).setScrollFactor(0).setDepth(-10)
-      .setDisplaySize(src.width * cover, src.height * cover);
+    const VW = this.VW, VH = this.VH;
+    // FONDALE A PIANI: immagine del mondo che scorre senza cuciture + sagome del tema + luce + aria
+    this.bgSurface = null;
+    this.parallax = buildParallax(this);
     // dim/desaturazione/blur sono già "bakati" nell'immagine; qui aggiungo la vignette
     this.addVignette();              // bordi schermo scuri (solo sul fondo, non sul gameplay)
     // livello acqua: velo bluverde sopra tutto il gameplay per l'atmosfera sommersa
-    if (this.water) this.add.rectangle(0, 0, VW, VH, 0x1a6e8a, 0.18)
+    if (this.water) this.add.rectangle(this.ux(0), this.uy(0), VW, VH, 0x1a6e8a, 0.18)
       .setOrigin(0).setScrollFactor(0).setDepth(38);
     // livello notturno: velo blu-notte (atmosfera, i neon restano vividi sopra)
-    if (this.night) this.add.rectangle(0, 0, VW, VH, 0x0a1030, 0.22)
+    if (this.night) this.add.rectangle(this.ux(0), this.uy(0), VW, VH, 0x0a1030, 0.22)
       .setOrigin(0).setScrollFactor(0).setDepth(38);
 
     // livello al BUIO (3-2): un alone di luce attorno al player + lampi periodici delle insegne rotte
@@ -336,7 +365,7 @@ export class GameScene extends Phaser.Scene {
         grd.addColorStop(1, 'rgba(3,4,12,0.95)');
         ctx.fillStyle = grd; ctx.fillRect(0, 0, DW, DH); tex.refresh();
       }
-      this.darkImg = this.add.image(this.scale.width / 2, this.scale.height / 2, 'spotlight')
+      this.darkImg = this.add.image(this.ux(this.VW / 2), this.uy(this.VH / 2), 'spotlight')
         .setScrollFactor(0).setDepth(39).setOrigin(0.5);
       // lampi: ogni ~2.6s le insegne rotte illuminano la scena (riduce il buio per ~0.5s)
       this.flashEv = this.time.addEvent({
@@ -351,7 +380,7 @@ export class GameScene extends Phaser.Scene {
 
   addVignette() {
     if (this._perf) return;   // modalità prestazioni: niente velo bordi
-    const W = this.scale.width, H = this.scale.height;
+    const W = this.VW, H = this.VH;
     if (!this.textures.exists('vignette')) {
       const tex = this.textures.createCanvas('vignette', W, H);
       const ctx = tex.getContext();
@@ -363,7 +392,7 @@ export class GameScene extends Phaser.Scene {
     // depth -4: sopra i layer di sfondo (-10/-6), sotto il gameplay (>=0) → non scurisce il foreground.
     // setDisplaySize a tutto schermo: la texture è in cache alla dimensione del primo avvio, ma qui la
     // stiro alla dimensione ATTUALE → niente "linea scura a metà schermo" se la finestra è più larga.
-    this.vignetteImg = this.add.image(0, 0, 'vignette').setOrigin(0).setScrollFactor(0).setDepth(-4).setDisplaySize(W, H);
+    this.vignetteImg = this.add.image(this.ux(0), this.uy(0), 'vignette').setOrigin(0).setScrollFactor(0).setDepth(-4).setDisplaySize(W, H);
   }
 
   buildLevel() {
@@ -468,6 +497,7 @@ export class GameScene extends Phaser.Scene {
         this.fitSprite(e, 40, 28, 34); e.setCollideWorldBounds(true);
       }
       e.minX = a; e.maxX = b; e.dir = -1;
+      e.y = y + e._bodyH / 2;   // le coordinate dei livelli sono il CENTRO; l'origine è ai piedi
       e.kind = kind || 'goomba'; e.shell = false; e.justKicked = false; return e;
     };
     L.enemies.forEach(en => E(en.x, en.y, en.minX, en.maxX, en.kind));
@@ -645,7 +675,7 @@ export class GameScene extends Phaser.Scene {
       // logo YAC + insegna sovrapposti sul pannello (vuoto negli sprite), visibili solo da liberato
       S.yacLogo = this.add.image(salX, salTop - 120, 'yaclogo').setOrigin(0.5, 1).setDepth(4).setAlpha(0);
       S.yacLogo.setScale(30 / S.yacLogo.height);
-      S.yacText = this.add.text(salX, salTop - 206, L.salone.label, { fontFamily: 'Syne, sans-serif', fontStyle: '800', fontSize: '15px', color: '#F2994A' }).setOrigin(0.5, 1).setDepth(4).setAlpha(0);
+      S.yacText = this.T(salX, salTop - 206, L.salone.label, { fontFamily: 'Syne, sans-serif', fontStyle: '800', fontSize: '15px', color: '#F2994A' }).setOrigin(0.5, 1).setDepth(4).setAlpha(0);
     }
 
     // --- Mondo 0: postazioni dello studio + frase sul muro ---
@@ -654,16 +684,15 @@ export class GameScene extends Phaser.Scene {
 
   // ===== Mondo 0 "L'Officina": lo studio dietro le quinte =====
   buildOfficinaBackdrop() {
-    const W = this.scale.width, H = this.scale.height;
+    const W = this.VW, H = this.VH;
     if (!this.textures.exists('officinabg')) {
       const tex = this.textures.createCanvas('officinabg', W, H); const ctx = tex.getContext();
       const g = ctx.createLinearGradient(0, 0, 0, H);
       g.addColorStop(0, '#2a1a0e'); g.addColorStop(0.55, '#3d2613'); g.addColorStop(1, '#190f08');
       ctx.fillStyle = g; ctx.fillRect(0, 0, W, H); tex.refresh();
     }
-    const OW = Math.max(W, 1280);   // copre anche schermi larghi (niente buco ai lati)
-    this.bgSurface = this.add.image(0, 0, 'officinabg').setOrigin(0).setScrollFactor(0).setDepth(-10).setDisplaySize(OW, H);
-    this.add.rectangle(0, 0, OW, H, 0xF2994A, 0.07).setOrigin(0).setScrollFactor(0).setDepth(-3);   // luce calda
+    this.bgSurface = this.add.image(this.ux(0), this.uy(0), 'officinabg').setOrigin(0).setScrollFactor(0).setDepth(-10).setDisplaySize(W, H);
+    this.add.rectangle(this.ux(0), this.uy(0), W, H, 0xF2994A, 0.07).setOrigin(0).setScrollFactor(0).setDepth(-3);   // luce calda
     this.addVignette();
   }
 
@@ -684,24 +713,24 @@ export class GameScene extends Phaser.Scene {
       this.add.rectangle(st.x + 13, gt - 18, 8, 30, 0x4a3018).setOrigin(0.5, 1).setDepth(1).setStrokeStyle(2, 0x16121A);
       if (isYou) {
         // la TUA postazione è vuota: la sedia ti aspetta
-        this.add.text(st.x, gt - 62, '(la tua sedia)', { fontFamily: 'DM Sans, sans-serif', fontStyle: 'italic 600', fontSize: '11px', color: '#F7E7C8' }).setOrigin(0.5).setDepth(2).setAlpha(0.55);
+        this.T(st.x, gt - 62, '(la tua sedia)', { fontFamily: 'DM Sans, sans-serif', fontStyle: 'italic 600', fontSize: '11px', color: '#F7E7C8' }).setOrigin(0.5).setDepth(2).setAlpha(0.55);
       } else {
         const hero = this.add.image(st.x - 4, gt - 58, 'hero_' + st.key).setDepth(2);
         hero.setScale(76 / hero.height);
         this.tweens.add({ targets: hero, y: hero.y - 4, yoyo: true, repeat: -1, duration: 1500, ease: 'Sine.easeInOut' });   // respiro
       }
-      this.add.text(st.x, gt - 124, st.name, { fontFamily: 'Syne, sans-serif', fontStyle: '800', fontSize: '15px', color: hex, stroke: '#16121A', strokeThickness: 4 }).setOrigin(0.5).setDepth(3);
-      this.add.text(st.x, gt - 106, st.role, { fontFamily: 'DM Sans, sans-serif', fontStyle: 'italic 600', fontSize: '11px', color: '#F7E7C8' }).setOrigin(0.5).setDepth(3);
+      this.T(st.x, gt - 124, st.name, { fontFamily: 'Syne, sans-serif', fontStyle: '800', fontSize: '15px', color: hex, stroke: '#16121A', strokeThickness: 4 }).setOrigin(0.5).setDepth(3);
+      this.T(st.x, gt - 106, st.role, { fontFamily: 'DM Sans, sans-serif', fontStyle: 'italic 600', fontSize: '11px', color: '#F7E7C8' }).setOrigin(0.5).setDepth(3);
     });
     // porta calda di uscita (al posto del pennone)
     this.add.rectangle(this.flagX, gt, 72, 152, 0x3a2412).setOrigin(0.5, 1).setDepth(1).setStrokeStyle(3, 0xF2C53D);
     this.add.rectangle(this.flagX, gt, 52, 132, 0xF2C53D, 0.16).setOrigin(0.5, 1).setDepth(1);
-    this.add.text(this.flagX, gt - 162, 'USCITA', { fontFamily: 'Syne, sans-serif', fontStyle: '800', fontSize: '12px', color: '#F2C53D' }).setOrigin(0.5).setDepth(3);
+    this.T(this.flagX, gt - 162, 'USCITA', { fontFamily: 'Syne, sans-serif', fontStyle: '800', fontSize: '12px', color: '#F2C53D' }).setOrigin(0.5).setDepth(3);
     // la frase sul muro: una lettera alla volta, si rivela avanzando
     this.officinaLetters = [];
     off.phrase.split('').forEach((ch, i) => {
       const lx = off.phraseX0 + i * off.phraseDX;
-      const t = this.add.text(lx, off.phraseY, ch, {
+      const t = this.T(lx, off.phraseY, ch, {
         fontFamily: 'Syne, sans-serif', fontStyle: '800', fontSize: '30px',
         color: '#F2C53D', stroke: '#16121A', strokeThickness: 4,
       }).setOrigin(0.5).setDepth(2).setAlpha(0.06);
@@ -736,6 +765,8 @@ export class GameScene extends Phaser.Scene {
     const sp = this.level.spawn || { x: 110, y: this.H - 130 };
     this.player = this.physics.add.sprite(sp.x, sp.y, this.heroKey).setCollideWorldBounds(true);
     this.player.big = false; this.fitSprite(this.player, 48, 20, 40);  // poco più grande di prima
+    this.player.y = sp.y + this.player._bodyH / 2;   // spawn = centro → piedi
+    this.player._sq = { x: 1, y: 1 }; this.player._vx = 0; this.player._fallV = 0;
     this.player.jumpsLeft = this.cfg.jumps; this.player.invuln = false;
     this.player.pounding = false; this.player.dashing = false;
     this.player._wasAir = false; this.player.jumpCut = false;
@@ -756,7 +787,7 @@ export class GameScene extends Phaser.Scene {
     if (this.shots) this.physics.add.overlap(this.player, this.shots, this.hitByShot, null, this);
     // segue solo in orizzontale; in verticale la camera è bloccata dai bounds (pavimento sempre visibile)
     this.cameras.main.startFollow(this.player, true, 0.12, 0.12);
-    this.cameras.main.setFollowOffset(-70, 0);   // anticipa la vista in avanti → vedi prima cosa arriva
+    this.cameras.main.setFollowOffset(-90, 0);   // anticipo di base; in update() segue la velocità
     this.physics.add.collider(this.player, this.platforms);
     this.physics.add.collider(this.enemies, this.platforms);
     this.physics.add.collider(this.player, this.blocks, this.hitBlock, null, this);
@@ -780,65 +811,29 @@ export class GameScene extends Phaser.Scene {
   }
 
   buildHUD() {
-    const W = this.scale.width;
-    const st = { fontFamily: 'DM Sans, sans-serif', fontStyle: '700', fontSize: '13px', color: '#F7F1E8' };
-    const sm = { ...st, fontSize: '10px', color: '#F2C53D' };
-
-    // Sinistra: nome (riga 1), stato speciale (riga 2)
-    this.hudName = this.add.text(10, 7, '', st).setScrollFactor(0).setDepth(50);
-    this.sub     = this.add.text(10, 25, '', sm).setScrollFactor(0).setDepth(50);
-
-    // Centro: TEMPO
-    this.timeTxt  = this.add.text(W / 2, 7, '', st).setOrigin(0.5, 0).setScrollFactor(0).setDepth(50);
-
-    // Destra: logo YAC (riga 1) + statistiche allineate a destra (riga 2)
-    const wm = this.add.image(W - 10, 6, 'yaclogo').setOrigin(1, 0).setScrollFactor(0).setDepth(50).setAlpha(0.9);
-    wm.setScale(18 / wm.height);
-    this.hudLogo = wm;
-    this.hudStats = this.add.text(W - 10, 25, '', { ...sm, color: '#F7F1E8' }).setOrigin(1, 0).setScrollFactor(0).setDepth(50);
-
-    this.buildLetterHUD();   // tracker discreto FREEDOM (lettere nascoste)
-    this.updateHUD();
-
-    // se la larghezza di gioco cambia (rotazione/barre del browser), ri-allineo gli elementi HUD
-    // ancorati al centro/destra. Pulizia del listener allo shutdown della scena (evita accumulo).
+    makeHudTextures(this);
+    this.hud = new Hud(this);
+    // se la larghezza di gioco cambia (rotazione/barre del browser), ri-allineo l'HUD
     this.scale.on('resize', this.onResize, this);
     this.events.once('shutdown', () => { try { this.scale.off('resize', this.onResize, this); } catch (e) {} });
   }
 
   onResize() {
-    const W = this.scale.width, H = this.scale.height;
-    if (this.vignetteImg) this.vignetteImg.setDisplaySize(W, H);   // il velo bordi copre sempre tutto lo schermo
-    if (this.bgSurface && this.bgSurface.originX === 0.5) this.bgSurface.x = W / 2;   // ricentra lo sfondo "cover" (non l'Officina, origine 0)
-    if (this.timeTxt) this.timeTxt.x = W / 2;
-    if (this.hudLogo) this.hudLogo.x = W - 10;
-    if (this.hudStats) this.hudStats.x = W - 10;
+    this.onResizeView();
+    const W = this.VW, H = this.VH;
+    if (this.vignetteImg) this.vignetteImg.setPosition(this.ux(0), this.uy(0)).setDisplaySize(W, H);   // il velo bordi copre sempre tutto lo schermo
+    if (this.parallax) this.parallax.resize();
+    if (this.bgSurface && this.bgSurface.originX === 0) this.bgSurface.setPosition(this.ux(0), this.uy(0)).setDisplaySize(W, H);   // Officina
+    if (this.hud) this.hud.layout();
     if (this.bossBar && this.bossBar.all) {
-      const cx = W / 2;
-      this.bossBar.all[0].x = cx;            // etichetta boss
-      this.bossBar.all[1].x = cx;            // sfondo barra
-      this.bossBar.fill.x = cx - this.bossBar.bw / 2;   // riempimento (origine a sinistra)
+      const cx = this.ux(W / 2);
+      this.bossBar.all[0].setPosition(cx, this.uy(H - 47));            // etichetta boss
+      this.bossBar.all[1].setPosition(cx, this.uy(H - 30));            // sfondo barra
+      this.bossBar.fill.setPosition(cx - this.bossBar.bw / 2, this.uy(H - 30));   // riempimento (origine a sinistra)
     }
   }
 
-  updateHUD() {
-    if (!this.hudName) return;
-    const big = this.player && this.player.big;
-
-    this.hudName.setText(`${this.cfg.name}  ·  ${big ? 'GRANDE' : 'piccolo'}`);
-    this.hudStats.setText(`Vite ×${Math.max(0, this.lives)}   Gocce ${this.gocce}   ${this.score} pt`);
-
-    let txt, col;
-    if (!big)                { txt = `Z ${this.cfg.power}: serve Boccetta`; col = '#9b8fa6'; }
-    else if (this.specialReady) { txt = `Z ${this.cfg.power}: PRONTA`;       col = '#F2C53D'; }
-    else                     { txt = `Z ${this.cfg.power}: ricarica…`;       col = '#9b8fa6'; }
-    this.sub.setText(txt).setColor(col);
-
-    if (this.timeTxt) {
-      if (this.noTimer) this.timeTxt.setText('').setColor('#F7F1E8');   // Mondo 0: niente timer
-      else this.timeTxt.setText('TEMPO ' + this.timeLeft).setColor(this.timeLeft <= 50 ? '#ff6b8a' : '#F7F1E8');
-    }
-  }
+  updateHUD() { if (this.hud) this.hud.refresh(); }
 
   // texture eroe corrente: Riccardo mostra la versione "libera" (senza deambulatore)
   // solo finché il superpotere è attivo, altrimenti lo sprite di base.
@@ -852,26 +847,39 @@ export class GameScene extends Phaser.Scene {
     // heroScale (opzionale, per-eroe): ingrandisce solo lo sprite, NON la hitbox → gameplay equo
     const k = (this.cfg && this.cfg.heroScale) || 1;
     if (big) this.fitSprite(p, 68 * k, 24, 56); else this.fitSprite(p, 48 * k, 20, 40);
+    p._bs = p.scaleX;
     this.updateHUD();
   }
 
   grow(p, m) {
     if (m.kind === 'oneup') {   // vita extra
-      m.destroy(); this.lives++; this.score += 100; this.popText(p.x, p.y - 34, '1-UP'); AUDIO.sfx('one_up'); this.updateHUD(); return;
+      m.destroy(); this.lives++; this.score += 100; this.popText(p.x, p.body.top - 14, '1-UP'); this.fx.twinkle(p.x, p.body.center.y, 0xE14B3A, 10); AUDIO.sfx('one_up'); this.updateHUD(); return;
     }
     m.destroy();
     if (!p.big) {
-      p.y -= 16; this.sizePlayer(true); this.popText(p.x, p.y - 30, 'GRANDE!'); AUDIO.sfx('powerup_grow');
+      this.sizePlayer(true); this.popText(p.x, p.body.top - 14, 'GRANDE!'); AUDIO.sfx('powerup_grow');
+      this.fx.squash(p, 1.3, 0.7, 260, 'Elastic.easeOut'); this.fx.twinkle(p.x, p.body.center.y, 0xF2C53D, 12); this.fx.punchZoom(1.04, 220);
       if (!this.tutShown) { this.tutShown = true; this.showHint(this.cfg.hint); }
     } else { this.score += 100; this.updateHUD(); }
   }
 
   shrink() {
     const p = this.player; this.sizePlayer(false); p.invuln = true; AUDIO.sfx('shrink');
+    this.fx.hitStop(70); this.fx.burst(p.x, p.body.center.y, 0xffffff, 10, 0.8); this.fx.squash(p, 1.3, 0.75, 220, 'Back.easeOut'); if (window._haptic) window._haptic(40);
     this.tweens.add({ targets: p, alpha: 0.3, yoyo: true, repeat: 6, duration: 90, onComplete: () => { p.alpha = 1; p.invuln = false; } });
   }
 
-  grab(p, c) { c.destroy(); this.gocce++; this.score += 10; AUDIO.sfx('coin'); if (this.gocce % 100 === 0) { this.lives++; AUDIO.sfx('one_up'); } this.updateHUD(); }
+  grab(p, c) {
+    const x = c.x, y = c.y; c.destroy();
+    this.gocce++; this.score += 10; AUDIO.sfx('coin');
+    if (!this._perf) {   // la goccia vola in alto e svanisce + scintille d'oro
+      const g = this.add.image(x, y, 'coin').setDisplaySize(17, 21).setDepth(8);
+      this.tweens.add({ targets: g, y: y - 36, scaleX: g.scaleX * 1.4, scaleY: g.scaleY * 1.4, alpha: 0, duration: 300, ease: 'Quad.easeOut', onComplete: () => g.destroy() });
+    }
+    this.fx.twinkle(x, y, 0xF2C53D, 5);
+    if (this.gocce % 100 === 0) { this.lives++; AUDIO.sfx('one_up'); this.popText(x, y - 20, '1-UP'); }
+    this.updateHUD();
+  }
 
   // Molla pallet: rimbalzo alto solo se atterri dall'alto
   hitSpring(p, s) {
@@ -983,7 +991,7 @@ export class GameScene extends Phaser.Scene {
   // danno generico al player (hazard: gru, casse cadenti)
   hurtPlayer() {
     const p = this.player; if (p.invuln) return;
-    AUDIO.sfx('hit_damage');
+    AUDIO.sfx('hit_damage'); if (window._haptic) window._haptic(40);
     if (p.big) this.shrink(); else this.loseLife();
   }
 
@@ -1013,7 +1021,7 @@ export class GameScene extends Phaser.Scene {
   // Spruzzabot (Lakitu): insegue il player dall'alto, oscilla in quota (a volte raggiungibile) e dropga Gocce
   updateLakitu(e) {
     const p = this.player;
-    const tx = p.x + 30, ty = 150 + Math.sin(this.time.now / 700) * 80;   // quota 70..230 (a volte schiacciabile)
+    const tx = p.x + 30, ty = 170 + Math.sin(this.time.now / 700) * 80;   // quota (piedi) 90..250: a volte schiacciabile
     e.setVelocityX(Phaser.Math.Clamp((tx - e.x) * 3, -240, 240));
     e.setVelocityY(Phaser.Math.Clamp((ty - e.y) * 4, -220, 220) * (this.slowActive ? 0.4 : 1));
     e.setFlipX(p.x > e.x);
@@ -1086,18 +1094,18 @@ export class GameScene extends Phaser.Scene {
       if (gift === 'mush' || gift === 'oneup') {     // brick "nascosto" con dono: rilascia (non si rompe)
         b.kind = 'used'; b.setTexture('blockempty').setDisplaySize(32, 32).refreshBody();
         this.releaseGift(b, gift);
-      } else if (p.big) { b.destroy(); this.score += 50; this.popText(b.x, b.y, '+50'); AUDIO.sfx('brick_break'); }
+      } else if (p.big) { this.fx.shatter(b.x, b.y, 0x9aa7b2, 10); this.fx.hitStop(40); b.destroy(); this.score += 50; this.popText(b.x, b.y - 10, '+50'); AUDIO.sfx('brick_break'); }
       else this.nudge(b);
     } else if (b.kind === 'q') {
       b.kind = 'used'; b.setTexture('blockempty').setDisplaySize(32, 32).refreshBody();
       if (gift === 'mush' || gift === 'oneup') this.releaseGift(b, gift);
-      else { this.score += 20; this.gocce += 3; AUDIO.sfx('coin'); if (this.gocce % 100 === 0) { this.lives++; AUDIO.sfx('one_up'); } this.popCoin(b.x, b.y - 20); }
+      else { this.score += 20; this.gocce += 3; AUDIO.sfx('coin'); if (this.gocce % 100 === 0) { this.lives++; AUDIO.sfx('one_up'); } this.popCoin(b.x, b.y - 20); this.fx.twinkle(b.x, b.y - 16, 0xF2C53D, 6); }
     }
     this.updateHUD();
   }
 
   // piccolo sobbalzo del blocco quando lo colpisci da sotto
-  nudge(b) { this.tweens.add({ targets: b, y: b.y - 5, yoyo: true, duration: 80 }); }
+  nudge(b) { if (b._nudging) return; b._nudging = true; this.tweens.add({ targets: b, y: b.y - 6, yoyo: true, duration: 70, ease: 'Quad.easeOut', onComplete: () => { b._nudging = false; } }); this.fx.dust(b.x, b.y + 16, 0, 2, 0xc9d3dc); }
 
   releaseGift(b, gift) {
     const topY = b.y - 16;
@@ -1125,14 +1133,14 @@ export class GameScene extends Phaser.Scene {
   // L'oggetto EMERGE salendo dal blocco (stile funghetto SMB), poi si muove e si raccoglie a contatto
   spawnMush(x, topY) {
     const m = this.mushrooms.create(x, topY - 2, 'mush');
-    m.kind = 'mush'; this.fitSprite(m, 34, 18, 28);
+    m.kind = 'mush'; this.fitSprite(m, 34, 18, 28); m.y += m._bodyH / 2;
     m.body.allowGravity = false; m.setVelocity(0, -60); m.emerging = true;
     this.time.delayedCall(460, () => { if (!m.active) return; m.emerging = false; m.body.allowGravity = true; m.setVelocityX(70).setBounce(0); });
   }
 
   spawnOneup(x, topY) {
     const m = this.mushrooms.create(x, topY - 2, 'oneup');
-    m.kind = 'oneup'; this.fitSprite(m, 30, 20, 24);
+    m.kind = 'oneup'; this.fitSprite(m, 30, 20, 24); m.y += m._bodyH / 2;
     m.body.allowGravity = false; m.setVelocity(0, -60); m.emerging = true;
     this.time.delayedCall(460, () => { if (!m.active) return; m.emerging = false; m.body.allowGravity = true; m.setVelocityX(70).setBounce(0); });
   }
@@ -1150,7 +1158,7 @@ export class GameScene extends Phaser.Scene {
     const glow = this.add.circle(0, 0, 17, PAL.yellow, 0.18);
     const ring = this.add.circle(0, 0, 17).setStrokeStyle(4, PAL.gold, 1);     // anello di catena
     const ring2 = this.add.circle(0, 0, 11).setStrokeStyle(2, PAL.gold, 0.55);
-    const ch = this.add.text(0, 0, lt.char, {
+    const ch = this.T(0, 0, lt.char, {
       fontFamily: 'Syne, sans-serif', fontStyle: '800', fontSize: '22px',
       color: '#F2C53D', stroke: '#16121A', strokeThickness: 4,
     }).setOrigin(0.5);
@@ -1186,37 +1194,9 @@ export class GameScene extends Phaser.Scene {
     this.updateLetterHUD();
   }
 
-  // Tracker discreto delle 6 lettere (in basso a sinistra): d'oro se trovata, spenta se manca
-  buildLetterHUD() {
-    this.letterHud = [];
-    const y = this.scale.height - 16, x0 = 12, gap = 15;
-    SECRET_WORD.forEach((chr, i) => {
-      const t = this.add.text(x0 + i * gap, y, chr, {
-        fontFamily: 'Syne, sans-serif', fontStyle: '800', fontSize: '12px',
-        color: '#F2C53D', stroke: '#16121A', strokeThickness: 3,
-      }).setOrigin(0, 0.5).setScrollFactor(0).setDepth(50);
-      this.letterHud.push(t);
-    });
-    this.updateLetterHUD();
-  }
+  updateLetterHUD() { if (this.hud) this.hud.updateLetters(); }
 
-  updateLetterHUD() {
-    if (!this.letterHud) return;
-    SECRET_WORD.forEach((chr, i) => {
-      const got = hasLetter(i);
-      this.letterHud[i].setColor(got ? '#F2C53D' : '#5a5560').setAlpha(got ? 1 : 0.5);
-    });
-  }
-
-  popText(x, y, t) {
-    if (this._perf) return;   // modalità prestazioni: niente testi fluttuanti (creano texture → scatti)
-    // testo ben leggibile: bianco, grande, con contorno scuro spesso, sopra il gameplay
-    const o = this.add.text(x, y, t, {
-      fontFamily: 'Syne, sans-serif', fontStyle: '800', fontSize: '18px', color: '#FFFFFF',
-      stroke: '#16121A', strokeThickness: 5, align: 'center',
-    }).setOrigin(0.5).setDepth(60);
-    this.tweens.add({ targets: o, y: y - 28, alpha: 0, duration: 680, ease: 'Quad.easeOut', onComplete: () => o.destroy() });
-  }
+  popText(x, y, t, opts) { return this.fx.pop(x, y, t, opts); }
 
   touchEnemy(p, e) {
     if (e.dead) return;
@@ -1238,6 +1218,7 @@ export class GameScene extends Phaser.Scene {
     const stomp = !p.body.blocked.down && fromAbove && p.body.velocity.y > -140;
     if (stomp) {
       p.setVelocityY(-330); AUDIO.sfx('stomp');
+      this.fx.hitStop(55); this.fx.squash(p, 1.18, 0.84, 160, 'Back.easeOut'); this.fx.dust(e.x, e.body.bottom, 0, 3);
       if (e.kind === 'flyer') {            // Tubetto Alato: 1° stomp → perde le ali, cade come tubo a terra
         this.deWing(e); this.awardStomp(e.x, e.y);
       } else if (e.kind === 'koopa' && !e.shell) {
@@ -1257,14 +1238,22 @@ export class GameScene extends Phaser.Scene {
 
   awardStomp(x, y) {
     const CH = [100, 200, 400, 500, 800, 1000, 2000, 4000, 8000];
-    if (this.combo >= CH.length) { this.lives++; this.popText(x, y - 10, '1-UP'); AUDIO.sfx('one_up'); }
-    else { const pts = CH[this.combo]; this.score += pts; this.popText(x, y - 10, '+' + pts); }
+    if (this.combo >= CH.length) { this.lives++; this.popText(x, y - 30, '1-UP', { size: 24, color: '#7CD992' }); AUDIO.sfx('one_up'); }
+    else {
+      const pts = CH[this.combo]; this.score += pts;
+      // la combo si vede: testo più grande e dorato man mano che sale
+      this.popText(x, y - 30, '+' + pts, { size: 18 + Math.min(12, this.combo * 2), color: this.combo >= 2 ? '#F2C53D' : '#FFFFFF' });
+      if (this.combo >= 2) this.fx.punchZoom(1 + Math.min(0.06, 0.015 * this.combo), 160);
+    }
     this.combo++;
   }
 
   killEnemy(e) {
     e.dead = true; e.body.checkCollision.none = true; e.setVelocity(0, 0).setTint(0x556068);
-    this.tweens.add({ targets: e, scaleY: 0.2, alpha: 0, duration: 160, onComplete: () => e.destroy() });
+    // esplosione di scintille nel colore del nemico + schiacciamento a terra (origine ai piedi)
+    const TINT = { goomba: 0xdfe8ee, koopa: 0x3bb36a, flyer: 0x6cd0ff, floater: 0x9ad8ff, chaser: 0xffd27a, spam: 0xff7ad9, bullet: 0x9aa7b2, promoter: 0xff4fd8, lakitu: 0xaeffa0, spiny: 0x6cf24a };
+    this.fx.burst(e.x, e.body.center.y, TINT[e.kind] || 0xffffff, 12, 1);
+    this.tweens.add({ targets: e, scaleY: e.scaleY * 0.15, scaleX: e.scaleX * 1.25, alpha: 0, duration: 190, ease: 'Quad.easeOut', onComplete: () => e.destroy() });
   }
 
   // Tubetto Alato: perde le ali → diventa un tubo a terra (koopa). Il 2° stomp lo fa diventare guscio.
@@ -1283,8 +1272,12 @@ export class GameScene extends Phaser.Scene {
   }
 
   loseLife() {
-    if (this.state !== 'play') return; this.state = 'dying';
+    if (this.state !== 'play') return;
+    this.fx.hitStop(110); this.fx.punchZoom(1.07, 320);   // il colpo "pesa": il mondo si ferma un istante
+    this.state = 'dying';
     AUDIO.sfx('death');
+    this.fx.burst(this.player.x, this.player.body.center.y, 0xff6b8a, 16, 1.1);
+    this.player.setAngle(0); this.player._sq.x = this.player._sq.y = 1;
     if (this.timerEv) this.timerEv.paused = true;
     const p = this.player; p.body.checkCollision.none = true;
     p.setVelocity(0, -440).setTint(0xff6b8a);
@@ -1349,10 +1342,10 @@ export class GameScene extends Phaser.Scene {
   }
 
   showHint(msg) {
-    const W = this.scale.width;
-    const cont = this.add.container(0, 0).setScrollFactor(0).setDepth(115);
+    const W = this.VW;
+    const cont = this.uiLayer(115);
     const bg = this.add.rectangle(W / 2, 58, Math.min(W - 26, 560), 36, 0x16121A, 0.94).setStrokeStyle(2, 0xF2C53D).setOrigin(0.5);
-    const tx = this.add.text(W / 2, 58, msg, { fontFamily: 'DM Sans, sans-serif', fontStyle: '700', fontSize: '13px', color: '#F7F1E8', align: 'center', wordWrap: { width: Math.min(W - 46, 540) } }).setOrigin(0.5);
+    const tx = this.T(W / 2, 58, msg, { fontFamily: 'DM Sans, sans-serif', fontStyle: '700', fontSize: '13px', color: '#F7F1E8', align: 'center', wordWrap: { width: Math.min(W - 46, 540) } }).setOrigin(0.5);
     cont.add([bg, tx]);
     this.time.delayedCall(3400, () => this.tweens.add({ targets: cont, alpha: 0, duration: 400, onComplete: () => cont.destroy() }));
   }
@@ -1366,19 +1359,33 @@ export class GameScene extends Phaser.Scene {
   showIntro(cb) {
     this.state = 'intro'; this.physics.pause();
     if (this.timerEv) this.timerEv.paused = true;
-    const W = this.scale.width, H = this.scale.height;
+    const W = this.VW, H = this.VH;
     const WORLD = { name: this.level.name, sub: this.level.sub };
     const cy = H / 2;
-    const cont = this.add.container(0, 0).setScrollFactor(0).setDepth(120);
-    const bg = this.add.rectangle(0, 0, W, H, 0x0c0810, 1).setOrigin(0);
-    const wl = this.add.image(W / 2, cy - 78, 'yaclogo').setOrigin(0.5);
-    wl.setScale(44 / wl.height);
-    const t1 = this.add.text(W / 2, cy - 26, WORLD.name, { fontFamily: 'Syne, sans-serif', fontStyle: '800', fontSize: '36px', color: '#F7F1E8' }).setOrigin(0.5);
-    const t1b = this.add.text(W / 2, cy + 10, WORLD.sub, { fontFamily: 'Syne, sans-serif', fontStyle: '700', fontSize: '16px', color: '#F2994A' }).setOrigin(0.5);
-    const ic = this.add.image(W / 2 - 28, cy + 52, 'psmall').setOrigin(0.5).setScale(1.1);
-    const t2 = this.add.text(W / 2 + 2, cy + 52, '×  ' + Math.max(0, this.lives), { fontFamily: 'Syne, sans-serif', fontStyle: 'bold', fontSize: '24px', color: '#F2C53D' }).setOrigin(0, 0.5);
-    cont.add([bg, wl, t1, t1b, ic, t2]);
-    this.time.delayedCall(1600, () => { cont.destroy(); cb(); });
+    const cont = this.uiLayer(120);
+    // due metà di sipario (si aprono alla fine) + contenuti
+    const top = this.add.rectangle(W / 2, H / 2, W, H / 2 + 1, 0x0c0810, 1).setOrigin(0.5, 1);
+    const bot = this.add.rectangle(W / 2, H / 2, W, H / 2 + 1, 0x0c0810, 1).setOrigin(0.5, 0);
+    const line = this.add.rectangle(W / 2, cy - 48, 0, 2, 0xF2C53D).setOrigin(0.5);
+    const wl = this.add.image(W / 2, cy - 82, 'yaclogo').setOrigin(0.5).setAlpha(0);
+    wl.setScale(40 / wl.height);
+    const t1 = this.T(W / 2, cy - 18, WORLD.name, { fontFamily: 'Syne, sans-serif', fontStyle: '800', fontSize: '38px', color: '#F7F1E8', letterSpacing: 4 }).setOrigin(0.5).setAlpha(0).setScale(1.15);
+    const t1b = this.T(W / 2, cy + 18, WORLD.sub, { fontFamily: 'Syne, sans-serif', fontStyle: '700', fontSize: '15px', color: '#F2994A', letterSpacing: 1 }).setOrigin(0.5).setAlpha(0);
+    const heroTex = this.textures.exists(this.heroKey) ? this.heroKey : 'hero_memento';
+    const ic = this.add.image(W / 2 - 24, cy + 66, heroTex).setOrigin(0.5).setAlpha(0);
+    ic.setScale(40 / ic.height);
+    const t2 = this.T(W / 2 - 4, cy + 66, '×  ' + Math.max(0, this.lives), { fontFamily: 'Syne, sans-serif', fontStyle: '800', fontSize: '22px', color: '#F2C53D' }).setOrigin(0, 0.5).setAlpha(0);
+    cont.add([top, bot, line, wl, t1, t1b, ic, t2]);
+    this.tweens.add({ targets: line, width: 160, duration: 500, ease: 'Expo.easeOut' });
+    this.tweens.add({ targets: [wl, t1b, ic, t2], alpha: 1, duration: 400, delay: 150 });
+    this.tweens.add({ targets: t1, alpha: 1, scale: 1, duration: 450, delay: 100, ease: 'Back.easeOut' });
+    this.time.delayedCall(1500, () => {
+      // il sipario si apre: il gioco parte subito sotto
+      this.tweens.add({ targets: [wl, t1, t1b, ic, t2, line], alpha: 0, duration: 220 });
+      this.tweens.add({ targets: top, scaleY: 0, duration: 420, delay: 120, ease: 'Expo.easeInOut' });
+      this.tweens.add({ targets: bot, scaleY: 0, duration: 420, delay: 120, ease: 'Expo.easeInOut', onComplete: () => cont.destroy() });
+      this.time.delayedCall(140, cb);
+    });
   }
 
   beginPlay() {
@@ -1454,13 +1461,33 @@ export class GameScene extends Phaser.Scene {
     this.bossShotEv = this.time.addEvent({ delay: sel.delay, loop: true, callback: sel.fn, callbackScope: this });
     this.buildBossBar();
     this.cameras.main.flash(220, 120, 30, 30);
-    this.popText(a.spawnX, this.H - 170, bc.label + '!');
+    this.bossIntro(bc.label);   // bande cinema + nome che "sbatte" a schermo + zoom
     AUDIO.playMusic(this.level.music.boss);   // appare il boss → musica del boss
     // The Conglomerate: prima cutscene "assorbe le maschere", poi parte (attacchi in pausa fino a fine intro)
     if (bc.type === 'conglomerate') {
       this.bossShotEv.paused = true;
       this.maskAbsorbIntro(() => { if (this.bossShotEv) this.bossShotEv.paused = false; });
     }
+  }
+
+  // Presentazione del boss: bande cinema, targa del nome che piomba a schermo, scossa e zoom.
+  bossIntro(label) {
+    const W = this.VW, H = this.VH, root = this.uiLayer(118);
+    const top = this.add.rectangle(W / 2, 0, W, 0, 0x06040a, 0.92).setOrigin(0.5, 0);
+    const bot = this.add.rectangle(W / 2, H, W, 0, 0x06040a, 0.92).setOrigin(0.5, 1);
+    const sub = this.T(W / 2, H * 0.30 - 26, 'BOSS', { fontFamily: 'Syne, sans-serif', fontStyle: '800', fontSize: '11px', color: '#ff6b8a', letterSpacing: 6 }).setOrigin(0.5).setAlpha(0);
+    const name = this.T(W / 2, H * 0.30 + 6, label, { fontFamily: 'Syne, sans-serif', fontStyle: '800', fontSize: '34px', color: '#F7F1E8', stroke: '#E14B3A', strokeThickness: 6, letterSpacing: 3 }).setOrigin(0.5).setAlpha(0).setScale(2.6);
+    root.add([top, bot, sub, name]);
+    if (this.hud) this.tweens.add({ targets: this.hud.layer, alpha: 0.12, duration: 250 });
+    this.tweens.add({ targets: [top, bot], height: 30, duration: 320, ease: 'Expo.easeOut' });
+    this.tweens.add({ targets: sub, alpha: 1, duration: 250, delay: 150 });
+    this.tweens.add({ targets: name, alpha: 1, scale: 1, duration: 380, delay: 120, ease: 'Back.easeIn',
+      onComplete: () => { this.fx.shake(220, 0.01); this.fx.punchZoom(1.08, 420); this.fx.burst(this.boss ? this.boss.x : 0, this.boss ? this.boss.body.center.y : 0, 0xE14B3A, 20, 1.4); } });
+    this.time.delayedCall(1900, () => {
+      this.tweens.add({ targets: [sub, name], alpha: 0, y: '-=10', duration: 300 });
+      this.tweens.add({ targets: [top, bot], height: 0, duration: 380, ease: 'Expo.easeIn', delay: 80, onComplete: () => root.destroy() });
+      if (this.hud) this.tweens.add({ targets: this.hud.layer, alpha: 1, duration: 350, delay: 200 });
+    });
   }
 
   updateBoss() {
@@ -1633,8 +1660,9 @@ export class GameScene extends Phaser.Scene {
     const b = this.boss; if (!b) return; b.phase = n;
     this.tweens.killTweensOf(b); b.setAlpha(1); b.clearTint();   // chiude lampeggi in corso (niente boss "fantasma")
     if (this.bossHitEv) { this.bossHitEv.remove(); this.bossHitEv = null; }
-    this.popText(b.x, this.H - 188, n === 2 ? 'FASE 2 — IL SISTEMA' : 'FASE 3 — IL COLLASSO');
+    this.popText(b.x, this.H - 188, n === 2 ? 'FASE 2 — IL SISTEMA' : 'FASE 3 — IL COLLASSO', { size: 22, color: '#9fe8ff' });
     this.cameras.main.flash(300, 140, 60, 200); this.cameras.main.shake(220, 0.008);
+    this.fx.hitStop(140); this.fx.punchZoom(1.12, 520); this.fx.burst(b.x, b.body.center.y, 0x9fe8ff, 24, 1.6);
     AUDIO.sfx('phase_shift');
     if (this.bossShotEv) this.bossShotEv.remove();
     this.bossShotEv = this.time.addEvent({ delay: n === 2 ? 1150 : 850, loop: true, callback: this.fireBossConglomerate, callbackScope: this });
@@ -1758,6 +1786,7 @@ export class GameScene extends Phaser.Scene {
     const b = this.boss;
     if (!this.bossActive || this.bossDefeated || this.bossInvuln || !b) return;
     b.hp--; this.score += 200; this.updateHUD(); this.updateBossBar();
+    this.fx.hitStop(80); this.fx.burst(b.x, b.body.center.y, 0xffffff, 18, 1.4); this.fx.squash(b, 1.14, 0.86, 240, 'Back.easeOut');
     if (b.hp <= 0) { this.defeatBoss(); return; }
     // The Conglomerate: passaggio di fase su soglie di hp (9→ fase1 / 6→ fase2 / 3→ fase3)
     if (this.level.boss.type === 'conglomerate') {
@@ -1792,9 +1821,12 @@ export class GameScene extends Phaser.Scene {
     this.score += 5000; this.updateHUD();
     AUDIO.sfx('boss_defeat'); AUDIO.playMusic(this.level.music.surface);   // sconfitto → torna la musica di superficie
     this.cameras.main.shake(360, 0.012);
-    const W = this.scale.width;
-    const txt = this.add.text(W / 2, 92, this.level.boss.label + ' sconfitto!', { fontFamily: 'Syne, sans-serif', fontStyle: '800', fontSize: '26px', color: '#F2C53D' }).setOrigin(0.5).setScrollFactor(0).setDepth(70);
-    this.tweens.add({ targets: txt, y: 80, alpha: 0, delay: 1500, duration: 600, onComplete: () => txt.destroy() });
+    // colpo finale al rallentatore + raffica di esplosioni sul boss
+    this.fx.slowMo(2.6, 900); this.fx.punchZoom(1.1, 600);
+    if (b) for (let i = 0; i < 6; i++) this.time.delayedCall(i * 130, () => { if (b.active) this.fx.burst(b.x + Phaser.Math.Between(-40, 40), b.body.center.y + Phaser.Math.Between(-40, 40), i % 2 ? 0xF2C53D : 0xffffff, 16, 1.5); });
+    const W = this.VW;
+    const txt = this.T(this.ux(W / 2), this.uy(92), this.level.boss.label + ' sconfitto!', { fontFamily: 'Syne, sans-serif', fontStyle: '800', fontSize: '26px', color: '#F2C53D' }).setOrigin(0.5).setScrollFactor(0).setDepth(70);
+    this.tweens.add({ targets: txt, y: this.uy(80), alpha: 0, delay: 1500, duration: 600, onComplete: () => txt.destroy() });
     if (b) {
       b.setVelocity(0, 0); if (b.body) b.body.checkCollision.none = true;
       this.tweens.killTweensOf(b); b.setAlpha(1); b.clearTint();   // niente lampeggio residuo che combatta col "si sbriciola"
@@ -1814,17 +1846,21 @@ export class GameScene extends Phaser.Scene {
   }
 
   buildBossBar() {
-    const W = this.scale.width, cx = W / 2, y = 74, bw = 220;
-    const label = this.add.text(cx, 48, this.level.boss.label, { fontFamily: 'Syne, sans-serif', fontStyle: '800', fontSize: '12px', color: '#E14B3A' }).setOrigin(0.5).setScrollFactor(0).setDepth(61);
-    const bg = this.add.rectangle(cx, y, bw + 6, 16, 0x16121A, 0.9).setOrigin(0.5).setScrollFactor(0).setDepth(60).setStrokeStyle(2, 0x59656f);
-    const fill = this.add.rectangle(cx - bw / 2, y, bw, 11, 0xE14B3A).setOrigin(0, 0.5).setScrollFactor(0).setDepth(61);
+    const W = this.VW, cx = this.ux(W / 2), y = this.uy(this.VH - 30), bw = 240;
+    const label = this.T(cx, this.uy(this.VH - 47), this.level.boss.label, { fontFamily: 'Syne, sans-serif', fontStyle: '800', fontSize: '12px', color: '#F7F1E8', stroke: '#E14B3A', strokeThickness: 3, letterSpacing: 2 }).setOrigin(0.5).setScrollFactor(0).setDepth(61);
+    const bg = this.add.rectangle(cx, y, bw + 6, 14, 0x16121A, 0.9).setOrigin(0.5).setScrollFactor(0).setDepth(60).setStrokeStyle(2, 0x59656f);
+    const fill = this.add.rectangle(cx - bw / 2, y, bw, 9, 0xE14B3A).setOrigin(0, 0.5).setScrollFactor(0).setDepth(61);
     this.bossBar = { all: [label, bg, fill], fill, bw };
     this.updateBossBar();
   }
 
   updateBossBar() {
     if (!this.bossBar || !this.boss) return;
-    this.bossBar.fill.width = this.bossBar.bw * Phaser.Math.Clamp(this.boss.hp / this.boss.maxHp, 0, 1);
+    const f = this.bossBar.fill, w = this.bossBar.bw * Phaser.Math.Clamp(this.boss.hp / this.boss.maxHp, 0, 1);
+    if (f.width === w) return;
+    f.fillColor = 0xffffff;                                  // lampo bianco sul colpo
+    this.tweens.add({ targets: f, width: w, duration: 260, ease: 'Quad.easeOut', onComplete: () => { f.fillColor = 0xE14B3A; } });
+    this.tweens.add({ targets: this.bossBar.all, x: '+=4', yoyo: true, repeat: 3, duration: 30 });   // la barra trema
   }
 
   winLevel() {
@@ -1843,7 +1879,8 @@ export class GameScene extends Phaser.Scene {
     let bonus = 100;
     for (const [th, v] of [[0.9, 5000], [0.66, 2000], [0.4, 800], [0.2, 400]]) { if (frac >= th) { bonus = v; break; } }
     p.x = poleX - 8; p.setFlipX(false);
-    const groundY = (this.H - 36) - p.displayHeight / 2;   // centro col i piedi sul pavimento
+    const groundY = this.H - 36;   // origine ai piedi: y = pavimento
+    p.setAngle(0); p._sq.x = p._sq.y = 1; p.setScale(p._bs);
     // 1. scivola lungo il pennone
     this.tweens.add({
       targets: p, y: groundY, duration: 650, onComplete: () => {
@@ -1870,23 +1907,25 @@ export class GameScene extends Phaser.Scene {
     const YF = this.level.yacFact;
     if (!YF || this._yacShown) { done(); return; }
     this._yacShown = true; this._yacSceneActive = true;
-    const W = this.scale.width, H = this.scale.height, cx = W / 2;
+    const W = this.VW, H = this.VH, cx = W / 2;
     const cam = this.cameras.main;
     const layer = [];
+    const root = this.uiLayer(210);   // tutta la scenetta vive in coordinate logiche dentro questo layer
     let over = false;
     const fin = () => {
       if (over) return; over = true;
       this._yacSceneActive = false;
       layer.forEach((o) => { try { this.tweens.killTweensOf(o); o.destroy(); } catch (e) {} });
+      try { root.destroy(); } catch (e) {}
       done();
     };
-    const add = (o) => { layer.push(o); return o.setScrollFactor(0); };
+    const add = (o) => { layer.push(o); root.add(o); return o; };
 
     // --- Beat 0: velo + header piccolo ---
     const veil = add(this.add.rectangle(cx, H / 2, W, H, 0x16121A, 0)).setDepth(210);
     this.tweens.add({ targets: veil, fillAlpha: 0.95, duration: 500 });
     cam.flash(280, 20, 16, 26);
-    const header = add(this.add.text(cx, 22, 'LA DIFFERENZA YAC', {
+    const header = add(this.T(cx, 22, 'LA DIFFERENZA YAC', {
       fontFamily: 'Syne, sans-serif', fontStyle: '800', fontSize: '13px', color: '#F2C53D', letterSpacing: 2,
     })).setOrigin(0.5).setDepth(214).setAlpha(0);
     this.tweens.add({ targets: header, alpha: 1, y: 28, duration: 400, delay: 300 });
@@ -1903,7 +1942,7 @@ export class GameScene extends Phaser.Scene {
         vice.push(belt); this.tweens.add({ targets: belt, alpha: 0.9, duration: 300, delay: 600 });
       }
       for (let i = 0; i < n; i++) {
-        const b = add(this.add.text(x0 + i * gap, y, emo, { fontSize: '30px' })).setOrigin(0.5).setDepth(212).setAlpha(0);
+        const b = add(this.T(x0 + i * gap, y, emo, { fontSize: '30px' })).setOrigin(0.5).setDepth(212).setAlpha(0);
         vice.push(b);
         this.tweens.add({ targets: b, alpha: 1, duration: 240, delay: 700 + i * 170, ease: 'Quad.easeOut' });
       }
@@ -1913,7 +1952,7 @@ export class GameScene extends Phaser.Scene {
       const pileX = cx, pileY = H * 0.58;
       const layout = [[-36, 0], [0, 0], [36, 0], [-18, -34], [18, -34], [0, -68]];   // piramide di scatole
       layout.forEach((p, i) => {
-        const b = add(this.add.text(pileX + p[0], pileY + p[1], '📦', { fontSize: '34px' })).setOrigin(0.5).setDepth(212).setAlpha(0).setScale(0.4);
+        const b = add(this.T(pileX + p[0], pileY + p[1], '📦', { fontSize: '34px' })).setOrigin(0.5).setDepth(212).setAlpha(0).setScale(0.4);
         vice.push(b);
         this.tweens.add({ targets: b, alpha: 1, scale: 1, duration: 300, delay: 700 + i * 200, ease: 'Back.easeOut' });
       });
@@ -1930,7 +1969,7 @@ export class GameScene extends Phaser.Scene {
     } else {
       emojiRow('📦', null);
     }
-    const problem = add(this.add.text(cx, H * 0.24, YF.problem || '', {
+    const problem = add(this.T(cx, H * 0.24, YF.problem || '', {
       fontFamily: 'DM Sans, sans-serif', fontStyle: '700', fontSize: '15px', color: '#ff9b9b',
       align: 'center', wordWrap: { width: Math.min(W * 0.8, 560) },
     })).setOrigin(0.5).setDepth(214).setAlpha(0);
@@ -1972,14 +2011,14 @@ export class GameScene extends Phaser.Scene {
         this.tweens.add({ targets: [prod, glow], y: py - 7, yoyo: true, repeat: -1, duration: 1200, delay: 800, ease: 'Sine.easeInOut' });
         this.tweens.add({ targets: glow, scale: 1.15, yoyo: true, repeat: -1, duration: 1300, delay: 800, ease: 'Sine.easeInOut' });
       }
-      const title = add(this.add.text(cx, H * 0.28, YF.title || '', {
+      const title = add(this.T(cx, H * 0.28, YF.title || '', {
         fontFamily: 'Syne, sans-serif', fontStyle: '800', fontSize: '18px', color: '#FFFFFF',
         stroke: '#16121A', strokeThickness: 4, align: 'center', lineSpacing: 2, wordWrap: { width: Math.min(W * 0.8, 560) },
       })).setOrigin(0.5).setDepth(214).setAlpha(0);
       AUDIO.sfx('letter_get');
       this.tweens.add({ targets: title, alpha: 1, y: H * 0.26, duration: 450, ease: 'Quad.easeOut' });
       (YF.lines || []).forEach((ln, i) => {
-        const t = add(this.add.text(cx, H * 0.80 + i * 22, ln, {
+        const t = add(this.T(cx, H * 0.80 + i * 22, ln, {
           fontFamily: 'DM Sans, sans-serif', fontStyle: '600', fontSize: '13px', color: '#F7E7C8',
           align: 'center', wordWrap: { width: Math.min(W * 0.82, 600) },
         })).setOrigin(0.5).setDepth(214).setAlpha(0);
@@ -1990,7 +2029,7 @@ export class GameScene extends Phaser.Scene {
     // --- Beat 5: Continua (niente yacstore qui) + tap per saltare ---
     this.time.delayedCall(5400, () => {
       if (over) return;
-      const cont = add(this.add.text(W - 14, H - 12, 'Continua →', {
+      const cont = add(this.T(W - 14, H - 12, 'Continua →', {
         fontFamily: 'DM Sans, sans-serif', fontStyle: '700', fontSize: '13px', color: '#F2C53D',
       })).setOrigin(1).setDepth(215).setAlpha(0);
       this.tweens.add({ targets: cont, alpha: 0.9, duration: 350 });
@@ -2005,7 +2044,7 @@ export class GameScene extends Phaser.Scene {
   runToSalone(done) {
     const p = this.player; p.setFlipX(false);
     const targetX = this.saloneDoorX || 6620;
-    const groundY = (this.H - 36) - p.displayHeight / 2;   // piedi sul pavimento (non sotto)
+    const groundY = this.H - 36;   // origine ai piedi: y = pavimento
     // corsa con leggero "saltello" per dare vita al movimento
     this.tweens.add({
       targets: p, x: targetX, duration: 1200, ease: 'Linear',
@@ -2093,27 +2132,32 @@ export class GameScene extends Phaser.Scene {
     if (this.timerEv) this.timerEv.paused = true;
     AUDIO.stopMusic();
     AUDIO.playMusic('finale_theme');
-    const W = this.scale.width, H = this.scale.height;
+    const W = this.VW, H = this.VH;
     // tutto ciò che disegno qui è scrollFactor(0): resta fisso sullo schermo
-    const wash = this.add.rectangle(W / 2, H / 2, W, H, 0x1c0f06, 0).setScrollFactor(0).setDepth(200);
-    const warm = this.add.rectangle(W / 2, H + 220, W, 440, 0xF2994A, 0).setScrollFactor(0).setDepth(201);  // bagliore caldo dal basso
-    this.finaleLayer = [wash, warm];
+    this.finaleRoot = this.uiLayer(200);   // il finale è tutto a schermo fisso, in coordinate logiche
+    this.finaleLayer = [];
+    const wash = this.add.rectangle(W / 2, H / 2, W, H, 0x1c0f06, 0);
+    const warm = this.add.rectangle(W / 2, H + 220, W, 440, 0xF2994A, 0);  // bagliore caldo dal basso
+    this.fin(wash, warm);
     this.cameras.main.flash(900, 255, 240, 200);
     this.tweens.add({ targets: wash, fillAlpha: 1, duration: 1500, ease: 'Quad.easeIn' });
     this.tweens.add({ targets: warm, fillAlpha: 0.5, duration: 2200, delay: 600 });
     this.time.delayedCall(1700, () => this.finaleReveal());
   }
 
+  // aggiunge oggetti al layer del finale (coordinate logiche) e alla lista di pulizia
+  fin(...objs) { objs.forEach(o => { this.finaleRoot.add(o); this.finaleLayer.push(o); }); }
+
   finaleReveal() {
-    const W = this.scale.width, H = this.scale.height, cx = W / 2;
+    const W = this.VW, H = this.VH, cx = W / 2;
     const all = hasAllLetters();
     // --- catena orizzontale al centro che poi si spezza ---
     const links = [];
     const n = 9, gap = 30, y = H * 0.34;
     for (let i = 0; i < n; i++) {
       const lx = cx + (i - (n - 1) / 2) * gap;
-      const lk = this.add.circle(lx, y, 11, 0, 0).setStrokeStyle(4, 0x8a8f96, 0.9).setScrollFactor(0).setDepth(203).setAlpha(0);
-      links.push(lk); this.finaleLayer.push(lk);
+      const lk = this.add.circle(lx, y, 11, 0, 0).setStrokeStyle(4, 0x8a8f96, 0.9).setAlpha(0);
+      links.push(lk); this.fin(lk);
       this.tweens.add({ targets: lk, alpha: 1, duration: 400, delay: 200 + i * 60 });
     }
     // dopo un attimo: la catena si SPEZZA a metà (Break the Mold)
@@ -2130,7 +2174,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   finaleWord(all) {
-    const W = this.scale.width, H = this.scale.height, cx = W / 2, y = H * 0.32;
+    const W = this.VW, H = this.VH, cx = W / 2, y = H * 0.32;
     const wordObjs = [];
     let hold = 1600;
     if (all) {
@@ -2138,22 +2182,22 @@ export class GameScene extends Phaser.Scene {
       const gap = 38;
       SECRET_WORD.forEach((chr, i) => {
         const lx = cx + (i - (SECRET_WORD.length - 1) / 2) * gap;
-        const t = this.add.text(lx, y - 60, chr, {
+        const t = this.T(lx, y - 60, chr, {
           fontFamily: 'Syne, sans-serif', fontStyle: '800', fontSize: '38px',
           color: '#F2C53D', stroke: '#16121A', strokeThickness: 6,
-        }).setOrigin(0.5).setScrollFactor(0).setDepth(204).setAlpha(0);
-        this.finaleLayer.push(t); wordObjs.push(t);
+        }).setOrigin(0.5).setAlpha(0);
+        this.fin(t); wordObjs.push(t);
         this.tweens.add({ targets: t, y, alpha: 1, duration: 420, delay: 150 + i * 130, ease: 'Back.easeOut' });
       });
       hold = 150 + SECRET_WORD.length * 130 + 1700;   // compose + tenuta
       this.time.delayedCall(150 + SECRET_WORD.length * 130 + 480, () => { AUDIO.sfx('letter_get'); this.cameras.main.flash(200, 242, 197, 61); });
     } else {
       const got = state.letters.length;
-      const sub = this.add.text(cx, y, 'Lettere trovate: ' + got + '/' + SECRET_WORD.length + '\nTornano a chiamarti…', {
+      const sub = this.T(cx, y, 'Lettere trovate: ' + got + '/' + SECRET_WORD.length + '\nTornano a chiamarti…', {
         fontFamily: 'DM Sans, sans-serif', fontStyle: '600', fontSize: '15px', color: '#F7E7C8',
         align: 'center', lineSpacing: 6,
-      }).setOrigin(0.5).setScrollFactor(0).setDepth(204).setAlpha(0);
-      this.finaleLayer.push(sub); wordObjs.push(sub);
+      }).setOrigin(0.5).setAlpha(0);
+      this.fin(sub); wordObjs.push(sub);
       this.tweens.add({ targets: sub, alpha: 0.9, duration: 700 });
     }
     // la parola si dissolve PRIMA che parta il messaggio (niente sovrapposizioni)
@@ -2164,7 +2208,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   finaleScroll() {
-    const W = this.scale.width, H = this.scale.height, cx = W / 2;
+    const W = this.VW, H = this.VH, cx = W / 2;
     const msg = [
       'Sei mondi per arrivare qui.',
       'Sei mondi per capire una cosa sola:',
@@ -2182,11 +2226,11 @@ export class GameScene extends Phaser.Scene {
       'Non parliamo a una folla.',
       'Costruiamo una community.',
     ].join('\n');
-    const body = this.add.text(cx, H + 30, msg, {
+    const body = this.T(cx, H + 30, msg, {
       fontFamily: 'DM Sans, sans-serif', fontStyle: '600', fontSize: '16px',
       color: '#FBEFD8', align: 'center', lineSpacing: 9,
-    }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(205);
-    this.finaleLayer.push(body);
+    }).setOrigin(0.5, 0);
+    this.fin(body);
     const dist = H + body.height + 120;
     this.tweens.add({
       targets: body, y: body.y - dist, duration: 19000, ease: 'Linear',
@@ -2197,16 +2241,16 @@ export class GameScene extends Phaser.Scene {
   finaleSignature() {
     setGameCompleted();   // ha visto il finale → sblocca la creazione dell'eroe personalizzato
     try { if (window.msTrack) window.msTrack('event', { meta: { name: 'gioco_finito' } }); } catch (e) {}
-    const W = this.scale.width, H = this.scale.height, cx = W / 2;
-    const tag = this.add.text(cx, H * 0.42, 'YAC — Break the Mold.', {
+    const W = this.VW, H = this.VH, cx = W / 2;
+    const tag = this.T(cx, H * 0.42, 'YAC — Break the Mold.', {
       fontFamily: 'Syne, sans-serif', fontStyle: '800', fontSize: '30px',
       color: '#F2C53D', stroke: '#16121A', strokeThickness: 5, align: 'center',
-    }).setOrigin(0.5).setScrollFactor(0).setDepth(205).setAlpha(0);
-    const sign = this.add.text(cx, H * 0.42 + 44, 'Un gioco Memento. Una visione YAC.', {
+    }).setOrigin(0.5).setAlpha(0);
+    const sign = this.T(cx, H * 0.42 + 44, 'Un gioco Memento. Una visione YAC.', {
       fontFamily: 'DM Sans, sans-serif', fontStyle: 'italic 600',
       fontSize: '15px', color: '#F7E7C8', align: 'center',
-    }).setOrigin(0.5).setScrollFactor(0).setDepth(205).setAlpha(0);
-    this.finaleLayer.push(tag, sign);
+    }).setOrigin(0.5).setAlpha(0);
+    this.fin(tag, sign);
     this.cameras.main.flash(500, 242, 197, 61);
     this.tweens.add({ targets: tag, alpha: 1, duration: 1100, ease: 'Quad.easeIn' });
     this.tweens.add({ targets: sign, alpha: 0.95, duration: 1100, delay: 900 });
@@ -2295,9 +2339,121 @@ export class GameScene extends Phaser.Scene {
     });
   }
 
+  // ===== CONTROLLI CON INERZIA + COYOTE TIME + GRAVITÀ VIVA =====
+  // p._vx = velocità di corsa propria (integrata con accelerazione/attrito); il nastro si somma dopo.
+  movePlayer(dt, inp) {
+    const p = this.player, c = this.cfg, b = p.body, now = this.time.now, fx = this.fx;
+    dt = Math.min(Math.max(dt, 0.001), 0.05);
+    const ground = b.blocked.down;
+    const hspeed = this.water ? c.speed * 0.72 : c.speed;   // sott'acqua ci si muove più lenti
+    const dir = inp.left ? -1 : inp.right ? 1 : 0;
+    if ((b.blocked.left && p._vx < 0) || (b.blocked.right && p._vx > 0)) p._vx = 0;   // contro un muro la corsa si azzera
+    if (!p.dashing) {
+      if (dir !== 0) {
+        const turning = p._vx !== 0 && Math.sign(p._vx) !== dir;
+        const acc = ground ? (turning ? 3600 : 2300) : 1600;
+        if (turning && ground && Math.abs(p._vx) > 90 && now - (p._skidT || 0) > 350) { p._skidT = now; fx.dust(p.x, b.bottom, -dir, 3); }   // frenata
+        p._vx = approach(p._vx, dir * hspeed, acc * dt);
+        p.setFlipX(dir < 0);
+      } else p._vx = approach(p._vx, 0, (ground ? 2800 : 650) * dt);
+    } else p._vx = approach(p._vx, 0, 400 * dt);   // lo scatto si smorza da solo
+    // nastri trasportatori: spinta che si SOMMA alla corsa (non si accumula)
+    let push = 0;
+    if (ground && this.conveyors) for (const cv of this.conveyors) {
+      if (p.x >= cv.x1 && p.x <= cv.x2 && Math.abs(b.bottom - cv.topY) < 10) { push = cv.dir * cv.speed; break; }
+    }
+    p.setVelocityX(p._vx + push);
+
+    // casse fragili: parte il crollo se ci stai sopra
+    if (ground && this.crumbles) {
+      for (const bl of this.crumbles) {
+        if (bl.active && !bl.crumbling && Math.abs(p.x - bl.x) < 22 && Math.abs(b.bottom - (bl.y - 16)) < 8) { this.startCrumble(bl); break; }
+      }
+    }
+
+    // terra / aria, atterraggio
+    if (ground) {
+      if (p.pounding && p._wasAir) this.poundLand();
+      if (p._wasAir) {
+        const fall = p._fallV || 0;   // velocità di impatto → squash e polvere proporzionali
+        if (fall > 260) { fx.squash(p, 1 + Math.min(0.3, fall / 2400), 1 - Math.min(0.28, fall / 2600), 170, 'Back.easeOut'); fx.dust(p.x, b.bottom, 0, fall > 620 ? 6 : 3); }
+        if (fall > 760) fx.shake(60, 0.002);
+      }
+      p.jumpsLeft = c.jumps; p._wasAir = false; p._coyoteT = now; p._jumpedFromGround = false; p._fallV = 0; this.combo = 0;
+      p.setGravityY(0);
+    } else {
+      p._wasAir = true; p._fallV = Math.max(p._fallV || 0, b.velocity.y);
+      // caduto da un bordo senza saltare: finito il coyote time (110 ms) il salto "da terra" sparisce
+      if (!p._jumpedFromGround && p.jumpsLeft === c.jumps && now - (p._coyoteT || 0) > 110) p.jumpsLeft = c.jumps - 1;
+    }
+
+    this.animatePlayer(dir, ground);
+
+    if (this.water) {
+      // NUOTO: ogni pressione di salto = bracciata verso l'alto (ripetibile), discesa lenta
+      if (inp.jump && !this.jumpHeld) { p.setVelocityY(-210); AUDIO.sfx('jump'); fx.squash(p, 0.9, 1.12, 200); }
+      this.jumpHeld = inp.jump;
+      if (b.velocity.y > 215) p.setVelocityY(215);   // sprofondi piano
+      if (this.currents) for (const cur of this.currents) {   // correnti di scarico: ti trascinano giù
+        if (p.x > cur.x1 && p.x < cur.x2 && p.y > cur.y1 && p.y < cur.y2) p.setVelocityY(b.velocity.y + cur.force);
+      }
+      p.setGravityY(0);
+    } else {
+      // JUMP BUFFER: memorizza la pressione (anche un attimo prima di atterrare) → niente input persi
+      if (inp.jump && !this.jumpHeld) this._jumpBufT = now;
+      this.jumpHeld = inp.jump;
+      const buffered = (now - (this._jumpBufT || -9999)) < 130;
+      if (buffered && p.jumpsLeft > 0) {
+        p.setVelocityY(-c.jump); p.jumpsLeft--; p.jumpCut = false; this._jumpBufT = -9999; AUDIO.sfx('jump');
+        const fromGround = ground || (now - (p._coyoteT || 0) <= 110);
+        if (fromGround) { p._jumpedFromGround = true; fx.dust(p.x, b.bottom, 0, 3); }
+        else fx.burst(p.x, b.bottom, 0xffffff, 6, 0.5);   // doppio salto: sbuffo bianco
+        fx.squash(p, 0.84, 1.2, 200, 'Quad.easeOut');
+      }
+      // taglio del salto (rilascio anticipato) → altezza controllabile
+      if (!inp.jump && !p.jumpCut && b.velocity.y < -180) { p.setVelocityY(b.velocity.y * 0.55); p.jumpCut = true; }
+      // GRAVITÀ VIVA: leggera all'apice (si "galleggia" un attimo), pesante in caduta (salto a parabola)
+      if (!ground) {
+        const vy = b.velocity.y, g = this.physics.world.gravity.y;
+        if (p.pounding) p.setGravityY(0);
+        else if (Math.abs(vy) < 70) p.setGravityY(-g * 0.42);
+        else if (vy > 0) p.setGravityY(g * 0.38);
+        else p.setGravityY(0);
+        if (vy > 920) p.setVelocityY(920);
+      }
+    }
+  }
+
+  // Animazione PROCEDURALE dell'eroe (sprite statici): respiro da fermo, falcata con rimbalzo e
+  // inclinazione, allungamento in salto, compressione in caduta. Moltiplica la scala base per
+  // l'animazione e per lo squash & stretch degli eventi (p._sq, pilotato dai tween).
+  animatePlayer(dir, ground) {
+    const p = this.player, b = p.body, t = this.time.now / 1000;
+    const bs = p._bs || p.scaleX, sq = p._sq || { x: 1, y: 1 };
+    let ax = 1, ay = 1, ang = 0;
+    const speedK = Math.min(1, Math.abs(p._vx || 0) / this.cfg.speed);
+    if (ground) {
+      if (speedK > 0.08) {   // falcata
+        const f = 10 * (0.55 + 0.45 * speedK), sn = Math.sin(t * f * Math.PI * 2);
+        ay = 1 + 0.05 * speedK * sn; ax = 1 - 0.035 * speedK * sn;
+        ang = (p.flipX ? -1 : 1) * (4 + 4 * speedK) + 1.5 * sn;
+        if (speedK > 0.6 && sn > 0.985 && this.time.now - (p._stepT || 0) > 170) { p._stepT = this.time.now; this.fx.dust(p.x + (p.flipX ? 8 : -8), b.bottom, p.flipX ? 1 : -1, 1); }
+      } else {   // respiro
+        const br = Math.sin(t * 2.2 * Math.PI); ay = 1 + 0.018 * br; ax = 1 - 0.012 * br;
+      }
+    } else {
+      const vy = b.velocity.y;
+      if (vy < -120) { ay = 1.08; ax = 0.94; }
+      else if (vy > 240) { const k = Math.min(1, (vy - 240) / 600); ay = 1 + 0.06 * k; ax = 1 - 0.05 * k; }
+      ang = (p.flipX ? -1 : 1) * Math.min(8, Math.abs(p._vx || 0) / 40) * (vy < 0 ? 0.6 : 0.35);
+    }
+    p.setScale(bs * ax * sq.x, bs * ay * sq.y);
+    p.setAngle(ang);
+  }
+
   special() {
     const p = this.player;
-    if (!p.big) { this.popText(p.x, p.y - 40, 'Serve la Boccetta YAC!'); return; }
+    if (!p.big) { this.popText(p.x, p.body.top - 16, 'Serve la Boccetta YAC!', { size: 14 }); return; }
     if (!this.specialReady || this.slowActive || this.invincible || this.shootMode) return;
     const s = this.cfg.special;
     this.specialReady = false;
@@ -2305,7 +2461,7 @@ export class GameScene extends Phaser.Scene {
     if (s === 'shoot') {
       // MEMENTO: spara ESATTAMENTE 5 pallottole (prima era una raffica continua di ~6s = troppi colpi)
       cd = 9000; this.shootMode = true; AUDIO.sfx('powerup_grow');
-      this.popText(p.x, p.y - 42, 'FUOCO! 🔥');
+      this.popText(p.x, p.body.top - 16, 'FUOCO! 🔥');
       let shots = 5;
       this.fireHeroShot(); shots--;                 // 1ª pallottola subito
       this.shootEv = this.time.addEvent({
@@ -2322,14 +2478,14 @@ export class GameScene extends Phaser.Scene {
     } else if (s === 'invince') {
       // YURI: INVINCIBILE ~6.5s — immune ai danni, i nemici muoiono al contatto
       cd = 10000; this.invincible = true; p.invuln = true; AUDIO.sfx('star');
-      this.popText(p.x, p.y - 42, 'INVINCIBILE! ⭐');
+      this.popText(p.x, p.body.top - 16, 'INVINCIBILE! ⭐');
       const C = [0xF2C53D, 0x6cf24a, 0x2bd6ff, 0xD96BA0];
       this.invEv = this.time.addEvent({ delay: 80, loop: true, callback: () => { if (p.active) p.setTint(C[Math.floor(this.time.now / 80) % 4]); } });
       this.time.delayedCall(6500, () => { this.invincible = false; p.invuln = false; if (p.active) p.clearTint(); if (this.invEv) { this.invEv.remove(); this.invEv = null; } this.updateHUD(); });
     } else if (s === 'slowmo') {
       // ANDREA: ferma/rallenta il tempo ~5s
       cd = 9000; this.slowActive = true;
-      this.tint = this.add.rectangle(0, 0, this.scale.width, this.scale.height, 0x6b3b8a, 0.16).setOrigin(0).setScrollFactor(0).setDepth(40);
+      this.tint = this.add.rectangle(this.ux(0), this.uy(0), this.VW, this.VH, 0x6b3b8a, 0.16).setOrigin(0).setScrollFactor(0).setDepth(40);
       this.cameras.main.flash(150, 120, 80, 160);
       this.time.delayedCall(5000, () => { this.slowActive = false; if (this.tint) this.tint.destroy(); });
     } else if (s === 'pound') {
@@ -2340,27 +2496,28 @@ export class GameScene extends Phaser.Scene {
     } else if (s === 'dash') {
       // SCATTO: balzo orizzontale che travolge i nemici (riusa p.dashing, già gestito in touchEnemy)
       cd = 4500; p.dashing = true; AUDIO.sfx('powerup_grow');
-      this.popText(p.x, p.y - 42, 'SCATTO! 💨');
-      const dir = p.flipX ? -1 : 1; p.setVelocityX(dir * 640); this.cameras.main.shake(120, 0.004);
+      this.popText(p.x, p.body.top - 16, 'SCATTO! 💨');
+      const dir = p.flipX ? -1 : 1; p._vx = dir * 640; p.setVelocityX(p._vx); this.cameras.main.shake(120, 0.004);
+      this.fx.dust(p.x, p.body.bottom, -dir, 5);
       this.time.delayedCall(360, () => { if (p.active) p.dashing = false; });
     } else if (s === 'superjump') {
       // SUPER-SALTO: un balzo molto alto
       cd = 5000; AUDIO.sfx('jump');
-      this.popText(p.x, p.y - 42, 'SUPER-SALTO! 🦘');
+      this.popText(p.x, p.body.top - 16, 'SUPER-SALTO! 🦘');
       p.setVelocityY(-980); p.jumpCut = true; this.cameras.main.shake(70, 0.003);
     } else if (s === 'shield') {
       // SCUDO: immune ai danni per ~4.5s (riusa p.invuln, rispettato da tutti i danni; NON uccide i nemici)
       cd = 9000; p.invuln = true; AUDIO.sfx('powerup_grow');
-      this.popText(p.x, p.y - 42, 'SCUDO! 🛡️');
+      this.popText(p.x, p.body.top - 16, 'SCUDO! 🛡️');
       const ring = this.add.circle(p.x, p.y, 30, 0x8fd3ff, 0.16).setStrokeStyle(3, 0x8fd3ff, 0.85).setDepth(6);
-      this.shieldEv = this.time.addEvent({ delay: 16, loop: true, callback: () => { if (ring.active && p.active) ring.setPosition(p.x, p.y - 2); } });
+      this.shieldEv = this.time.addEvent({ delay: 16, loop: true, callback: () => { if (ring.active && p.active) ring.setPosition(p.x, p.body.center.y); } });
       this.time.delayedCall(4500, () => { if (p.active) p.invuln = false; if (this.shieldEv) { this.shieldEv.remove(); this.shieldEv = null; } if (ring.active) ring.destroy(); });
     } else if (s === 'walker') {
       // RICCARDO: Deambulatore — i nemici on-screen diventano rossi e rallentano per 6s.
       cd = 8000;
       this.cameras.main.flash(200, 204, 34, 34);
       AUDIO.sfx('boss_defeat');
-      this.popText(p.x, p.y - 42, 'DEAMBULATORE! 🦽');
+      this.popText(p.x, p.body.top - 16, 'DEAMBULATORE! 🦽');
       // Riccardo si libera del deambulatore mentre il potere è attivo (6s), poi lo riprende.
       if (this.heroKeyFree) {
         this.heroFreeActive = true;
@@ -2370,7 +2527,7 @@ export class GameScene extends Phaser.Scene {
           if (this.player && this.player.active) this.sizePlayer(this.player.big);
         });
       }
-      const camL = this.cameras.main.scrollX, camR = camL + this.scale.width;
+      const camL = this.cameras.main.worldView.x, camR = camL + this.VW;
       this.enemies.getChildren().forEach(e => {
         if (!e || !e.active || e.dead) return;
         if (e.x < camL - 60 || e.x > camR + 60) return;
@@ -2382,17 +2539,18 @@ export class GameScene extends Phaser.Scene {
     } else if (s === 'magnet') {
       // CALAMITA: attira e raccoglie le Gocce vicine per ~5s (usa this.grab per la raccolta reale)
       cd = 9000; AUDIO.sfx('coin');
-      this.popText(p.x, p.y - 42, 'CALAMITA! 🧲');
+      this.popText(p.x, p.body.top - 16, 'CALAMITA! 🧲');
       this.magnetEv = this.time.addEvent({ delay: 24, loop: true, callback: () => {
         if (this.state !== 'play' || !this.coins) return;
         this.coins.children.iterate((c) => {
           if (!c || !c.active) return;
-          const d = Phaser.Math.Distance.Between(c.x, c.y, p.x, p.y);
-          if (d < 230) { if (d < 26) { this.grab(p, c); return; } const a = Phaser.Math.Angle.Between(c.x, c.y, p.x, p.y); c.x += Math.cos(a) * 9; c.y += Math.sin(a) * 9; }
+          const cy = p.body.center.y, d = Phaser.Math.Distance.Between(c.x, c.y, p.x, cy);
+          if (d < 230) { if (d < 26) { this.grab(p, c); return; } const a = Phaser.Math.Angle.Between(c.x, c.y, p.x, cy); c.x += Math.cos(a) * 9; c.y += Math.sin(a) * 9; }
         });
       } });
       this.time.delayedCall(5000, () => { if (this.magnetEv) { this.magnetEv.remove(); this.magnetEv = null; } });
     }
+    this.specialCdEnd = this.time.now + cd; this.specialCdDur = cd;   // per l'arco di ricarica nell'HUD
     this.time.delayedCall(cd, () => { this.specialReady = true; this.updateHUD(); });
     this.updateHUD();
   }
@@ -2423,7 +2581,7 @@ export class GameScene extends Phaser.Scene {
     // ogni 2 frame (basta per il culling visivo): dimezza il lavoro per-frame → più fluido su iPhone PWA
     this._cullN = (this._cullN || 0) + 1;
     if (this._cullN % 2) return;
-    const cam = this.cameras.main, L = cam.scrollX - 24, R = cam.scrollX + cam.width + 24;
+    const cam = this.cameras.main, L = cam.worldView.x - 24, R = cam.worldView.right + 24;
     const cull = this._cullFn || (this._cullFn = (o) => { if (o) { const hw = (o.displayWidth || 32) / 2; o.visible = (o.x + hw > this._cullL && o.x - hw < this._cullR); } });
     this._cullL = L; this._cullR = R;
     if (this.blocks) this.blocks.children.iterate(cull);
@@ -2461,6 +2619,7 @@ export class GameScene extends Phaser.Scene {
           e.preventDefault();
           try { b.setPointerCapture(e.pointerId); } catch (_) {}
           ptr[e.pointerId] = k; t[k] = true;
+          if (window._haptic) window._haptic(k === 'jump' ? 8 : 12);
         }, { passive: false });
         // fallback per browser senza Pointer Events (Android vecchi)
         if (!window.PointerEvent) {
@@ -2506,9 +2665,10 @@ export class GameScene extends Phaser.Scene {
     };
   }
 
-  update() {
+  update(time, delta) {
     try {   // protezione: un errore in un frame NON deve uccidere il loop (su iOS lo faceva)
     const k = this.k;
+    if (this.parallax) this.parallax.update();   // il fondale segue la camera (anche in intro/finale)
     const pad = this.readPad();
     // Pausa (ESC/P/Options) e Ricomincia (R): valutati prima degli early-return
     const pKey = k.ESC.isDown || k.P.isDown || (pad && pad.pause);
@@ -2524,12 +2684,21 @@ export class GameScene extends Phaser.Scene {
     if (this.paused) return;
 
     if (this.state !== 'play') return;
+    if (this.hud) this.hud.update();
+    // gocce a schermo: rotazione finta (scaleX a coseno) con fase diversa per ognuna
+    if (this.coins && !this._perf) {
+      const tt = this.time.now / 240;
+      this.coins.children.iterate(c => { if (!c || !c.visible) return; if (c._bsx === undefined) c._bsx = c.scaleX; c.scaleX = c._bsx * (0.35 + 0.65 * Math.abs(Math.cos(tt + c.x * 0.03))); });
+    }
+    // CAMERA CON ANTICIPO: guarda avanti in proporzione alla velocità (si vede prima cosa arriva)
+    { const cam = this.cameras.main, look = Phaser.Math.Clamp((this.player._vx || 0) * 0.45, -120, 120);
+      cam.followOffset.x = Phaser.Math.Linear(cam.followOffset.x, -(46 + look), 0.05); }
     this.cullView();   // non disegnare nemici/monete/blocchi fuori schermo → più fluido
     // (lo sfondo ora è un'immagine fissa "cover": niente parallasse/tiling → niente cucitura)
     if (this.bgUnder) this.bgUnder.setVisible(this.player.x > 6900);  // sfondo sotterraneo solo se sei laggiù (non sbordare nel salone)
     if (this.darkImg) {   // l'alone di luce segue il player (spazio schermo)
       const cam = this.cameras.main;
-      this.darkImg.setPosition(this.player.x - cam.scrollX, this.player.y - cam.scrollY);
+      this.darkImg.setPosition(this.ux(this.player.x - cam.worldView.x), this.uy(this.player.body.center.y - cam.worldView.y));
     }
     if (this.hazards) {   // vasche/melma tossica: da GRANDE torni piccolo (non muori), da piccolo muori
       const pb = this.player.body;
@@ -2542,7 +2711,7 @@ export class GameScene extends Phaser.Scene {
     if (this.chartList && this.chartList.length) this.updateCharts();   // piattaforme-grafico (Mondo 5)
     if (this.lasers && this.lasers.length) this.updateLasers();         // griglie laser (Mondo 5)
     if (this.conveyors) {   // scorrimento nastri + rulli che girano (solo quelli a schermo)
-      const cam = this.cameras.main, L = cam.scrollX, R = cam.scrollX + cam.width;
+      const cam = this.cameras.main, L = cam.worldView.x, R = cam.worldView.right;
       for (const cv of this.conveyors) {
         if (cv.x2 < L - 40 || cv.x1 > R + 40) continue;   // fuori vista → non animare (più fluido)
         // il nastro scorre NEL VERSO della spinta (tilePositionX cresce → contenuto va a sinistra,
@@ -2558,55 +2727,7 @@ export class GameScene extends Phaser.Scene {
     const down = cu.down.isDown || k.S.isDown || t.down || (pad && pad.down);
     const sp = k.Z.isDown || t.special || (pad && pad.special);
 
-    const hspeed = this.water ? c.speed * 0.72 : c.speed;   // sott'acqua ci si muove più lenti
-    if (left) { p.setVelocityX(-hspeed); p.setFlipX(true); }
-    else if (right) { p.setVelocityX(hspeed); p.setFlipX(false); }
-    else p.setVelocityX(0);
-
-    const ground = p.body.blocked.down;
-    if (ground) { if (p.pounding && p._wasAir) this.poundLand(); p.jumpsLeft = c.jumps; p._wasAir = false; this.combo = 0; }
-    else p._wasAir = true;
-
-    // nastri trasportatori: se sei a terra sul tratto, aggiungi la spinta del nastro
-    if (ground && this.conveyors) {
-      for (const cv of this.conveyors) {
-        if (p.x >= cv.x1 && p.x <= cv.x2 && Math.abs(p.body.bottom - cv.topY) < 10) {
-          p.setVelocityX(p.body.velocity.x + cv.dir * cv.speed); break;
-        }
-      }
-    }
-
-    // casse fragili: parte il crollo se ci stai sopra
-    if (ground && this.crumbles) {
-      for (const b of this.crumbles) {
-        if (b.active && !b.crumbling && Math.abs(p.x - b.x) < 22 && Math.abs(p.body.bottom - (b.y - 16)) < 8) {
-          this.startCrumble(b); break;
-        }
-      }
-    }
-
-    // camminata: leggera oscillazione mentre si muove a terra (sembra che cammini)
-    if ((left || right) && ground) p.setAngle(Math.sin(this.time.now / 60) * 3.5);
-    else if (p.angle !== 0) p.setAngle(0);
-
-    if (this.water) {
-      // NUOTO: ogni pressione di salto = bracciata verso l'alto (ripetibile), discesa lenta
-      if (jump && !this.jumpHeld) { p.setVelocityY(-210); AUDIO.sfx('jump'); }
-      this.jumpHeld = jump;
-      if (p.body.velocity.y > 215) p.setVelocityY(215);   // sprofondi piano
-      // correnti di scarico: ti trascinano giù mentre le attraversi
-      if (this.currents) for (const cur of this.currents) {
-        if (p.x > cur.x1 && p.x < cur.x2 && p.y > cur.y1 && p.y < cur.y2) p.setVelocityY(p.body.velocity.y + cur.force);
-      }
-    } else {
-      // JUMP BUFFER: memorizza la pressione (anche un attimo prima di atterrare) → salto reattivo, senza "input persi"
-      if (jump && !this.jumpHeld) this._jumpBufT = this.time.now;
-      this.jumpHeld = jump;
-      const buffered = (this.time.now - (this._jumpBufT || -9999)) < 130;
-      if (buffered && p.jumpsLeft > 0) { p.setVelocityY(-c.jump); p.jumpsLeft--; p.jumpCut = false; this._jumpBufT = -9999; AUDIO.sfx('jump'); }
-      // taglio salto variabile più morbido (0.6) → altezze meno "a caso", controllo più prevedibile
-      if (!jump && !p.jumpCut && p.body.velocity.y < -180) { p.setVelocityY(p.body.velocity.y * 0.6); p.jumpCut = true; }
-    }
+    this.movePlayer(delta / 1000, { left, right, jump, down });
 
     if (sp && !this.spHeld) this.special(); this.spHeld = sp;
     if (down && !this.downHeld) this.enterPipe(); this.downHeld = down;
@@ -2646,7 +2767,7 @@ export class GameScene extends Phaser.Scene {
 
     // PERF: i nemici ben fuori dalla vista non vengono aggiornati (meno lavoro per-frame sui livelli
     // con tanti nemici sparsi, es. il Mondo 2-2 ad acqua → niente più scatti).
-    const ecamL = this.cameras.main.scrollX - 200, ecamR = this.cameras.main.scrollX + this.scale.width + 200;
+    const ecamL = this.cameras.main.worldView.x - 200, ecamR = this.cameras.main.worldView.right + 200;
     this.enemies.children.iterate(e => {
       if (!e || !e.body || e.dead) return;
       if (e.y > this.H + 140) { e.destroy(); return; }   // nemico caduto nel vuoto → rimuovi
@@ -2670,6 +2791,7 @@ export class GameScene extends Phaser.Scene {
         e.setVelocityX(fspd * e.dir); e.setFlipX(e.dir < 0);
         const amp = e.kind === 'floater' ? 88 : 44;
         e.setVelocityY(Math.cos(this.time.now / 360 + (e.phase || 0)) * amp * (e.walkerDebuff ? 0.15 : this.slowActive ? 0.4 : 1));
+        if (!this._perf) e.setAngle(Phaser.Math.Clamp(e.body.velocity.y * 0.06, -9, 9) * (e.dir < 0 ? -1 : 1));   // si inclina seguendo l'onda
         return;
       }
       if (e.kind === 'chaser') {   // Spugnotto: insegue lentamente il player
@@ -2697,6 +2819,7 @@ export class GameScene extends Phaser.Scene {
       if (e.x <= e.minX || e.body.blocked.left) e.dir = 1;
       if (e.x >= e.maxX || e.body.blocked.right) e.dir = -1;
       e.setVelocityX(spd * e.dir); e.setFlipX(e.dir < 0);
+      if (!this._perf && e.body.blocked.down) e.setAngle(Math.sin(this.time.now / 110 + e.x) * (e.kind === 'spiny' ? 2 : 5));   // dondolio del passo
     });
 
     this.onPipe = null;
